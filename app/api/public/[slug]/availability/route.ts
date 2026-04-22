@@ -59,13 +59,13 @@ export async function GET(
       await Promise.all([
         prisma.tenant.findUnique({
           where: { slug },
-          select: {
-            id: true,
-            name: true,
+          select: { 
+            id: true, 
+            name: true, 
             timezone: true,
             subscriptionStatus: true,
             trialEndsAt: true,
-            subscriptionCurrentPeriodEnd: true,
+            subscriptionCurrentPeriodEnd: true
           },
         }),
         prisma.service.findFirst({
@@ -93,14 +93,10 @@ export async function GET(
     if (!tenant) {
       return NextResponse.json({ error: "Salão não encontrado" }, { status: 404 });
     }
-    
+
+    // Bloqueia se o financeiro não estiver em dia
     if (!isTenantBillingActive(tenant)) {
-      return NextResponse.json({
-        slots: [],
-        meta: {
-          reason: "subscription-inactive",
-        },
-      });
+      return NextResponse.json({ slots: [], meta: { reason: "subscription-inactive" } });
     }
 
     if (!service || service.tenantId !== tenant.id) {
@@ -116,10 +112,7 @@ export async function GET(
     }
 
     if (professionalHour && !professionalHour.isOpen) {
-      return NextResponse.json({
-        slots: [],
-        meta: { reason: "professional-closed" },
-      });
+      return NextResponse.json({ slots: [], meta: { reason: "professional-closed" } });
     }
 
     const effectiveStartMin = Math.max(
@@ -132,37 +125,6 @@ export async function GET(
       professionalHour?.endMin ?? tenantHour.endMin ?? 0
     );
 
-    if (effectiveEndMin <= effectiveStartMin) {
-      return NextResponse.json({
-        slots: [],
-        meta: { reason: "invalid-hours-range" },
-      });
-    }
-
-    const blockedIntervals: { start: Date; end: Date }[] = [];
-
-    if (
-      tenantHour.breakStartMin != null &&
-      tenantHour.breakEndMin != null &&
-      tenantHour.breakEndMin > tenantHour.breakStartMin
-    ) {
-      blockedIntervals.push({
-        start: combineDateAndMinutes(date, tenantHour.breakStartMin),
-        end: combineDateAndMinutes(date, tenantHour.breakEndMin),
-      });
-    }
-
-    if (
-      professionalHour?.breakStartMin != null &&
-      professionalHour?.breakEndMin != null &&
-      professionalHour.breakEndMin > professionalHour.breakStartMin
-    ) {
-      blockedIntervals.push({
-        start: combineDateAndMinutes(date, professionalHour.breakStartMin),
-        end: combineDateAndMinutes(date, professionalHour.breakEndMin),
-      });
-    }
-
     const dayStart = combineDateAndMinutes(date, effectiveStartMin);
     const dayEnd = combineDateAndMinutes(date, effectiveEndMin);
 
@@ -171,17 +133,12 @@ export async function GET(
         where: {
           tenantId: tenant.id,
           professionalId: professional.id,
-          status: { in: ["PENDING", "CONFIRMED"] },
+          // AQUI ESTÁ A CORREÇÃO: Pegamos apenas agendamentos que NÃO foram cancelados
+          status: { not: "CANCELED" }, 
           startAt: { lt: dayEnd },
           endAt: { gt: dayStart },
         },
-        select: {
-          startAt: true,
-          endAt: true,
-        },
-        orderBy: {
-          startAt: "asc",
-        },
+        select: { startAt: true, endAt: true },
       }),
       prisma.scheduleBlock.findMany({
         where: {
@@ -193,83 +150,44 @@ export async function GET(
             { professionalId: professional.id },
           ],
         },
-        select: {
-          startAt: true,
-          endAt: true,
-        },
-        orderBy: {
-          startAt: "asc",
-        },
+        select: { startAt: true, endAt: true },
       }),
     ]);
 
     const now = new Date();
-    
-    // Define a antecedência mínima (2 horas = 2 * 60 * 60 * 1000 milissegundos)
     const minAdvanceHours = 2;
     const cutoffTime = new Date(now.getTime() + minAdvanceHours * 60 * 60 * 1000);
 
     const slots: { iso: string; label: string }[] = [];
-
     let cursor = roundToNextSlot(dayStart, 30);
 
     while (cursor < dayEnd) {
-      const slotEnd = new Date(
-        cursor.getTime() + service.durationMin * 60 * 1000
-      );
+      const slotEnd = new Date(cursor.getTime() + service.durationMin * 60 * 1000);
 
       const fitsInHours = slotEnd <= dayEnd;
-      
-      // O horário só estará disponível se passar do cutoff (agora + 2 horas)
       const isFuture = cursor > cutoffTime;
 
       const appointmentConflict = appointments.some((appointment) =>
         overlaps(cursor, slotEnd, appointment.startAt, appointment.endAt)
       );
 
-      const breakConflict = blockedIntervals.some((interval) =>
-        overlaps(cursor, slotEnd, interval.start, interval.end)
-      );
-
       const blockConflict = blocks.some((block) =>
         overlaps(cursor, slotEnd, block.startAt, block.endAt)
       );
 
-      if (
-        fitsInHours &&
-        isFuture &&
-        !appointmentConflict &&
-        !breakConflict &&
-        !blockConflict
-      ) {
+      if (fitsInHours && isFuture && !appointmentConflict && !blockConflict) {
         slots.push({
           iso: cursor.toISOString(),
-          label: cursor.toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+          label: cursor.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
         });
       }
 
       cursor = new Date(cursor.getTime() + 30 * 60 * 1000);
     }
 
-    return NextResponse.json({
-      slots,
-      meta: {
-        tenant: tenant.name,
-        service: service.name,
-        professional: professional.name,
-        weekday,
-        date,
-      },
-    });
+    return NextResponse.json({ slots, meta: { date } });
   } catch (error) {
-    console.error("Erro em /api/public/[slug]/availability:", error);
-
-    return NextResponse.json(
-      { error: "Erro interno ao carregar horários" },
-      { status: 500 }
-    );
+    console.error("Erro em availability:", error);
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }

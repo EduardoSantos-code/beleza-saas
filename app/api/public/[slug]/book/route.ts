@@ -156,13 +156,17 @@ export async function POST(
 
     if (tenant.whatsappConfig) {
       try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const manageLink = `${appUrl}/s/${tenant.slug}/a/${appointment.id}`;
+
         const confirmationText =
           `Olá, ${client.name}! Seu agendamento foi confirmado.\n\n` +
           `Salão: ${tenant.name}\n` +
           `Serviço: ${service.name}\n` +
           `Profissional: ${professional.name}\n` +
           `Data e hora: ${formatDateTime(startAt)}\n\n` +
-          `Se precisar alterar, entre em contato com o salão.`;
+          `Você pode ver os detalhes ou cancelar seu agendamento através deste link:\n` +
+          `${manageLink}`;
 
         const waResponse = await sendWhatsAppText({
           phoneNumberId: tenant.whatsappConfig.phoneNumberId,

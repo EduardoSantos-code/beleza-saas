@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import ThemeToggle from "../../components/ThemeToggle"; // Importando nosso botão de tema
+import ThemeToggle from "@/components/ThemeToggle";
 
 type Service = {
   id: string;
