@@ -120,7 +120,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
       setUpdatingId(id);
       setErrorMessage("");
 
-      const res = await fetch(`/api/admin/appointments/${id}`, {
+      const res = await fetch(`/api/admin/${slug}/appointments/${id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
