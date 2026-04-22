@@ -191,7 +191,9 @@ export default function BookingPageClient({ slug }: { slug: string }) {
       });
 
       const text = await res.text();
-      let data: { ok?: boolean; error?: string } | null = null;
+      
+      // Adicionamos o appointmentId aqui para o TypeScript não reclamar
+      let data: { ok?: boolean; error?: string; appointmentId?: string } | null = null;
 
       try {
         data = JSON.parse(text);
@@ -203,25 +205,11 @@ export default function BookingPageClient({ slug }: { slug: string }) {
         throw new Error(data?.error || "Erro ao criar agendamento");
       }
 
-      setSuccessMessage("Agendamento realizado com sucesso.");
-      setClientName("");
-      setClientPhoneE164("+55");
-      setNotes("");
-      setSelectedSlot("");
+      // Se deu tudo certo, redireciona o cliente para a página de recibo/cancelamento
+      if (data?.appointmentId) {
+        window.location.href = `/s/${slug}/a/${data.appointmentId}`;
+      }
 
-      const qs = new URLSearchParams({
-        serviceId,
-        professionalId,
-        date,
-      });
-
-      const slotsRes = await fetch(`/api/public/${slug}/availability?${qs.toString()}`, {
-        cache: "no-store",
-      });
-
-      const slotsText = await slotsRes.text();
-      const slotsData = JSON.parse(slotsText);
-      setSlots(slotsData.slots || []);
     } catch (err: any) {
       console.error("Erro ao agendar:", err);
       setErrorMessage(err.message || "Erro inesperado ao agendar");
@@ -407,10 +395,10 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                         style={
                           selected
                             ? {
-                                borderColor: primaryColor,
-                                backgroundColor: primaryColor,
-                                color: "white",
-                              }
+                              borderColor: primaryColor,
+                              backgroundColor: primaryColor,
+                              color: "white",
+                            }
                             : undefined
                         }
                       >
@@ -492,9 +480,9 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   <span className="font-medium">
                     {selectedSlot
                       ? new Date(selectedSlot).toLocaleString("pt-BR", {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })
                       : "-"}
                   </span>
                 </div>
