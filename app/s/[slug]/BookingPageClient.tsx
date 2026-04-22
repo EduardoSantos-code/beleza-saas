@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import ThemeToggle from "../../components/ThemeToggle"; // Importando nosso botão de tema
 
 type Service = {
   id: string;
@@ -83,7 +84,6 @@ export default function BookingPageClient({ slug }: { slug: string }) {
         }
 
         const parsed = data as CatalogResponse;
-
         setCatalog(parsed);
 
         if (parsed.services?.length > 0) {
@@ -125,10 +125,13 @@ export default function BookingPageClient({ slug }: { slug: string }) {
           date,
         });
 
-        const res = await fetch(`/api/public/${slug}/availability?${qs.toString()}`, {
-          method: "GET",
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `/api/public/${slug}/availability?${qs.toString()}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
 
         const text = await res.text();
         let data: { slots?: Slot[]; error?: string } | null = null;
@@ -191,8 +194,6 @@ export default function BookingPageClient({ slug }: { slug: string }) {
       });
 
       const text = await res.text();
-      
-      // Adicionamos o appointmentId aqui para o TypeScript não reclamar
       let data: { ok?: boolean; error?: string; appointmentId?: string } | null = null;
 
       try {
@@ -205,11 +206,10 @@ export default function BookingPageClient({ slug }: { slug: string }) {
         throw new Error(data?.error || "Erro ao criar agendamento");
       }
 
-      // Se deu tudo certo, redireciona o cliente para a página de recibo/cancelamento
+      // Redireciona o cliente para o recibo do agendamento:
       if (data?.appointmentId) {
         window.location.href = `/s/${slug}/a/${data.appointmentId}`;
       }
-
     } catch (err: any) {
       console.error("Erro ao agendar:", err);
       setErrorMessage(err.message || "Erro inesperado ao agendar");
@@ -220,9 +220,9 @@ export default function BookingPageClient({ slug }: { slug: string }) {
 
   if (loadingCatalog) {
     return (
-      <main className="min-h-screen bg-zinc-50 p-6">
-        <div className="mx-auto max-w-3xl rounded-2xl bg-white p-8 shadow-sm">
-          <p className="text-zinc-600">Carregando...</p>
+      <main className="min-h-screen bg-zinc-50 p-6 dark:bg-zinc-950">
+        <div className="mx-auto max-w-3xl rounded-2xl bg-white p-8 shadow-sm dark:bg-zinc-900">
+          <p className="text-zinc-600 dark:text-zinc-400">Carregando...</p>
         </div>
       </main>
     );
@@ -230,9 +230,9 @@ export default function BookingPageClient({ slug }: { slug: string }) {
 
   if (!catalog) {
     return (
-      <main className="min-h-screen bg-zinc-50 p-6">
-        <div className="mx-auto max-w-3xl rounded-2xl bg-white p-8 shadow-sm">
-          <p className="text-red-600">
+      <main className="min-h-screen bg-zinc-50 p-6 dark:bg-zinc-950">
+        <div className="mx-auto max-w-3xl rounded-2xl bg-white p-8 shadow-sm dark:bg-zinc-900">
+          <p className="text-red-600 dark:text-red-400">
             {errorMessage || "Não foi possível carregar a página."}
           </p>
         </div>
@@ -241,8 +241,13 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50">
+    <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors duration-200">
       <section className="relative overflow-hidden">
+        {/* Adicionando o botão de alternar tema no canto superior direito do banner */}
+        <div className="absolute right-4 top-4 z-10">
+          <ThemeToggle />
+        </div>
+
         <div
           className="h-[320px] w-full bg-cover bg-center"
           style={{
@@ -251,7 +256,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
               : `linear-gradient(135deg, ${primaryColor}, #111827)`,
           }}
         />
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 pointer-events-none">
           <div className="mx-auto flex h-full max-w-6xl items-end px-4 py-10">
             <div className="max-w-3xl text-white">
               <div className="mb-4 flex items-center gap-4">
@@ -308,34 +313,34 @@ export default function BookingPageClient({ slug }: { slug: string }) {
 
       <div className="mx-auto max-w-6xl px-4 py-8">
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
+          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
             <div className="grid gap-5 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                   Serviço
                 </label>
                 <select
                   value={serviceId}
                   onChange={(e) => setServiceId(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none"
-                  style={{ borderColor: "#d4d4d8" }}
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                 >
                   {catalog.services.map((service) => (
                     <option key={service.id} value={service.id}>
-                      {service.name} — {service.durationMin} min — R$ {(service.priceCents / 100).toFixed(2)}
+                      {service.name} — {service.durationMin} min — R${" "}
+                      {(service.priceCents / 100).toFixed(2)}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                   Profissional
                 </label>
                 <select
                   value={professionalId}
                   onChange={(e) => setProfessionalId(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                 >
                   {catalog.professionals.map((professional) => (
                     <option key={professional.id} value={professional.id}>
@@ -346,22 +351,22 @@ export default function BookingPageClient({ slug }: { slug: string }) {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                   Data
                 </label>
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 [color-scheme:light_dark]"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                   Duração
                 </label>
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-700">
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-700 dark:border-zinc-700/50 dark:bg-zinc-800/50 dark:text-zinc-300">
                   {selectedService ? `${selectedService.durationMin} minutos` : "-"}
                 </div>
               </div>
@@ -369,16 +374,16 @@ export default function BookingPageClient({ slug }: { slug: string }) {
 
             <div className="mt-8">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-zinc-900">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                   Horários disponíveis
                 </h2>
                 {loadingSlots && (
-                  <span className="text-sm text-zinc-500">Carregando horários...</span>
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400">Carregando horários...</span>
                 )}
               </div>
 
               {slots.length === 0 && !loadingSlots ? (
-                <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-6 text-sm text-zinc-600">
+                <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-6 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800/30 dark:text-zinc-400">
                   Nenhum horário disponível para essa data.
                 </div>
               ) : (
@@ -391,14 +396,19 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                         key={slot.iso}
                         type="button"
                         onClick={() => setSelectedSlot(slot.iso)}
-                        className="rounded-xl border px-4 py-3 text-sm font-medium transition"
+                        className={[
+                          "rounded-xl border px-4 py-3 text-sm font-medium transition",
+                          selected
+                            ? "text-white"
+                            : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800",
+                        ].join(" ")}
                         style={
                           selected
                             ? {
-                              borderColor: primaryColor,
-                              backgroundColor: primaryColor,
-                              color: "white",
-                            }
+                                borderColor: primaryColor,
+                                backgroundColor: primaryColor,
+                                color: "white",
+                              }
                             : undefined
                         }
                       >
@@ -411,15 +421,15 @@ export default function BookingPageClient({ slug }: { slug: string }) {
             </div>
           </section>
 
-          <aside className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
-            <h2 className="text-xl font-semibold text-zinc-900">Seus dados</h2>
-            <p className="mt-1 text-sm text-zinc-600">
+          <aside className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+            <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Seus dados</h2>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               Preencha para confirmar o agendamento.
             </p>
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                   Nome
                 </label>
                 <input
@@ -427,13 +437,13 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
                   placeholder="Seu nome"
-                  className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-zinc-900 outline-none"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                   required
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                   WhatsApp
                 </label>
                 <input
@@ -441,16 +451,16 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   value={clientPhoneE164}
                   onChange={(e) => setClientPhoneE164(e.target.value)}
                   placeholder="+5511999999999"
-                  className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-zinc-900 outline-none"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                   required
                 />
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                   Use formato internacional. Ex.: +5511999999999
                 </p>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                   Observações
                 </label>
                 <textarea
@@ -458,18 +468,18 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Opcional"
                   rows={4}
-                  className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-zinc-900 outline-none"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                 />
               </div>
 
-              <div className="rounded-xl bg-zinc-50 p-4 text-sm text-zinc-700">
+              <div className="rounded-xl bg-zinc-50 p-4 text-sm text-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-300">
                 <div className="flex items-center justify-between">
                   <span>Serviço</span>
-                  <span className="font-medium">{selectedService?.name || "-"}</span>
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">{selectedService?.name || "-"}</span>
                 </div>
                 <div className="mt-2 flex items-center justify-between">
                   <span>Preço</span>
-                  <span className="font-medium">
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
                     {selectedService
                       ? `R$ ${(selectedService.priceCents / 100).toFixed(2)}`
                       : "-"}
@@ -477,25 +487,25 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                 </div>
                 <div className="mt-2 flex items-center justify-between">
                   <span>Horário</span>
-                  <span className="font-medium">
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100">
                     {selectedSlot
                       ? new Date(selectedSlot).toLocaleString("pt-BR", {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })
                       : "-"}
                   </span>
                 </div>
               </div>
 
               {errorMessage && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
                   {errorMessage}
                 </div>
               )}
 
               {successMessage && (
-                <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400">
                   {successMessage}
                 </div>
               )}
