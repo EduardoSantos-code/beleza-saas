@@ -204,6 +204,11 @@ export async function GET(
     ]);
 
     const now = new Date();
+    
+    // Define a antecedência mínima (2 horas = 2 * 60 * 60 * 1000 milissegundos)
+    const minAdvanceHours = 2;
+    const cutoffTime = new Date(now.getTime() + minAdvanceHours * 60 * 60 * 1000);
+
     const slots: { iso: string; label: string }[] = [];
 
     let cursor = roundToNextSlot(dayStart, 30);
@@ -214,7 +219,9 @@ export async function GET(
       );
 
       const fitsInHours = slotEnd <= dayEnd;
-      const isFuture = cursor > now;
+      
+      // O horário só estará disponível se passar do cutoff (agora + 2 horas)
+      const isFuture = cursor > cutoffTime;
 
       const appointmentConflict = appointments.some((appointment) =>
         overlaps(cursor, slotEnd, appointment.startAt, appointment.endAt)
