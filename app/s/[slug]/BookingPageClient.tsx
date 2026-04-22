@@ -242,72 +242,80 @@ export default function BookingPageClient({ slug }: { slug: string }) {
 
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors duration-200">
-      <section className="relative overflow-hidden">
-        {/* Adicionando o botão de alternar tema no canto superior direito do banner */}
-        <div className="absolute right-4 top-4 z-10">
-          <ThemeToggle />
-        </div>
-
+      <section className="relative w-full bg-zinc-900">
+        {/* Imagem de fundo e degradê */}
         <div
-          className="h-[320px] w-full bg-cover bg-center"
+          className="absolute inset-0 bg-cover bg-center"
           style={{
             backgroundImage: catalog.tenant.heroImageUrl
-              // ADICIONAMOS ASPAS SIMPLES AQUI: url('${catalog.tenant.heroImageUrl}')
-              ? `linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.45)), url('${catalog.tenant.heroImageUrl}')`
+              ? `linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.85)), url('${catalog.tenant.heroImageUrl}')`
               : `linear-gradient(135deg, ${primaryColor}, #111827)`,
           }}
         />
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="mx-auto flex h-full max-w-6xl items-end px-4 py-10">
-            <div className="max-w-3xl text-white">
-              <div className="mb-4 flex items-center gap-4">
-                {catalog.tenant.logoUrl ? (
-                  <img
-                    src={catalog.tenant.logoUrl}
-                    alt={catalog.tenant.name}
-                    className="h-20 w-20 rounded-2xl object-cover ring-2 ring-white/40"
-                  />
-                ) : (
-                  <div
-                    className="flex h-20 w-20 items-center justify-center rounded-2xl text-2xl font-bold text-white"
-                    style={{ backgroundColor: primaryColor }}
-                  >
-                    {catalog.tenant.name.slice(0, 1).toUpperCase()}
-                  </div>
-                )}
 
-                <div>
-                  <p className="text-sm font-medium uppercase tracking-wide text-white/80">
-                    Agendamento online
-                  </p>
-                  <h1 className="mt-1 text-4xl font-bold">{catalog.tenant.name}</h1>
+        {/* Conteúdo do Banner */}
+        <div className="relative z-10 mx-auto flex min-h-[340px] max-w-6xl flex-col justify-end px-4 pb-8 pt-20 md:min-h-[380px] md:pb-12">
+          
+          {/* Botão de Tema (com pointer-events-auto para ser clicável) */}
+          <div className="absolute right-4 top-4 z-20 pointer-events-auto">
+            <ThemeToggle />
+          </div>
+
+          <div className="pointer-events-none mt-auto text-white">
+            
+            {/* Logo e Nome do Salão */}
+            <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+              {catalog.tenant.logoUrl ? (
+                <img
+                  src={catalog.tenant.logoUrl}
+                  alt={catalog.tenant.name}
+                  className="h-20 w-20 shrink-0 rounded-2xl object-cover ring-2 ring-white/40 md:h-24 md:w-24"
+                />
+              ) : (
+                <div
+                  className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl text-3xl font-bold text-white md:h-24 md:w-24"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  {catalog.tenant.name.slice(0, 1).toUpperCase()}
                 </div>
-              </div>
-
-              {catalog.tenant.publicDescription && (
-                <p className="max-w-2xl text-white/90">
-                  {catalog.tenant.publicDescription}
-                </p>
               )}
 
-              <div className="mt-5 flex flex-wrap gap-3 text-sm text-white/85">
-                {catalog.tenant.publicPhone && (
-                  <span className="rounded-full bg-white/15 px-4 py-2 backdrop-blur">
-                    {catalog.tenant.publicPhone}
-                  </span>
-                )}
-                {catalog.tenant.instagram && (
-                  <span className="rounded-full bg-white/15 px-4 py-2 backdrop-blur">
-                    {catalog.tenant.instagram}
-                  </span>
-                )}
-                {catalog.tenant.address && (
-                  <span className="rounded-full bg-white/15 px-4 py-2 backdrop-blur">
-                    {catalog.tenant.address}
-                  </span>
-                )}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-white/80 md:text-sm">
+                  Agendamento online
+                </p>
+                <h1 className="mt-1 text-3xl font-extrabold leading-tight sm:text-4xl md:text-5xl">
+                  {catalog.tenant.name}
+                </h1>
               </div>
             </div>
+
+            {/* Descrição */}
+            {catalog.tenant.publicDescription && (
+              <p className="max-w-2xl text-sm text-white/90 md:text-base">
+                {catalog.tenant.publicDescription}
+              </p>
+            )}
+
+            {/* Pílulas de Contato/Endereço */}
+            <div className="mt-5 flex flex-wrap gap-2 text-xs md:text-sm">
+              {catalog.tenant.publicPhone && (
+                <span className="rounded-full bg-white/20 px-3 py-1.5 backdrop-blur-md">
+                  {catalog.tenant.publicPhone}
+                </span>
+              )}
+              {catalog.tenant.instagram && (
+                <span className="rounded-full bg-white/20 px-3 py-1.5 backdrop-blur-md">
+                  {catalog.tenant.instagram}
+                </span>
+              )}
+              {catalog.tenant.address && (
+                <span className="rounded-full bg-white/20 px-3 py-1.5 backdrop-blur-md">
+                  {catalog.tenant.address}
+                </span>
+              )}
+            </div>
+
           </div>
         </div>
       </section>
