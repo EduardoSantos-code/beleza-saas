@@ -1,13 +1,37 @@
 {
+  "name": "beleza-saas",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate:deploy": "prisma migrate deploy",
-    "prisma:studio": "prisma studio",
-    "prisma:seed": "prisma db seed"
+    "postinstall": "npx prisma generate",
+    "prisma:generate": "npx prisma generate",
+    "prisma:migrate:deploy": "npx prisma migrate deploy"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.7.0",
+    "@prisma/client": "^7.7.0",
+    "cloudinary": "^2.5.1",
+    "dotenv": "^16.4.7",
+    "jose": "^6.0.0",
+    "next": "15.0.0",
+    "pg": "^8.13.1",
+    "prisma": "^7.7.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "stripe": "^17.4.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.16",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
   }
 }
