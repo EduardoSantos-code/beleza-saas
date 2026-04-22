@@ -1,4 +1,8 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Deixe o restante do seu :root ou CSS abaixo normal */
 
 :root {
   --background: #ffffff;
