@@ -1,0 +1,529 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type Service = {
+  id: string;
+  name: string;
+  durationMin: number;
+  priceCents: number;
+};
+
+type Professional = {
+  id: string;
+  name: string;
+};
+
+type CatalogResponse = {
+  tenant: {
+    id: string;
+    name: string;
+    slug: string;
+    logoUrl?: string | null;
+    heroImageUrl?: string | null;
+    primaryColor?: string | null;
+    publicDescription?: string | null;
+    publicPhone?: string | null;
+    address?: string | null;
+    instagram?: string | null;
+  };
+  services: Service[];
+  professionals: Professional[];
+};
+
+type Slot = {
+  iso: string;
+  label: string;
+};
+
+export default function BookingPageClient({ slug }: { slug: string }) {
+  const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const [serviceId, setServiceId] = useState("");
+  const [professionalId, setProfessionalId] = useState("");
+  const [date, setDate] = useState("");
+
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState("");
+
+  const [clientName, setClientName] = useState("");
+  const [clientPhoneE164, setClientPhoneE164] = useState("+55");
+  const [notes, setNotes] = useState("");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    async function loadCatalog() {
+      try {
+        setLoadingCatalog(true);
+        setErrorMessage("");
+
+        const res = await fetch(`/api/public/${slug}/catalog`, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const text = await res.text();
+        let data: CatalogResponse | { error?: string } | null = null;
+
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error(`Resposta inválida da API: ${text}`);
+        }
+
+        if (!res.ok) {
+          throw new Error(
+            (data as { error?: string })?.error || "Erro ao carregar catálogo"
+          );
+        }
+
+        const parsed = data as CatalogResponse;
+
+        setCatalog(parsed);
+
+        if (parsed.services?.length > 0) {
+          setServiceId(parsed.services[0].id);
+        }
+
+        if (parsed.professionals?.length > 0) {
+          setProfessionalId(parsed.professionals[0].id);
+        }
+
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const dd = String(today.getDate()).padStart(2, "0");
+        setDate(`${yyyy}-${mm}-${dd}`);
+      } catch (err: any) {
+        console.error("Erro ao carregar catálogo:", err);
+        setErrorMessage(err.message || "Erro inesperado ao carregar catálogo");
+      } finally {
+        setLoadingCatalog(false);
+      }
+    }
+
+    if (slug) {
+      loadCatalog();
+    }
+  }, [slug]);
+
+  useEffect(() => {
+    async function loadSlots() {
+      if (!serviceId || !professionalId || !date) return;
+
+      try {
+        setLoadingSlots(true);
+
+        const qs = new URLSearchParams({
+          serviceId,
+          professionalId,
+          date,
+        });
+
+        const res = await fetch(`/api/public/${slug}/availability?${qs.toString()}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const text = await res.text();
+        let data: { slots?: Slot[]; error?: string } | null = null;
+
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error(`Resposta inválida da API de horários: ${text}`);
+        }
+
+        if (!res.ok) {
+          throw new Error(data?.error || "Erro ao carregar horários");
+        }
+
+        setSlots(data?.slots || []);
+      } catch (err: any) {
+        console.error("Erro ao carregar horários:", err);
+        setSlots([]);
+        setErrorMessage(err.message || "Erro ao carregar horários");
+      } finally {
+        setLoadingSlots(false);
+      }
+    }
+
+    loadSlots();
+  }, [slug, serviceId, professionalId, date]);
+
+  const selectedService = useMemo(() => {
+    return catalog?.services.find((s) => s.id === serviceId) || null;
+  }, [catalog, serviceId]);
+
+  const primaryColor = catalog?.tenant.primaryColor || "#7c3aed";
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!selectedSlot) {
+      setErrorMessage("Selecione um horário.");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setErrorMessage("");
+      setSuccessMessage("");
+
+      const res = await fetch(`/api/public/${slug}/book`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          serviceId,
+          professionalId,
+          startAtISO: selectedSlot,
+          clientName,
+          clientPhoneE164,
+          notes,
+        }),
+      });
+
+      const text = await res.text();
+      let data: { ok?: boolean; error?: string } | null = null;
+
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Resposta inválida da API de agendamento: ${text}`);
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Erro ao criar agendamento");
+      }
+
+      setSuccessMessage("Agendamento realizado com sucesso.");
+      setClientName("");
+      setClientPhoneE164("+55");
+      setNotes("");
+      setSelectedSlot("");
+
+      const qs = new URLSearchParams({
+        serviceId,
+        professionalId,
+        date,
+      });
+
+      const slotsRes = await fetch(`/api/public/${slug}/availability?${qs.toString()}`, {
+        cache: "no-store",
+      });
+
+      const slotsText = await slotsRes.text();
+      const slotsData = JSON.parse(slotsText);
+      setSlots(slotsData.slots || []);
+    } catch (err: any) {
+      console.error("Erro ao agendar:", err);
+      setErrorMessage(err.message || "Erro inesperado ao agendar");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (loadingCatalog) {
+    return (
+      <main className="min-h-screen bg-zinc-50 p-6">
+        <div className="mx-auto max-w-3xl rounded-2xl bg-white p-8 shadow-sm">
+          <p className="text-zinc-600">Carregando...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!catalog) {
+    return (
+      <main className="min-h-screen bg-zinc-50 p-6">
+        <div className="mx-auto max-w-3xl rounded-2xl bg-white p-8 shadow-sm">
+          <p className="text-red-600">
+            {errorMessage || "Não foi possível carregar a página."}
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-zinc-50">
+      <section className="relative overflow-hidden">
+        <div
+          className="h-[320px] w-full bg-cover bg-center"
+          style={{
+            backgroundImage: catalog.tenant.heroImageUrl
+              ? `linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.45)), url(${catalog.tenant.heroImageUrl})`
+              : `linear-gradient(135deg, ${primaryColor}, #111827)`,
+          }}
+        />
+        <div className="absolute inset-0">
+          <div className="mx-auto flex h-full max-w-6xl items-end px-4 py-10">
+            <div className="max-w-3xl text-white">
+              <div className="mb-4 flex items-center gap-4">
+                {catalog.tenant.logoUrl ? (
+                  <img
+                    src={catalog.tenant.logoUrl}
+                    alt={catalog.tenant.name}
+                    className="h-20 w-20 rounded-2xl object-cover ring-2 ring-white/40"
+                  />
+                ) : (
+                  <div
+                    className="flex h-20 w-20 items-center justify-center rounded-2xl text-2xl font-bold text-white"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    {catalog.tenant.name.slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-sm font-medium uppercase tracking-wide text-white/80">
+                    Agendamento online
+                  </p>
+                  <h1 className="mt-1 text-4xl font-bold">{catalog.tenant.name}</h1>
+                </div>
+              </div>
+
+              {catalog.tenant.publicDescription && (
+                <p className="max-w-2xl text-white/90">
+                  {catalog.tenant.publicDescription}
+                </p>
+              )}
+
+              <div className="mt-5 flex flex-wrap gap-3 text-sm text-white/85">
+                {catalog.tenant.publicPhone && (
+                  <span className="rounded-full bg-white/15 px-4 py-2 backdrop-blur">
+                    {catalog.tenant.publicPhone}
+                  </span>
+                )}
+                {catalog.tenant.instagram && (
+                  <span className="rounded-full bg-white/15 px-4 py-2 backdrop-blur">
+                    {catalog.tenant.instagram}
+                  </span>
+                )}
+                {catalog.tenant.address && (
+                  <span className="rounded-full bg-white/15 px-4 py-2 backdrop-blur">
+                    {catalog.tenant.address}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
+            <div className="grid gap-5 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Serviço
+                </label>
+                <select
+                  value={serviceId}
+                  onChange={(e) => setServiceId(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none"
+                  style={{ borderColor: "#d4d4d8" }}
+                >
+                  {catalog.services.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name} — {service.durationMin} min — R$ {(service.priceCents / 100).toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Profissional
+                </label>
+                <select
+                  value={professionalId}
+                  onChange={(e) => setProfessionalId(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none"
+                >
+                  {catalog.professionals.map((professional) => (
+                    <option key={professional.id} value={professional.id}>
+                      {professional.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Data
+                </label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Duração
+                </label>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-700">
+                  {selectedService ? `${selectedService.durationMin} minutos` : "-"}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-zinc-900">
+                  Horários disponíveis
+                </h2>
+                {loadingSlots && (
+                  <span className="text-sm text-zinc-500">Carregando horários...</span>
+                )}
+              </div>
+
+              {slots.length === 0 && !loadingSlots ? (
+                <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-6 text-sm text-zinc-600">
+                  Nenhum horário disponível para essa data.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                  {slots.map((slot) => {
+                    const selected = selectedSlot === slot.iso;
+
+                    return (
+                      <button
+                        key={slot.iso}
+                        type="button"
+                        onClick={() => setSelectedSlot(slot.iso)}
+                        className="rounded-xl border px-4 py-3 text-sm font-medium transition"
+                        style={
+                          selected
+                            ? {
+                                borderColor: primaryColor,
+                                backgroundColor: primaryColor,
+                                color: "white",
+                              }
+                            : undefined
+                        }
+                      >
+                        {slot.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <aside className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
+            <h2 className="text-xl font-semibold text-zinc-900">Seus dados</h2>
+            <p className="mt-1 text-sm text-zinc-600">
+              Preencha para confirmar o agendamento.
+            </p>
+
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Nome
+                </label>
+                <input
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="Seu nome"
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-zinc-900 outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  WhatsApp
+                </label>
+                <input
+                  type="text"
+                  value={clientPhoneE164}
+                  onChange={(e) => setClientPhoneE164(e.target.value)}
+                  placeholder="+5511999999999"
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-zinc-900 outline-none"
+                  required
+                />
+                <p className="mt-1 text-xs text-zinc-500">
+                  Use formato internacional. Ex.: +5511999999999
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                  Observações
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Opcional"
+                  rows={4}
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-zinc-900 outline-none"
+                />
+              </div>
+
+              <div className="rounded-xl bg-zinc-50 p-4 text-sm text-zinc-700">
+                <div className="flex items-center justify-between">
+                  <span>Serviço</span>
+                  <span className="font-medium">{selectedService?.name || "-"}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <span>Preço</span>
+                  <span className="font-medium">
+                    {selectedService
+                      ? `R$ ${(selectedService.priceCents / 100).toFixed(2)}`
+                      : "-"}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <span>Horário</span>
+                  <span className="font-medium">
+                    {selectedSlot
+                      ? new Date(selectedSlot).toLocaleString("pt-BR", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })
+                      : "-"}
+                  </span>
+                </div>
+              </div>
+
+              {errorMessage && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {errorMessage}
+                </div>
+              )}
+
+              {successMessage && (
+                <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                  {successMessage}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-xl px-4 py-3 font-medium text-white transition disabled:opacity-60"
+                style={{ backgroundColor: primaryColor }}
+              >
+                {submitting ? "Confirmando..." : "Confirmar agendamento"}
+              </button>
+            </form>
+          </aside>
+        </div>
+      </div>
+    </main>
+  );
+}
