@@ -252,7 +252,8 @@ export default function BookingPageClient({ slug }: { slug: string }) {
           className="h-[320px] w-full bg-cover bg-center"
           style={{
             backgroundImage: catalog.tenant.heroImageUrl
-              ? `linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.45)), url(${catalog.tenant.heroImageUrl})`
+              // ADICIONAMOS ASPAS SIMPLES AQUI: url('${catalog.tenant.heroImageUrl}')
+              ? `linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.45)), url('${catalog.tenant.heroImageUrl}')`
               : `linear-gradient(135deg, ${primaryColor}, #111827)`,
           }}
         />

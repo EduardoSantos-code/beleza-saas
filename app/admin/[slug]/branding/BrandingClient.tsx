@@ -432,7 +432,8 @@ export default function BrandingClient({ slug }: { slug: string }) {
                     className="h-48 w-full bg-cover bg-center"
                     style={{
                       backgroundImage: heroImageUrl
-                        ? `linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.45)), url(${heroImageUrl})`
+                        // ADICIONAMOS ASPAS SIMPLES AQUI: url('${heroImageUrl}')
+                        ? `linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.45)), url('${heroImageUrl}')`
                         : `linear-gradient(135deg, ${primaryColor}, #111827)`,
                     }}
                   />
