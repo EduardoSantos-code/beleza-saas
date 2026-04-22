@@ -162,7 +162,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
   return (
     <main className="min-h-screen bg-zinc-50 px-4 py-8">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-violet-600">
               Painel interno
@@ -175,8 +175,9 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
             </p>
           </div>
 
-          <div className="flex items-end gap-3">
-            <div>
+          <div className="flex w-full flex-col gap-4 lg:w-auto lg:items-end">
+            {/* Campo de Data */}
+            <div className="w-full sm:max-w-[200px]">
               <label className="mb-2 block text-sm font-medium text-zinc-700">
                 Data
               </label>
@@ -184,62 +185,64 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500"
+                className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500"
               />
             </div>
-            
-            <a
-              href={`/admin/${slug}/billing`}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-            >
-              Assinatura
-            </a>
 
-            <a
-              href={`/admin/${slug}/services`}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-            >
-              Serviços
-            </a>
-
-            <a
-              href={`/admin/${slug}/professionals`}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-            >
-              Profissionais
-            </a>
-            <a
-              href={`/admin/${slug}/branding`}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-            >
-              Branding
-            </a>
-            <a
-              href={`/admin/${slug}/hours`}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-            >
-              Horários
-            </a>
-            <a
-              href={`/admin/${slug}/blocks`}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-            >
-              Bloqueios
-            </a>
-            <a
-              href={`/admin/${slug}/whatsapp`}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-            >
-              WhatsApp
-            </a>
-            <a
-              href={`/admin/${slug}/inbox`}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-            >
-              Inbox
-            </a>
-
-            <LogoutButton />
+            {/* Carrossel de botões no mobile */}
+            <div className="flex w-full items-center gap-2 overflow-x-auto pb-2 lg:w-auto lg:flex-wrap lg:overflow-visible">
+              <a
+                href={`/admin/${slug}/billing`}
+                className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              >
+                Assinatura
+              </a>
+              <a
+                href={`/admin/${slug}/services`}
+                className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              >
+                Serviços
+              </a>
+              <a
+                href={`/admin/${slug}/professionals`}
+                className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              >
+                Profissionais
+              </a>
+              <a
+                href={`/admin/${slug}/hours`}
+                className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              >
+                Horários
+              </a>
+              <a
+                href={`/admin/${slug}/blocks`}
+                className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              >
+                Bloqueios
+              </a>
+              <a
+                href={`/admin/${slug}/whatsapp`}
+                className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              >
+                WhatsApp
+              </a>
+              <a
+                href={`/admin/${slug}/inbox`}
+                className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              >
+                Inbox
+              </a>
+              <a
+                href={`/admin/${slug}/branding`}
+                className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              >
+                Branding
+              </a>
+              <div className="shrink-0">
+                <LogoutButton />
+              </div>
+            </div>
           </div>
         </div>
 
