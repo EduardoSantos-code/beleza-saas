@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { sendWhatsAppText } from "@/lib/whatsapp";
+import { logWhatsAppOutboundMessage } from "@/lib/whatsapp-log";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { logWhatsAppOutboundMessage } from "@/lib/whatsapp-log";
 
 type WhatsAppWebhookPayload = {
   object?: string;
@@ -231,6 +231,23 @@ export async function POST(req: Request) {
 
           // Auto reply básico apenas para texto
           if (message.type === "text") {
+            const incomingText = (message.text?.body || "").trim().toLowerCase();
+
+            let reply =
+              `Olá, ${client.name}! Recebemos sua mensagem no ${tenant.name}.\n\n` +
+              `Em breve alguém do salão responde por aqui.`;
+
+            if (
+              incomingText.includes("oi") ||
+              incomingText.includes("olá") ||
+              incomingText.includes("ola")
+            ) {
+              reply =
+                `Olá, ${client.name}! 👋\n\n` +
+                `Recebemos sua mensagem no ${tenant.name}.\n` +
+                `Se quiser, você pode agendar direto pela nossa página online ou aguardar que respondemos por aqui.`;
+            }
+
             try {
               const waResponse = await sendWhatsAppText({
                 phoneNumberId: tenant.whatsappConfig.phoneNumberId,
