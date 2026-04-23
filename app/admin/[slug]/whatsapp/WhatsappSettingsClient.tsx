@@ -144,144 +144,140 @@ export default function WhatsappSettingsClient({ slug }: { slug: string }) {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-zinc-50 p-6">
-        <div className="mx-auto max-w-3xl rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
-          <p className="text-zinc-600">Carregando...</p>
-        </div>
-      </main>
+      <div className="mx-auto max-w-3xl rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+        <p className="text-zinc-600 dark:text-zinc-400">Carregando...</p>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-4 py-8">
-      <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-wide text-violet-600">
-              Integrações
-            </p>
-            <h1 className="mt-2 text-3xl font-bold text-zinc-900">
-              WhatsApp
-            </h1>
-            <p className="mt-2 text-zinc-600">
-              Configure o envio de confirmações e lembretes para{" "}
-              {data?.tenant.name || "o salão"}.
-            </p>
-          </div>
-
-          <a
-            href={`/admin/${slug}`}
-            className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-          >
-            Voltar
-          </a>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">
+            Integrações
+          </p>
+          <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
+            WhatsApp
+          </h1>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+            Configure o envio de confirmações e lembretes para{" "}
+            {data?.tenant.name || "o salão"}.
+          </p>
         </div>
 
-        {errorMessage && (
-          <div className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {errorMessage}
-          </div>
-        )}
+        <a
+          href={`/admin/${slug}`}
+          className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition"
+        >
+          Voltar para agenda
+        </a>
+      </div>
 
-        {successMessage && (
-          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {successMessage}
-          </div>
-        )}
+      {errorMessage && (
+        <div className="whitespace-pre-wrap rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
+          {errorMessage}
+        </div>
+      )}
 
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
-          <h2 className="text-lg font-semibold text-zinc-900">
-            Configuração da Cloud API
-          </h2>
+      {successMessage && (
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400">
+          {successMessage}
+        </div>
+      )}
 
-          <form onSubmit={handleSave} className="mt-6 space-y-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700">
-                Phone Number ID
-              </label>
-              <input
-                type="text"
-                value={phoneNumberId}
-                onChange={(e) => setPhoneNumberId(e.target.value)}
-                placeholder="Ex.: 123456789012345"
-                className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-violet-500"
-                required
-              />
-              <p className="mt-1 text-xs text-zinc-500">
-                Este ID vem do número cadastrado na WhatsApp Cloud API.
-              </p>
-            </div>
+      <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+          Configuração da Cloud API
+        </h2>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700">
-                Access Token
-              </label>
-              <textarea
-                value={accessToken}
-                onChange={(e) => setAccessToken(e.target.value)}
-                placeholder="Token de acesso da Meta"
-                rows={4}
-                className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-violet-500"
-                required
-              />
-              <p className="mt-1 text-xs text-zinc-500">
-                Em produção, use token permanente do Business Manager.
-              </p>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700">
-                Verify Token
-              </label>
-              <input
-                type="text"
-                value={verifyToken}
-                onChange={(e) => setVerifyToken(e.target.value)}
-                placeholder="Crie um token qualquer, ex.: studio-bella-webhook"
-                className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-violet-500"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-xl bg-violet-600 px-5 py-3 font-medium text-white hover:bg-violet-700 disabled:opacity-60"
-            >
-              {saving ? "Salvando..." : "Salvar configuração"}
-            </button>
-          </form>
-        </section>
-
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
-          <h2 className="text-lg font-semibold text-zinc-900">
-            Testar envio
-          </h2>
-
-          <div className="mt-6 flex flex-col gap-3 md:flex-row">
+        <form onSubmit={handleSave} className="mt-6 space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Phone Number ID
+            </label>
             <input
               type="text"
-              value={testNumber}
-              onChange={(e) => setTestNumber(e.target.value)}
-              placeholder="+5511999999999"
-              className="flex-1 rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-violet-500"
+              value={phoneNumberId}
+              onChange={(e) => setPhoneNumberId(e.target.value)}
+              placeholder="Ex.: 123456789012345"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              required
             />
-
-            <button
-              type="button"
-              onClick={handleTest}
-              disabled={testing}
-              className="rounded-xl bg-green-600 px-5 py-3 font-medium text-white hover:bg-green-700 disabled:opacity-60"
-            >
-              {testing ? "Enviando..." : "Enviar teste"}
-            </button>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Este ID vem do número cadastrado na WhatsApp Cloud API.
+            </p>
           </div>
 
-          <p className="mt-3 text-xs text-zinc-500">
-            Use o formato internacional. Ex.: +5511999999999.
-          </p>
-        </section>
-      </div>
-    </main>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Access Token
+            </label>
+            <textarea
+              value={accessToken}
+              onChange={(e) => setAccessToken(e.target.value)}
+              placeholder="Token de acesso da Meta"
+              rows={4}
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              required
+            />
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Em produção, use token permanente do Business Manager.
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Verify Token
+            </label>
+            <input
+              type="text"
+              value={verifyToken}
+              onChange={(e) => setVerifyToken(e.target.value)}
+              placeholder="Crie um token qualquer, ex.: studio-bella-webhook"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-xl bg-violet-600 px-5 py-3 font-medium text-white hover:bg-violet-700 disabled:opacity-60 transition"
+          >
+            {saving ? "Salvando..." : "Salvar configuração"}
+          </button>
+        </form>
+      </section>
+
+      <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+          Testar envio
+        </h2>
+
+        <div className="mt-6 flex flex-col gap-3 md:flex-row">
+          <input
+            type="text"
+            value={testNumber}
+            onChange={(e) => setTestNumber(e.target.value)}
+            placeholder="+5511999999999"
+            className="flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+          />
+
+          <button
+            type="button"
+            onClick={handleTest}
+            disabled={testing}
+            className="rounded-xl bg-green-600 px-5 py-3 font-medium text-white hover:bg-green-700 disabled:opacity-60 transition"
+          >
+            {testing ? "Enviando..." : "Enviar teste"}
+          </button>
+        </div>
+
+        <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+          Use o formato internacional. Ex.: +5511999999999.
+        </p>
+      </section>
+    </div>
   );
 }

@@ -157,196 +157,195 @@ export default function BlocksClient({ slug }: { slug: string }) {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-4 py-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-wide text-violet-600">
-              Configurações
-            </p>
-            <h1 className="mt-2 text-3xl font-bold text-zinc-900">
-              Bloqueios e folgas
-            </h1>
-            <p className="mt-2 text-zinc-600">
-              Crie bloqueios do salão inteiro ou de uma profissional específica.
-            </p>
-          </div>
-
-          <a
-            href={`/admin/${slug}`}
-            className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-          >
-            Voltar para agenda
-          </a>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">
+            Configurações
+          </p>
+          <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
+            Bloqueios e folgas
+          </h1>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+            Crie bloqueios do salão inteiro ou de uma profissional específica.
+          </p>
         </div>
 
-        {errorMessage && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {errorMessage}
-          </div>
-        )}
-
-        {successMessage && (
-          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {successMessage}
-          </div>
-        )}
-
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
-          <h2 className="text-lg font-semibold text-zinc-900">Novo bloqueio</h2>
-
-          <form onSubmit={handleCreateBlock} className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="md:col-span-2">
-              <label className="mb-2 block text-sm font-medium text-zinc-700">
-                Motivo
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ex.: Folga, feriado, manutenção, reunião"
-                className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-violet-500"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700">
-                Data
-              </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-violet-500"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700">
-                Profissional
-              </label>
-              <select
-                value={professionalId}
-                onChange={(e) => setProfessionalId(e.target.value)}
-                className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-violet-500"
-              >
-                <option value="">Salão inteiro</option>
-                {data?.professionals.map((professional) => (
-                  <option key={professional.id} value={professional.id}>
-                    {professional.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="flex items-center gap-3 text-sm font-medium text-zinc-700">
-                <input
-                  type="checkbox"
-                  checked={allDay}
-                  onChange={(e) => setAllDay(e.target.checked)}
-                />
-                Dia inteiro
-              </label>
-            </div>
-
-            {!allDay && (
-              <>
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-700">
-                    Início
-                  </label>
-                  <input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-violet-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-700">
-                    Fim
-                  </label>
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-violet-500"
-                    required
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="md:col-span-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-xl bg-violet-600 px-5 py-3 font-medium text-white hover:bg-violet-700 disabled:opacity-60"
-              >
-                {saving ? "Salvando..." : "Criar bloqueio"}
-              </button>
-            </div>
-          </form>
-        </section>
-
-        <section className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200">
-          <div className="border-b border-zinc-200 px-6 py-4">
-            <h2 className="text-lg font-semibold text-zinc-900">
-              Bloqueios do dia
-            </h2>
-          </div>
-
-          {loading ? (
-            <div className="p-6 text-zinc-600">Carregando...</div>
-          ) : !data?.blocks.length ? (
-            <div className="p-6 text-zinc-600">
-              Nenhum bloqueio nesta data.
-            </div>
-          ) : (
-            <div className="divide-y divide-zinc-200">
-              {data.blocks.map((block) => (
-                <div
-                  key={block.id}
-                  className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between"
-                >
-                  <div>
-                    <p className="font-medium text-zinc-900">{block.title}</p>
-                    <p className="mt-1 text-sm text-zinc-600">
-                      {block.professional
-                        ? `Profissional: ${block.professional.name}`
-                        : "Salão inteiro"}
-                    </p>
-                    <p className="mt-1 text-sm text-zinc-500">
-                      {block.allDay
-                        ? "Dia inteiro"
-                        : `${new Date(block.startAt).toLocaleTimeString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })} - ${new Date(block.endAt).toLocaleTimeString("pt-BR", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}`}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteBlock(block.id)}
-                    className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-                  >
-                    Excluir
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        <a
+          href={`/admin/${slug}`}
+          className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition"
+        >
+          Voltar para agenda
+        </a>
       </div>
-    </main>
+
+      {errorMessage && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
+          {errorMessage}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400">
+          {successMessage}
+        </div>
+      )}
+
+      <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Novo bloqueio</h2>
+
+        <form onSubmit={handleCreateBlock} className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Motivo
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex.: Folga, feriado, manutenção, reunião"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Data
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white [color-scheme:light_dark]"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Profissional
+            </label>
+            <select
+              value={professionalId}
+              onChange={(e) => setProfessionalId(e.target.value)}
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            >
+              <option value="">Salão inteiro</option>
+              {data?.professionals.map((professional) => (
+                <option key={professional.id} value={professional.id}>
+                  {professional.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="flex items-center gap-3 text-sm font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allDay}
+                onChange={(e) => setAllDay(e.target.checked)}
+                className="h-5 w-5 rounded border-zinc-300 text-violet-600 dark:border-zinc-700 dark:bg-zinc-800"
+              />
+              Dia inteiro
+            </label>
+          </div>
+
+          {!allDay && (
+            <>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  Início
+                </label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white [color-scheme:light_dark]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  Fim
+                </label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white [color-scheme:light_dark]"
+                  required
+                />
+              </div>
+            </>
+          )}
+
+          <div className="md:col-span-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl bg-violet-600 px-5 py-3 font-medium text-white hover:bg-violet-700 disabled:opacity-60 transition"
+            >
+              {saving ? "Salvando..." : "Criar bloqueio"}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+        <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+            Bloqueios do dia
+          </h2>
+        </div>
+
+        {loading ? (
+          <div className="p-6 text-zinc-600 dark:text-zinc-400">Carregando...</div>
+        ) : !data?.blocks.length ? (
+          <div className="p-6 text-zinc-600 dark:text-zinc-400">
+            Nenhum bloqueio nesta data.
+          </div>
+        ) : (
+          <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            {data.blocks.map((block) => (
+              <div
+                key={block.id}
+                className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between"
+              >
+                <div>
+                  <p className="font-medium text-zinc-900 dark:text-zinc-100">{block.title}</p>
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    {block.professional
+                      ? `Profissional: ${block.professional.name}`
+                      : "Salão inteiro"}
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
+                    {block.allDay
+                      ? "Dia inteiro"
+                      : `${new Date(block.startAt).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })} - ${new Date(block.endAt).toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}`}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeleteBlock(block.id)}
+                  className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition"
+                >
+                  Excluir
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
   );
 }

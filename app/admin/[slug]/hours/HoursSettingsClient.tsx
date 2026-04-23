@@ -70,15 +70,15 @@ function HourTable({
   onChange: (weekday: string, patch: Partial<HourRow>) => void;
 }) {
   return (
-    <section className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200">
-      <div className="border-b border-zinc-200 px-6 py-4">
-        <h2 className="text-lg font-semibold text-zinc-900">{title}</h2>
+    <section className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+      <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
+        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{title}</h2>
       </div>
 
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead className="bg-zinc-50">
-            <tr className="text-left text-zinc-600">
+          <thead className="bg-zinc-50 dark:bg-zinc-800/50">
+            <tr className="text-left text-zinc-600 dark:text-zinc-400">
               <th className="px-4 py-3">Dia</th>
               <th className="px-4 py-3">Aberto</th>
               <th className="px-4 py-3">Início</th>
@@ -88,10 +88,10 @@ function HourTable({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-zinc-200">
+          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {rows.map((row) => (
               <tr key={row.weekday}>
-                <td className="px-4 py-3 font-medium text-zinc-900">
+                <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-300">
                   {WEEKDAY_LABELS[row.weekday]}
                 </td>
 
@@ -108,6 +108,7 @@ function HourTable({
                         breakEndMin: e.target.checked ? row.breakEndMin : null,
                       })
                     }
+                    className="h-4 w-4 rounded border-zinc-300 text-violet-600 dark:border-zinc-700 dark:bg-zinc-800"
                   />
                 </td>
 
@@ -121,7 +122,7 @@ function HourTable({
                         startMin: timeToMin(e.target.value),
                       })
                     }
-                    className="rounded-lg border border-zinc-300 px-3 py-2 disabled:bg-zinc-100"
+                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:disabled:bg-zinc-900 dark:disabled:text-zinc-600 [color-scheme:light_dark] outline-none focus:border-violet-500"
                   />
                 </td>
 
@@ -135,7 +136,7 @@ function HourTable({
                         endMin: timeToMin(e.target.value),
                       })
                     }
-                    className="rounded-lg border border-zinc-300 px-3 py-2 disabled:bg-zinc-100"
+                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:disabled:bg-zinc-900 dark:disabled:text-zinc-600 [color-scheme:light_dark] outline-none focus:border-violet-500"
                   />
                 </td>
 
@@ -149,7 +150,7 @@ function HourTable({
                         breakStartMin: timeToMin(e.target.value),
                       })
                     }
-                    className="rounded-lg border border-zinc-300 px-3 py-2 disabled:bg-zinc-100"
+                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:disabled:bg-zinc-900 dark:disabled:text-zinc-600 [color-scheme:light_dark] outline-none focus:border-violet-500"
                   />
                 </td>
 
@@ -163,7 +164,7 @@ function HourTable({
                         breakEndMin: timeToMin(e.target.value),
                       })
                     }
-                    className="rounded-lg border border-zinc-300 px-3 py-2 disabled:bg-zinc-100"
+                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:disabled:bg-zinc-900 dark:disabled:text-zinc-600 [color-scheme:light_dark] outline-none focus:border-violet-500"
                   />
                 </td>
               </tr>
@@ -252,113 +253,107 @@ export default function HoursSettingsClient({ slug }: { slug: string }) {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-zinc-50 p-6">
-        <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
-          <p className="text-zinc-600">Carregando...</p>
-        </div>
-      </main>
+      <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+        <p className="text-zinc-600 dark:text-zinc-400">Carregando...</p>
+      </div>
     );
   }
 
   if (!data) {
     return (
-      <main className="min-h-screen bg-zinc-50 p-6">
-        <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
-          <p className="text-red-600">
-            {errorMessage || "Não foi possível carregar a página."}
-          </p>
-        </div>
-      </main>
+      <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+        <p className="text-red-600 dark:text-red-400">
+          {errorMessage || "Não foi possível carregar a página."}
+        </p>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-4 py-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-sm font-medium uppercase tracking-wide text-violet-600">
-              Configurações
-            </p>
-            <h1 className="mt-2 text-3xl font-bold text-zinc-900">
-              Horários de atendimento
-            </h1>
-            <p className="mt-2 text-zinc-600">
-              Defina o expediente do salão e dos profissionais.
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <a
-              href={`/admin/${slug}`}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-            >
-              Voltar para agenda
-            </a>
-
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60"
-            >
-              {saving ? "Salvando..." : "Salvar horários"}
-            </button>
-          </div>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">
+            Configurações
+          </p>
+          <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
+            Horários de atendimento
+          </h1>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+            Defina o expediente do salão e dos profissionais.
+          </p>
         </div>
 
-        {errorMessage && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {errorMessage}
-          </div>
-        )}
+        <div className="flex gap-3">
+          <a
+            href={`/admin/${slug}`}
+            className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition"
+          >
+            Voltar para agenda
+          </a>
 
-        {successMessage && (
-          <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {successMessage}
-          </div>
-        )}
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60 transition"
+          >
+            {saving ? "Salvando..." : "Salvar horários"}
+          </button>
+        </div>
+      </div>
 
+      {errorMessage && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
+          {errorMessage}
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400">
+          {successMessage}
+        </div>
+      )}
+
+      <HourTable
+        title={`Horário do salão — ${data.tenant.name}`}
+        rows={data.tenantHours}
+        onChange={(weekday, patch) => {
+          setData((current) =>
+            current
+              ? {
+                  ...current,
+                  tenantHours: updateHourRow(current.tenantHours, weekday, patch),
+                }
+              : current
+          );
+        }}
+      />
+
+      {data.professionals.map((professional) => (
         <HourTable
-          title={`Horário do salão — ${data.tenant.name}`}
-          rows={data.tenantHours}
+          key={professional.id}
+          title={`Horário da profissional — ${professional.name}`}
+          rows={professional.hours}
           onChange={(weekday, patch) => {
             setData((current) =>
               current
                 ? {
                     ...current,
-                    tenantHours: updateHourRow(current.tenantHours, weekday, patch),
+                    professionals: current.professionals.map((p) =>
+                      p.id === professional.id
+                        ? {
+                            ...p,
+                            hours: updateHourRow(p.hours, weekday, patch),
+                          }
+                        : p
+                    ),
                   }
                 : current
             );
           }}
         />
-
-        {data.professionals.map((professional) => (
-          <HourTable
-            key={professional.id}
-            title={`Horário da profissional — ${professional.name}`}
-            rows={professional.hours}
-            onChange={(weekday, patch) => {
-              setData((current) =>
-                current
-                  ? {
-                      ...current,
-                      professionals: current.professionals.map((p) =>
-                        p.id === professional.id
-                          ? {
-                              ...p,
-                              hours: updateHourRow(p.hours, weekday, patch),
-                            }
-                          : p
-                      ),
-                    }
-                  : current
-              );
-            }}
-          />
-        ))}
-      </div>
-    </main>
+      ))}
+    </div>
   );
 }
