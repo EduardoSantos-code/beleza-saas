@@ -1,126 +1,60 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-interface AppointmentBody {
-  serviceId: string;
-  professionalId: string;
-  startAt: string;
-  clientName: string;
-  clientPhoneE164: string;
-  notes?: string;
-}
-
-export async function POST(
+export async function GET(
   req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const { slug } = await params;
-    const body = (await req.json()) as AppointmentBody;
+    const { searchParams } = new URL(req.url);
+    const dateStr = searchParams.get("date");
 
-    const { 
-      serviceId, 
-      professionalId, 
-      startAt, 
-      clientName, 
-      clientPhoneE164, 
-      notes 
-    } = body;
+    if (!dateStr) return NextResponse.json({ error: "Data é obrigatória" }, { status: 400 });
 
-    const tenant = await prisma.tenant.findUnique({ where: { slug } });
-    const service = await prisma.service.findUnique({ where: { id: serviceId } });
-    const professional = await prisma.professional.findUnique({ where: { id: professionalId } });
+    const startOfDay = new Date(`${dateStr}T00:00:00`);
+    const endOfDay = new Date(`${dateStr}T23:59:59`);
 
-    if (!tenant || !service || !professional) {
-      return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
-    }
-
-    const start = new Date(startAt);
-    const end = new Date(start.getTime() + service.durationMin * 60000);
-
-    // ==========================================
-    // PASSO 1: ACHA OU CRIA O CLIENTE (Upsert)
-    // ==========================================
-    const clientRecord = await prisma.client.upsert({
-      where: {
-        tenantId_phoneE164: {
-          tenantId: tenant.id,
-          phoneE164: clientPhoneE164,
-        }
-      },
-      update: {
-        name: clientName, // Atualiza o nome se o cliente tiver mudado
-      },
-      create: {
-        tenantId: tenant.id,
-        name: clientName,
-        phoneE164: clientPhoneE164,
-      }
+    const tenant = await prisma.tenant.findUnique({
+      where: { slug },
+      select: { id: true, name: true }
     });
 
-    // ==========================================
-    // PASSO 2: CRIA O AGENDAMENTO LIMPO
-    // ==========================================
-    const appointment = await prisma.appointment.create({
-      data: {
+    if (!tenant) return NextResponse.json({ error: "Salão não encontrado" }, { status: 404 });
+
+    // BUSCA AGENDAMENTOS
+    const appointments = await prisma.appointment.findMany({
+      where: {
         tenantId: tenant.id,
-        serviceId: serviceId,
-        professionalId: professionalId,
-        clientId: clientRecord.id, // Agora passamos o ID direto! Sem conflitos.
-        startAt: start,
-        endAt: end,
-        notes,
-        status: "CONFIRMED",
+        startAt: { gte: startOfDay, lte: endOfDay },
       },
       include: {
-        professional: true,
+        client: true,
         service: true,
-        tenant: true,
-        client: true, // Para usar os dados no WhatsApp
-      }
+        professional: true,
+      },
+      orderBy: { startAt: "asc" },
     });
 
-    // ==========================================
-    // LÓGICA DO WHATSAPP MASTER (CENTRALIZADO)
-    // ==========================================
-    async function sendWhatsApp(to: string, text: string) {
-      try {
-        const url = `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_MASTER_PHONE_ID}/messages`;
-        await fetch(url, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${process.env.WHATSAPP_MASTER_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            recipient_type: "individual",
-            to: to,
-            type: "text",
-            text: { body: text },
-          }),
-        });
-      } catch (e) {
-        console.error("Erro ao enviar Zap:", e);
-      }
-    }
+    // BUSCA PROFISSIONAIS (Isso é o que faltava para as abas funcionarem!)
+    const professionals = await prisma.professional.findMany({
+      where: { tenantId: tenant.id, active: true },
+      select: { id: true, name: true }
+    });
 
-    const dateLabel = start.toLocaleDateString("pt-BR");
-    const timeLabel = start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    // BUSCA SE TEM SERVIÇOS/PROFISSIONAIS (Para o Onboarding)
+    const servicesCount = await prisma.service.count({ where: { tenantId: tenant.id } });
+    const professionalsCount = await prisma.professional.count({ where: { tenantId: tenant.id } });
 
-    // Enviar para o CLIENTE
-    const clientMsg = `✅ *Agendamento Confirmado!*\n\nOlá ${appointment.client.name}, seu horário na *${appointment.tenant.name}* foi reservado.\n\n📅 *Data:* ${dateLabel}\n⏰ *Hora:* ${timeLabel}\n✂️ *Serviço:* ${service.name}\n👤 *Profissional:* ${professional.name}\n\n_Enviado via TratoMarcado_`;
-    await sendWhatsApp(appointment.client.phoneE164, clientMsg);
-
-    // Enviar para o PROFISSIONAL
-    if (professional.phoneE164) {
-      const profMsg = `🚀 *Novo Agendamento!*\n\nEi ${professional.name}, você tem um novo cliente na agenda.\n\n👤 *Cliente:* ${appointment.client.name}\n📅 *Data:* ${dateLabel}\n⏰ *Hora:* ${timeLabel}\n✂️ *Serviço:* ${service.name}`;
-      await sendWhatsApp(professional.phoneE164, profMsg);
-    }
-
-    return NextResponse.json(appointment);
+    return NextResponse.json({
+      tenant,
+      appointments,
+      professionals, // <-- Enviando para o frontend
+      hasServices: servicesCount > 0,
+      hasProfessionals: professionalsCount > 0,
+    });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Erro ao criar agendamento" }, { status: 500 });
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
