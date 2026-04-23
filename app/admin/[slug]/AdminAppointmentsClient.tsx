@@ -1,10 +1,8 @@
 "use client";
 
-
-import OnboardingFlow from "./OnboardingFlow"; // NOVO IMPORT
 import { useEffect, useMemo, useState } from "react";
 import LogoutButton from "./LogoutButton";
-
+import OnboardingFlow from "./OnboardingFlow";
 
 type Appointment = {
   id: string;
@@ -32,8 +30,8 @@ type ResponseData = {
     name: string;
   };
   appointments: Appointment[];
-  hasServices: boolean;      // NOVO CAMPO
-  hasProfessionals: boolean; // NOVO CAMPO
+  hasServices: boolean;
+  hasProfessionals: boolean;
 };
 
 function statusLabel(status: Appointment["status"]) {
@@ -167,19 +165,17 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
 
   return (
     <main className="min-h-screen bg-zinc-50 px-4 py-8">
-      {/* NOVO BLOCO DE ONBOARDING */}
       {data && (!data.hasServices || !data.hasProfessionals) && (
         <OnboardingFlow
           slug={slug}
           hasServices={data.hasServices}
           hasProfessionals={data.hasProfessionals}
-          onComplete={() => loadAppointments()} // Recarrega os dados para sumir o onboarding
+          onComplete={() => loadAppointments()}
         />
       )}
-      {/* FIM DO NOVO BLOCO */}
+
       <div className="mx-auto max-w-6xl">
         <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-          
           <div className="flex w-full items-start justify-between lg:w-auto">
             <div>
               <p className="text-sm font-medium uppercase tracking-wide text-violet-600">
@@ -195,7 +191,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
 
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="rounded-xl border border-zinc-300 p-2 text-zinc-600 hover:bg-zinc-100 lg:hidden"
+              className="rounded-xl border border-zinc-300 bg-white p-2 text-zinc-600 shadow-sm transition hover:bg-zinc-50 lg:hidden"
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 {isMenuOpen ? (
@@ -220,24 +216,30 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
               />
             </div>
 
+            {/* Menu Animado com Grid e Overflow */}
             <div
-              className={`${
-                isMenuOpen ? "flex" : "hidden"
-              } w-full items-center gap-2 overflow-x-auto pb-2 lg:flex lg:w-auto lg:flex-wrap lg:overflow-visible`}
+              className={`grid w-full transition-all duration-300 ease-in-out lg:w-auto lg:grid-rows-[1fr] lg:opacity-100 ${
+                isMenuOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+              }`}
             >
-              <a href={`/admin/${slug}/billing`} className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Assinatura</a>
-              <a href={`/admin/${slug}/metrics`} className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Métricas</a>
-              <a href={`/admin/${slug}/services`} className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Serviços</a>
-              <a href={`/admin/${slug}/professionals`} className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Profissionais</a>
-              <a href={`/admin/${slug}/hours`} className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Horários</a>
-              <a href={`/admin/${slug}/blocks`} className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Bloqueios</a>
-              <a href={`/admin/${slug}/whatsapp`} className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">WhatsApp</a>
-              <a href={`/admin/${slug}/inbox`} className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Inbox</a>
-              <a href={`/admin/${slug}/branding`} className="shrink-0 whitespace-nowrap rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Branding</a>
-              <div className="shrink-0">
-                <LogoutButton />
+              <div className="overflow-hidden">
+                <div className="flex flex-col gap-2 pt-2 lg:flex-row lg:flex-wrap lg:items-center lg:pt-0">
+                  <a href={`/admin/${slug}/billing`} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-50 lg:w-auto">Assinatura</a>
+                  <a href={`/admin/${slug}/metrics`} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-50 lg:w-auto">Métricas</a>
+                  <a href={`/admin/${slug}/services`} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-50 lg:w-auto">Serviços</a>
+                  <a href={`/admin/${slug}/professionals`} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-50 lg:w-auto">Profissionais</a>
+                  <a href={`/admin/${slug}/hours`} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-50 lg:w-auto">Horários</a>
+                  <a href={`/admin/${slug}/blocks`} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-50 lg:w-auto">Bloqueios</a>
+                  <a href={`/admin/${slug}/whatsapp`} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-50 lg:w-auto">WhatsApp</a>
+                  <a href={`/admin/${slug}/inbox`} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-50 lg:w-auto">Inbox</a>
+                  <a href={`/admin/${slug}/branding`} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-center text-sm font-medium text-zinc-700 hover:bg-zinc-50 lg:w-auto">Branding</a>
+                  <div className="w-full lg:w-auto">
+                    <LogoutButton />
+                  </div>
+                </div>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -280,8 +282,6 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
           ) : (
             <div className="divide-y divide-zinc-200">
               {data.appointments.map((appointment) => {
-                
-                // NOVA REGRA AQUI: Verifica se o agendamento está travado
                 const isLocked = appointment.status === "CANCELED" || appointment.status === "COMPLETED";
 
                 return (
@@ -335,7 +335,6 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
                         {statusLabel(appointment.status)}
                       </span>
 
-                      {/* Se NÃO estiver travado, mostra os botões */}
                       {!isLocked && (
                         <div className="flex flex-wrap gap-2">
                           {appointment.status !== "CONFIRMED" && (
