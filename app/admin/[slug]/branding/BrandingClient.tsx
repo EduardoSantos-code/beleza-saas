@@ -375,6 +375,22 @@ export default function BrandingClient({ slug }: { slug: string }) {
                   />
                 </div>
 
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-zinc-700">
+                    Antecedência mínima para agendar (horas)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={minAdvanceHours}
+                    onChange={(e) => setMinAdvanceHours(Number(e.target.value))}
+                    className="w-full rounded-xl border border-zinc-300 bg-zinc-800 px-4 py-3 text-white outline-none focus:border-violet-500"
+                  />
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Ex: 2 (O cliente só verá horários disponíveis daqui a 2 horas). Digite 0 para permitir agendamentos na hora.
+                  </p>
+                </div>
+
                 <div className="md:col-span-2">
                   <details className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
                     <summary className="cursor-pointer text-sm font-medium text-zinc-700">
