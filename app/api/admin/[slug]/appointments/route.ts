@@ -25,8 +25,8 @@ export async function GET(
     const start = new Date(`${date}T00:00:00`);
     const end = new Date(`${date}T23:59:59`);
 
-    // Busca os agendamentos e conta se há serviços e profissionais
-    const [appointments, servicesCount, professionalsCount] = await Promise.all([
+    // Busca agendamentos, contagens e agora a LISTA DE PROFISSIONAIS
+    const [appointments, professionals, servicesCount, professionalsCount] = await Promise.all([
       prisma.appointment.findMany({
         where: {
           tenantId: membership.tenantId,
@@ -34,6 +34,14 @@ export async function GET(
         },
         include: { client: true, service: true, professional: true },
         orderBy: { startAt: "asc" },
+      }),
+      // Buscamos os profissionais ativos para preencher as abas no frontend
+      prisma.professional.findMany({
+        where: { 
+          tenantId: membership.tenantId,
+          active: true 
+        },
+        select: { id: true, name: true }
       }),
       prisma.service.count({ where: { tenantId: membership.tenantId } }),
       prisma.professional.count({ where: { tenantId: membership.tenantId } }),
@@ -46,6 +54,7 @@ export async function GET(
       },
       hasServices: servicesCount > 0,
       hasProfessionals: professionalsCount > 0,
+      professionals, // <-- Enviando a lista para as abas aparecerem
       appointments: appointments.map((a) => ({
         id: a.id,
         startAt: a.startAt.toISOString(),
@@ -62,6 +71,7 @@ export async function GET(
           durationMin: a.service.durationMin,
         },
         professional: {
+          id: a.professional.id, // ID incluído para o filtro das abas funcionar
           name: a.professional.name,
         },
       })),

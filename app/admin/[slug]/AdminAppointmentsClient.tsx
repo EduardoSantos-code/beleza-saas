@@ -81,27 +81,32 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
       </div>
 
       {/* ABAS DE PROFISSIONAIS */}
-      <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        <button
-          onClick={() => setActiveProfId(null)}
-          className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${
-            activeProfId === null ? "bg-violet-600 text-white" : "bg-zinc-900 text-zinc-400 border border-zinc-800"
-          }`}
-        >
-          Geral
-        </button>
-        {data?.professionals?.map((prof) => (
+      {data?.professionals && data.professionals.length > 1 && (
+        <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           <button
-            key={prof.id}
-            onClick={() => setActiveProfId(prof.id)}
-            className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${
-              activeProfId === prof.id ? "bg-violet-600 text-white" : "bg-zinc-900 text-zinc-400 border border-zinc-800"
-            }`}
+            onClick={() => setActiveProfId(null)}
+            className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${activeProfId === null
+                ? "bg-violet-600 text-white"
+                : "bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800"
+              }`}
           >
-            {prof.name}
+            Geral
           </button>
-        ))}
-      </div>
+
+          {data.professionals.map((prof) => (
+            <button
+              key={prof.id}
+              onClick={() => setActiveProfId(prof.id)}
+              className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${activeProfId === prof.id
+                  ? "bg-violet-600 text-white"
+                  : "bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800"
+                }`}
+            >
+              {prof.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* GRID DE MÉTRICAS - Ajustado para 2x2 no mobile e 4 colunas no desktop */}
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -137,21 +142,20 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
               <div key={app.id} className="flex items-center justify-between p-4 gap-4">
                 <div className="flex-1">
                   <p className="text-[10px] font-bold text-violet-500 uppercase tracking-tight">
-                    {new Date(app.startAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
+                    {new Date(app.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                   <p className="font-bold text-white text-sm md:text-base leading-tight">{app.client.name}</p>
                   <p className="text-xs text-zinc-500 truncate">{app.service.name} • {app.professional.name}</p>
                 </div>
-                
-                <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-md border ${
-                  app.status === "CONFIRMED" ? "bg-green-500/10 text-green-500 border-green-500/20" :
+
+                <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-md border ${app.status === "CONFIRMED" ? "bg-green-500/10 text-green-500 border-green-500/20" :
                   app.status === "CANCELED" ? "bg-red-500/10 text-red-500 border-red-500/20" :
-                  app.status === "COMPLETED" ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
-                  "bg-zinc-800 text-zinc-400 border-zinc-700"
-                }`}>
-                  {app.status === "CONFIRMED" ? "CONFIRMADO" : 
-                   app.status === "CANCELED" ? "CANCELADO" : 
-                   app.status === "COMPLETED" ? "FINALIZADO" : "PENDENTE"}
+                    app.status === "COMPLETED" ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
+                      "bg-zinc-800 text-zinc-400 border-zinc-700"
+                  }`}>
+                  {app.status === "CONFIRMED" ? "CONFIRMADO" :
+                    app.status === "CANCELED" ? "CANCELADO" :
+                      app.status === "COMPLETED" ? "FINALIZADO" : "PENDENTE"}
                 </span>
               </div>
             ))
