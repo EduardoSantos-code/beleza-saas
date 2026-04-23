@@ -1,13 +1,25 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+// 1. Tipagem rigorosa para acabar com o erro de 'any' do Prisma
+interface AppointmentBody {
+  serviceId: string;
+  professionalId: string;
+  startAt: string;
+  clientName: string;
+  clientPhoneE164: string;
+  notes?: string;
+}
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const { slug } = await params;
-    const body = await req.json();
+    
+    // Forçamos o TypeScript a entender o formato exato do body
+    const body = (await req.json()) as AppointmentBody;
 
     const { 
       serviceId, 
@@ -18,7 +30,6 @@ export async function POST(
       notes 
     } = body;
 
-    // 1. Busca os dados completos para a mensagem
     const tenant = await prisma.tenant.findUnique({ where: { slug } });
     const service = await prisma.service.findUnique({ where: { id: serviceId } });
     const professional = await prisma.professional.findUnique({ where: { id: professionalId } });
@@ -27,12 +38,9 @@ export async function POST(
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
-    // 2. Calcula o horário de término
     const start = new Date(startAt);
     const end = new Date(start.getTime() + service.durationMin * 60000);
 
-    // 3. Salva o agendamento no Banco de Dados
-    // 3. Salva o agendamento vinculando ou criando o cliente
     const appointment = await prisma.appointment.create({
       data: {
         tenantId: tenant.id,
@@ -42,12 +50,13 @@ export async function POST(
         endAt: end,
         notes,
         status: "CONFIRMED",
-        // Em vez de clientName, usamos a relação 'client'
         client: {
           connectOrCreate: {
             where: { 
-              // Assumindo que seu modelo Client usa o telefone como identificador único
-              phoneE164: clientPhoneE164 
+              tenantId_phoneE164: {
+                tenantId: tenant.id,
+                phoneE164: clientPhoneE164,
+              }
             },
             create: {
               name: clientName,
@@ -57,7 +66,6 @@ export async function POST(
           }
         }
       },
-      // Importante: incluir o profissional e serviço no retorno para usar nas mensagens de Zap abaixo
       include: {
         professional: true,
         service: true,
@@ -95,12 +103,11 @@ export async function POST(
     const dateLabel = start.toLocaleDateString("pt-BR");
     const timeLabel = start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
-    // Enviar para o CLIENTE
-    // Enviar para o CLIENTE
-    const clientMsg = `✅ *Agendamento Confirmado!*\n\nOlá ${appointment.client.name}, seu horário na *${appointment.tenant.name}* foi reservado...`;
-    await sendWhatsApp(appointment.client.phoneE164, clientMsg);
+    // Usamos o operador "!" para garantir ao TS que client e tenant não são nulos
+    const clientMsg = `✅ *Agendamento Confirmado!*\n\nOlá ${appointment.client!.name}, seu horário na *${appointment.tenant!.name}* foi reservado.\n\n📅 *Data:* ${dateLabel}\n⏰ *Hora:* ${timeLabel}\n✂️ *Serviço:* ${service.name}\n👤 *Profissional:* ${professional.name}\n\n_Enviado via TratoMarcado_`;
+    
+    await sendWhatsApp(appointment.client!.phoneE164, clientMsg);
 
-    // Enviar para o PROFISSIONAL
     if (professional.phoneE164) {
       const profMsg = `🚀 *Novo Agendamento!*\n\nEi ${professional.name}, você tem um novo cliente na agenda.\n\n👤 *Cliente:* ${clientName}\n📅 *Data:* ${dateLabel}\n⏰ *Hora:* ${timeLabel}\n✂️ *Serviço:* ${service.name}`;
       await sendWhatsApp(professional.phoneE164, profMsg);

@@ -178,7 +178,8 @@ export default function BookingPageClient({ slug }: { slug: string }) {
       setErrorMessage("");
       setSuccessMessage("");
 
-      const res = await fetch(`/api/public/${slug}/book`, {
+      // 1. Rota atualizada para a nova API
+      const res = await fetch(`/api/public/${slug}/appointments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -186,7 +187,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
         body: JSON.stringify({
           serviceId,
           professionalId,
-          startAtISO: selectedSlot,
+          startAt: selectedSlot, // 2. Nome do campo ajustado para startAt
           clientName,
           clientPhoneE164,
           notes,
@@ -194,7 +195,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
       });
 
       const text = await res.text();
-      let data: { ok?: boolean; error?: string; appointmentId?: string } | null = null;
+      let data: { id?: string; error?: string } | null = null;
 
       try {
         data = JSON.parse(text);
@@ -206,9 +207,9 @@ export default function BookingPageClient({ slug }: { slug: string }) {
         throw new Error(data?.error || "Erro ao criar agendamento");
       }
 
-      // Redireciona o cliente para o recibo do agendamento:
-      if (data?.appointmentId) {
-        window.location.href = `/s/${slug}/a/${data.appointmentId}`;
+      // 3. Redireciona o cliente lendo data.id
+      if (data?.id) {
+        window.location.href = `/s/${slug}/a/${data.id}`;
       }
     } catch (err: any) {
       console.error("Erro ao agendar:", err);
