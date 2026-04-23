@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// 1. Tipagem rigorosa para acabar com o erro de 'any' do Prisma
 interface AppointmentBody {
   serviceId: string;
   professionalId: string;
@@ -17,8 +16,6 @@ export async function POST(
 ) {
   try {
     const { slug } = await params;
-    
-    // Forçamos o TypeScript a entender o formato exato do body
     const body = (await req.json()) as AppointmentBody;
 
     const { 
@@ -41,43 +38,51 @@ export async function POST(
     const start = new Date(startAt);
     const end = new Date(start.getTime() + service.durationMin * 60000);
 
+    // ==========================================
+    // PASSO 1: ACHA OU CRIA O CLIENTE (Upsert)
+    // ==========================================
+    const clientRecord = await prisma.client.upsert({
+      where: {
+        tenantId_phoneE164: {
+          tenantId: tenant.id,
+          phoneE164: clientPhoneE164,
+        }
+      },
+      update: {
+        name: clientName, // Atualiza o nome se o cliente tiver mudado
+      },
+      create: {
+        tenantId: tenant.id,
+        name: clientName,
+        phoneE164: clientPhoneE164,
+      }
+    });
+
+    // ==========================================
+    // PASSO 2: CRIA O AGENDAMENTO LIMPO
+    // ==========================================
     const appointment = await prisma.appointment.create({
       data: {
         tenantId: tenant.id,
-        serviceId,
-        professionalId,
+        serviceId: serviceId,
+        professionalId: professionalId,
+        clientId: clientRecord.id, // Agora passamos o ID direto! Sem conflitos.
         startAt: start,
         endAt: end,
         notes,
         status: "CONFIRMED",
-        client: {
-          connectOrCreate: {
-            where: { 
-              tenantId_phoneE164: {
-                tenantId: tenant.id,
-                phoneE164: clientPhoneE164,
-              }
-            },
-            create: {
-              name: clientName,
-              phoneE164: clientPhoneE164,
-              tenantId: tenant.id,
-            }
-          }
-        }
       },
       include: {
         professional: true,
         service: true,
         tenant: true,
-        client: true,
+        client: true, // Para usar os dados no WhatsApp
       }
     });
 
     // ==========================================
     // LÓGICA DO WHATSAPP MASTER (CENTRALIZADO)
     // ==========================================
-    
     async function sendWhatsApp(to: string, text: string) {
       try {
         const url = `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_MASTER_PHONE_ID}/messages`;
@@ -103,13 +108,13 @@ export async function POST(
     const dateLabel = start.toLocaleDateString("pt-BR");
     const timeLabel = start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
-    // Usamos o operador "!" para garantir ao TS que client e tenant não são nulos
-    const clientMsg = `✅ *Agendamento Confirmado!*\n\nOlá ${appointment.client!.name}, seu horário na *${appointment.tenant!.name}* foi reservado.\n\n📅 *Data:* ${dateLabel}\n⏰ *Hora:* ${timeLabel}\n✂️ *Serviço:* ${service.name}\n👤 *Profissional:* ${professional.name}\n\n_Enviado via TratoMarcado_`;
-    
-    await sendWhatsApp(appointment.client!.phoneE164, clientMsg);
+    // Enviar para o CLIENTE
+    const clientMsg = `✅ *Agendamento Confirmado!*\n\nOlá ${appointment.client.name}, seu horário na *${appointment.tenant.name}* foi reservado.\n\n📅 *Data:* ${dateLabel}\n⏰ *Hora:* ${timeLabel}\n✂️ *Serviço:* ${service.name}\n👤 *Profissional:* ${professional.name}\n\n_Enviado via TratoMarcado_`;
+    await sendWhatsApp(appointment.client.phoneE164, clientMsg);
 
+    // Enviar para o PROFISSIONAL
     if (professional.phoneE164) {
-      const profMsg = `🚀 *Novo Agendamento!*\n\nEi ${professional.name}, você tem um novo cliente na agenda.\n\n👤 *Cliente:* ${clientName}\n📅 *Data:* ${dateLabel}\n⏰ *Hora:* ${timeLabel}\n✂️ *Serviço:* ${service.name}`;
+      const profMsg = `🚀 *Novo Agendamento!*\n\nEi ${professional.name}, você tem um novo cliente na agenda.\n\n👤 *Cliente:* ${appointment.client.name}\n📅 *Data:* ${dateLabel}\n⏰ *Hora:* ${timeLabel}\n✂️ *Serviço:* ${service.name}`;
       await sendWhatsApp(professional.phoneE164, profMsg);
     }
 
