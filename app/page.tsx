@@ -34,7 +34,7 @@ export default function HomePage() {
 
           <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-zinc-200">
             <div className="rounded-2xl bg-zinc-900 p-6 text-white">
-              <p className="text-sm text-zinc-300">Studio Bella</p>
+              <p className="text-sm text-zinc-300">TratoMarcado</p>
               <h2 className="mt-2 text-2xl font-bold">Agendamento online</h2>
               <p className="mt-2 text-zinc-300">
                 Página pública personalizada, horários inteligentes e WhatsApp integrado.

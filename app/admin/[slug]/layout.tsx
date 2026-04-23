@@ -67,7 +67,7 @@ export default function AdminLayout({
         }`}
       >
         <div className="flex items-center justify-between p-6">
-          <span className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Studio Bella.</span>
+          <span className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">TratoMarcado.</span>
           <button onClick={() => setIsSidebarOpen(false)} className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 md:hidden">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
