@@ -126,6 +126,7 @@ model Professional {
   id       String  @id @default(cuid())
   tenantId String
   name     String
+  phoneE164 String?
   active   Boolean @default(true)
 
   tenant        Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)

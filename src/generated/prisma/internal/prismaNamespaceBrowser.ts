@@ -134,6 +134,7 @@ export const ProfessionalScalarFieldEnum = {
   id: 'id',
   tenantId: 'tenantId',
   name: 'name',
+  phoneE164: 'phoneE164',
   active: 'active'
 } as const
 

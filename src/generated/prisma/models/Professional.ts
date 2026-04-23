@@ -28,6 +28,7 @@ export type ProfessionalMinAggregateOutputType = {
   id: string | null
   tenantId: string | null
   name: string | null
+  phoneE164: string | null
   active: boolean | null
 }
 
@@ -35,6 +36,7 @@ export type ProfessionalMaxAggregateOutputType = {
   id: string | null
   tenantId: string | null
   name: string | null
+  phoneE164: string | null
   active: boolean | null
 }
 
@@ -42,6 +44,7 @@ export type ProfessionalCountAggregateOutputType = {
   id: number
   tenantId: number
   name: number
+  phoneE164: number
   active: number
   _all: number
 }
@@ -51,6 +54,7 @@ export type ProfessionalMinAggregateInputType = {
   id?: true
   tenantId?: true
   name?: true
+  phoneE164?: true
   active?: true
 }
 
@@ -58,6 +62,7 @@ export type ProfessionalMaxAggregateInputType = {
   id?: true
   tenantId?: true
   name?: true
+  phoneE164?: true
   active?: true
 }
 
@@ -65,6 +70,7 @@ export type ProfessionalCountAggregateInputType = {
   id?: true
   tenantId?: true
   name?: true
+  phoneE164?: true
   active?: true
   _all?: true
 }
@@ -145,6 +151,7 @@ export type ProfessionalGroupByOutputType = {
   id: string
   tenantId: string
   name: string
+  phoneE164: string | null
   active: boolean
   _count: ProfessionalCountAggregateOutputType | null
   _min: ProfessionalMinAggregateOutputType | null
@@ -173,6 +180,7 @@ export type ProfessionalWhereInput = {
   id?: Prisma.StringFilter<"Professional"> | string
   tenantId?: Prisma.StringFilter<"Professional"> | string
   name?: Prisma.StringFilter<"Professional"> | string
+  phoneE164?: Prisma.StringNullableFilter<"Professional"> | string | null
   active?: Prisma.BoolFilter<"Professional"> | boolean
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
   appointments?: Prisma.AppointmentListRelationFilter
@@ -184,6 +192,7 @@ export type ProfessionalOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   tenantId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  phoneE164?: Prisma.SortOrderInput | Prisma.SortOrder
   active?: Prisma.SortOrder
   tenant?: Prisma.TenantOrderByWithRelationInput
   appointments?: Prisma.AppointmentOrderByRelationAggregateInput
@@ -198,6 +207,7 @@ export type ProfessionalWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.ProfessionalWhereInput | Prisma.ProfessionalWhereInput[]
   tenantId?: Prisma.StringFilter<"Professional"> | string
   name?: Prisma.StringFilter<"Professional"> | string
+  phoneE164?: Prisma.StringNullableFilter<"Professional"> | string | null
   active?: Prisma.BoolFilter<"Professional"> | boolean
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
   appointments?: Prisma.AppointmentListRelationFilter
@@ -209,6 +219,7 @@ export type ProfessionalOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   tenantId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  phoneE164?: Prisma.SortOrderInput | Prisma.SortOrder
   active?: Prisma.SortOrder
   _count?: Prisma.ProfessionalCountOrderByAggregateInput
   _max?: Prisma.ProfessionalMaxOrderByAggregateInput
@@ -222,12 +233,14 @@ export type ProfessionalScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Professional"> | string
   tenantId?: Prisma.StringWithAggregatesFilter<"Professional"> | string
   name?: Prisma.StringWithAggregatesFilter<"Professional"> | string
+  phoneE164?: Prisma.StringNullableWithAggregatesFilter<"Professional"> | string | null
   active?: Prisma.BoolWithAggregatesFilter<"Professional"> | boolean
 }
 
 export type ProfessionalCreateInput = {
   id?: string
   name: string
+  phoneE164?: string | null
   active?: boolean
   tenant: Prisma.TenantCreateNestedOneWithoutProfessionalsInput
   appointments?: Prisma.AppointmentCreateNestedManyWithoutProfessionalInput
@@ -239,6 +252,7 @@ export type ProfessionalUncheckedCreateInput = {
   id?: string
   tenantId: string
   name: string
+  phoneE164?: string | null
   active?: boolean
   appointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutProfessionalInput
   businessHours?: Prisma.ProfessionalBusinessHourUncheckedCreateNestedManyWithoutProfessionalInput
@@ -248,6 +262,7 @@ export type ProfessionalUncheckedCreateInput = {
 export type ProfessionalUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProfessionalsNestedInput
   appointments?: Prisma.AppointmentUpdateManyWithoutProfessionalNestedInput
@@ -259,6 +274,7 @@ export type ProfessionalUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   appointments?: Prisma.AppointmentUncheckedUpdateManyWithoutProfessionalNestedInput
   businessHours?: Prisma.ProfessionalBusinessHourUncheckedUpdateManyWithoutProfessionalNestedInput
@@ -269,12 +285,14 @@ export type ProfessionalCreateManyInput = {
   id?: string
   tenantId: string
   name: string
+  phoneE164?: string | null
   active?: boolean
 }
 
 export type ProfessionalUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
@@ -282,6 +300,7 @@ export type ProfessionalUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
@@ -299,6 +318,7 @@ export type ProfessionalCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   tenantId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  phoneE164?: Prisma.SortOrder
   active?: Prisma.SortOrder
 }
 
@@ -306,6 +326,7 @@ export type ProfessionalMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   tenantId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  phoneE164?: Prisma.SortOrder
   active?: Prisma.SortOrder
 }
 
@@ -313,6 +334,7 @@ export type ProfessionalMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   tenantId?: Prisma.SortOrder
   name?: Prisma.SortOrder
+  phoneE164?: Prisma.SortOrder
   active?: Prisma.SortOrder
 }
 
@@ -415,6 +437,7 @@ export type ProfessionalUpdateOneWithoutBlocksNestedInput = {
 export type ProfessionalCreateWithoutTenantInput = {
   id?: string
   name: string
+  phoneE164?: string | null
   active?: boolean
   appointments?: Prisma.AppointmentCreateNestedManyWithoutProfessionalInput
   businessHours?: Prisma.ProfessionalBusinessHourCreateNestedManyWithoutProfessionalInput
@@ -424,6 +447,7 @@ export type ProfessionalCreateWithoutTenantInput = {
 export type ProfessionalUncheckedCreateWithoutTenantInput = {
   id?: string
   name: string
+  phoneE164?: string | null
   active?: boolean
   appointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutProfessionalInput
   businessHours?: Prisma.ProfessionalBusinessHourUncheckedCreateNestedManyWithoutProfessionalInput
@@ -463,12 +487,14 @@ export type ProfessionalScalarWhereInput = {
   id?: Prisma.StringFilter<"Professional"> | string
   tenantId?: Prisma.StringFilter<"Professional"> | string
   name?: Prisma.StringFilter<"Professional"> | string
+  phoneE164?: Prisma.StringNullableFilter<"Professional"> | string | null
   active?: Prisma.BoolFilter<"Professional"> | boolean
 }
 
 export type ProfessionalCreateWithoutAppointmentsInput = {
   id?: string
   name: string
+  phoneE164?: string | null
   active?: boolean
   tenant: Prisma.TenantCreateNestedOneWithoutProfessionalsInput
   businessHours?: Prisma.ProfessionalBusinessHourCreateNestedManyWithoutProfessionalInput
@@ -479,6 +505,7 @@ export type ProfessionalUncheckedCreateWithoutAppointmentsInput = {
   id?: string
   tenantId: string
   name: string
+  phoneE164?: string | null
   active?: boolean
   businessHours?: Prisma.ProfessionalBusinessHourUncheckedCreateNestedManyWithoutProfessionalInput
   blocks?: Prisma.ScheduleBlockUncheckedCreateNestedManyWithoutProfessionalInput
@@ -503,6 +530,7 @@ export type ProfessionalUpdateToOneWithWhereWithoutAppointmentsInput = {
 export type ProfessionalUpdateWithoutAppointmentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProfessionalsNestedInput
   businessHours?: Prisma.ProfessionalBusinessHourUpdateManyWithoutProfessionalNestedInput
@@ -513,6 +541,7 @@ export type ProfessionalUncheckedUpdateWithoutAppointmentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   businessHours?: Prisma.ProfessionalBusinessHourUncheckedUpdateManyWithoutProfessionalNestedInput
   blocks?: Prisma.ScheduleBlockUncheckedUpdateManyWithoutProfessionalNestedInput
@@ -521,6 +550,7 @@ export type ProfessionalUncheckedUpdateWithoutAppointmentsInput = {
 export type ProfessionalCreateWithoutBusinessHoursInput = {
   id?: string
   name: string
+  phoneE164?: string | null
   active?: boolean
   tenant: Prisma.TenantCreateNestedOneWithoutProfessionalsInput
   appointments?: Prisma.AppointmentCreateNestedManyWithoutProfessionalInput
@@ -531,6 +561,7 @@ export type ProfessionalUncheckedCreateWithoutBusinessHoursInput = {
   id?: string
   tenantId: string
   name: string
+  phoneE164?: string | null
   active?: boolean
   appointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutProfessionalInput
   blocks?: Prisma.ScheduleBlockUncheckedCreateNestedManyWithoutProfessionalInput
@@ -555,6 +586,7 @@ export type ProfessionalUpdateToOneWithWhereWithoutBusinessHoursInput = {
 export type ProfessionalUpdateWithoutBusinessHoursInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProfessionalsNestedInput
   appointments?: Prisma.AppointmentUpdateManyWithoutProfessionalNestedInput
@@ -565,6 +597,7 @@ export type ProfessionalUncheckedUpdateWithoutBusinessHoursInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   appointments?: Prisma.AppointmentUncheckedUpdateManyWithoutProfessionalNestedInput
   blocks?: Prisma.ScheduleBlockUncheckedUpdateManyWithoutProfessionalNestedInput
@@ -573,6 +606,7 @@ export type ProfessionalUncheckedUpdateWithoutBusinessHoursInput = {
 export type ProfessionalCreateWithoutBlocksInput = {
   id?: string
   name: string
+  phoneE164?: string | null
   active?: boolean
   tenant: Prisma.TenantCreateNestedOneWithoutProfessionalsInput
   appointments?: Prisma.AppointmentCreateNestedManyWithoutProfessionalInput
@@ -583,6 +617,7 @@ export type ProfessionalUncheckedCreateWithoutBlocksInput = {
   id?: string
   tenantId: string
   name: string
+  phoneE164?: string | null
   active?: boolean
   appointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutProfessionalInput
   businessHours?: Prisma.ProfessionalBusinessHourUncheckedCreateNestedManyWithoutProfessionalInput
@@ -607,6 +642,7 @@ export type ProfessionalUpdateToOneWithWhereWithoutBlocksInput = {
 export type ProfessionalUpdateWithoutBlocksInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   tenant?: Prisma.TenantUpdateOneRequiredWithoutProfessionalsNestedInput
   appointments?: Prisma.AppointmentUpdateManyWithoutProfessionalNestedInput
@@ -617,6 +653,7 @@ export type ProfessionalUncheckedUpdateWithoutBlocksInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   appointments?: Prisma.AppointmentUncheckedUpdateManyWithoutProfessionalNestedInput
   businessHours?: Prisma.ProfessionalBusinessHourUncheckedUpdateManyWithoutProfessionalNestedInput
@@ -625,12 +662,14 @@ export type ProfessionalUncheckedUpdateWithoutBlocksInput = {
 export type ProfessionalCreateManyTenantInput = {
   id?: string
   name: string
+  phoneE164?: string | null
   active?: boolean
 }
 
 export type ProfessionalUpdateWithoutTenantInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   appointments?: Prisma.AppointmentUpdateManyWithoutProfessionalNestedInput
   businessHours?: Prisma.ProfessionalBusinessHourUpdateManyWithoutProfessionalNestedInput
@@ -640,6 +679,7 @@ export type ProfessionalUpdateWithoutTenantInput = {
 export type ProfessionalUncheckedUpdateWithoutTenantInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   appointments?: Prisma.AppointmentUncheckedUpdateManyWithoutProfessionalNestedInput
   businessHours?: Prisma.ProfessionalBusinessHourUncheckedUpdateManyWithoutProfessionalNestedInput
@@ -649,6 +689,7 @@ export type ProfessionalUncheckedUpdateWithoutTenantInput = {
 export type ProfessionalUncheckedUpdateManyWithoutTenantInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneE164?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
@@ -705,6 +746,7 @@ export type ProfessionalSelect<ExtArgs extends runtime.Types.Extensions.Internal
   id?: boolean
   tenantId?: boolean
   name?: boolean
+  phoneE164?: boolean
   active?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   appointments?: boolean | Prisma.Professional$appointmentsArgs<ExtArgs>
@@ -717,6 +759,7 @@ export type ProfessionalSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   id?: boolean
   tenantId?: boolean
   name?: boolean
+  phoneE164?: boolean
   active?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["professional"]>
@@ -725,6 +768,7 @@ export type ProfessionalSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   id?: boolean
   tenantId?: boolean
   name?: boolean
+  phoneE164?: boolean
   active?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["professional"]>
@@ -733,10 +777,11 @@ export type ProfessionalSelectScalar = {
   id?: boolean
   tenantId?: boolean
   name?: boolean
+  phoneE164?: boolean
   active?: boolean
 }
 
-export type ProfessionalOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "name" | "active", ExtArgs["result"]["professional"]>
+export type ProfessionalOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "name" | "phoneE164" | "active", ExtArgs["result"]["professional"]>
 export type ProfessionalInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   appointments?: boolean | Prisma.Professional$appointmentsArgs<ExtArgs>
@@ -763,6 +808,7 @@ export type $ProfessionalPayload<ExtArgs extends runtime.Types.Extensions.Intern
     id: string
     tenantId: string
     name: string
+    phoneE164: string | null
     active: boolean
   }, ExtArgs["result"]["professional"]>
   composites: {}
@@ -1194,6 +1240,7 @@ export interface ProfessionalFieldRefs {
   readonly id: Prisma.FieldRef<"Professional", 'String'>
   readonly tenantId: Prisma.FieldRef<"Professional", 'String'>
   readonly name: Prisma.FieldRef<"Professional", 'String'>
+  readonly phoneE164: Prisma.FieldRef<"Professional", 'String'>
   readonly active: Prisma.FieldRef<"Professional", 'Boolean'>
 }
     
