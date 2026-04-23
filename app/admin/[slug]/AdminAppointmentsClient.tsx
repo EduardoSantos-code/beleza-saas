@@ -119,22 +119,23 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
         </div>
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-4">
-        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Total</p>
-          <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-white">{stats.total}</p>
+      {/* AQUI ESTÁ A MÁGICA DO SEU DESENHO: grid-cols-2 */}
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">Total</p>
+          <p className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white">{stats.total}</p>
         </div>
-        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Confirmados</p>
-          <p className="mt-2 text-2xl font-bold text-blue-700 dark:text-blue-400">{stats.confirmed}</p>
+        <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">Confirmados</p>
+          <p className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-blue-700 dark:text-blue-400">{stats.confirmed}</p>
         </div>
-        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Cancelados</p>
-          <p className="mt-2 text-2xl font-bold text-red-700 dark:text-red-400">{stats.canceled}</p>
+        <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">Cancelados</p>
+          <p className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-red-700 dark:text-red-400">{stats.canceled}</p>
         </div>
-        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Concluídos</p>
-          <p className="mt-2 text-2xl font-bold text-green-700 dark:text-green-400">{stats.completed}</p>
+        <div className="rounded-2xl bg-white p-4 sm:p-5 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400">Concluídos</p>
+          <p className="mt-1 sm:mt-2 text-xl sm:text-2xl font-bold text-green-700 dark:text-green-400">{stats.completed}</p>
         </div>
       </div>
 
