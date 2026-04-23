@@ -19,14 +19,11 @@ type ResponseData = {
   tenant: { id: string; name: string };
   appointments: Appointment[];
   professionals: Professional[];
-  hasServices: boolean;
-  hasProfessionals: boolean;
 };
 
 export default function AdminAppointmentsClient({ slug }: { slug: string }) {
   const [data, setData] = useState<ResponseData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
   const [activeProfId, setActiveProfId] = useState<string | null>(null);
   const [date, setDate] = useState(() => {
     const today = new Date();
@@ -41,7 +38,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
       if (!res.ok) throw new Error(json?.error || "Erro ao carregar");
       setData(json);
     } catch (err: any) {
-      setErrorMessage(err.message);
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -55,12 +52,14 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
     return data.appointments.filter(a => a.professional.id === activeProfId);
   }, [data, activeProfId]);
 
+  // Lógica atualizada para incluir cancelados e pendentes
   const stats = useMemo(() => {
     const apps = filteredAppointments;
     return {
       total: apps.length,
       confirmed: apps.filter((a) => a.status === "CONFIRMED").length,
       completed: apps.filter((a) => a.status === "COMPLETED").length,
+      canceled: apps.filter((a) => a.status === "CANCELED").length,
     };
   }, [filteredAppointments]);
 
@@ -82,7 +81,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
       </div>
 
       {/* ABAS DE PROFISSIONAIS */}
-      <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
+      <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         <button
           onClick={() => setActiveProfId(null)}
           className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${
@@ -104,19 +103,24 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
         ))}
       </div>
 
-      {/* CARDS DE STATUS */}
-      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-500">Total do Dia</p>
-          <p className="text-3xl font-black text-white">{stats.total}</p>
+      {/* GRID DE MÉTRICAS - Ajustado para 2x2 no mobile e 4 colunas no desktop */}
+      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
+          <p className="text-xs md:text-sm text-zinc-500 font-bold uppercase">Total</p>
+          <p className="text-2xl md:text-3xl font-black text-white">{stats.total}</p>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-500">Confirmados</p>
-          <p className="text-3xl font-black text-green-500">{stats.confirmed}</p>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
+          <p className="text-xs md:text-sm text-zinc-500 font-bold uppercase">Confirmados</p>
+          <p className="text-2xl md:text-3xl font-black text-green-500">{stats.confirmed}</p>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm text-zinc-500">Finalizados</p>
-          <p className="text-3xl font-black text-blue-500">{stats.completed}</p>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
+          <p className="text-xs md:text-sm text-zinc-500 font-bold uppercase">Finalizados</p>
+          <p className="text-2xl md:text-3xl font-black text-blue-500">{stats.completed}</p>
+        </div>
+        {/* CARD DE CANCELADOS */}
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
+          <p className="text-xs md:text-sm text-zinc-500 font-bold uppercase">Cancelados</p>
+          <p className="text-2xl md:text-3xl font-black text-red-500">{stats.canceled}</p>
         </div>
       </div>
 
@@ -130,21 +134,29 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
         <div className="divide-y divide-zinc-800">
           {filteredAppointments.length > 0 ? (
             filteredAppointments.map((app) => (
-              <div key={app.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 gap-4">
-                <div>
-                  <p className="text-xs font-bold text-violet-500">{new Date(app.startAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</p>
-                  <p className="font-bold text-white">{app.client.name}</p>
-                  <p className="text-sm text-zinc-500">{app.service.name} • {app.professional.name}</p>
+              <div key={app.id} className="flex items-center justify-between p-4 gap-4">
+                <div className="flex-1">
+                  <p className="text-[10px] font-bold text-violet-500 uppercase tracking-tight">
+                    {new Date(app.startAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
+                  </p>
+                  <p className="font-bold text-white text-sm md:text-base leading-tight">{app.client.name}</p>
+                  <p className="text-xs text-zinc-500 truncate">{app.service.name} • {app.professional.name}</p>
                 </div>
-                <div className="flex items-center gap-3">
-                   <span className="text-xs font-bold px-3 py-1 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700">
-                    {app.status}
-                   </span>
-                </div>
+                
+                <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-md border ${
+                  app.status === "CONFIRMED" ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                  app.status === "CANCELED" ? "bg-red-500/10 text-red-500 border-red-500/20" :
+                  app.status === "COMPLETED" ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
+                  "bg-zinc-800 text-zinc-400 border-zinc-700"
+                }`}>
+                  {app.status === "CONFIRMED" ? "CONFIRMADO" : 
+                   app.status === "CANCELED" ? "CANCELADO" : 
+                   app.status === "COMPLETED" ? "FINALIZADO" : "PENDENTE"}
+                </span>
               </div>
             ))
           ) : (
-            <div className="p-10 text-center text-zinc-600">Nenhum agendamento para este filtro.</div>
+            <div className="p-10 text-center text-zinc-600 text-sm">Nenhum agendamento encontrado.</div>
           )}
         </div>
       </div>
