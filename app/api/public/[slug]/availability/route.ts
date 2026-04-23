@@ -128,6 +128,21 @@ export async function GET(
     const dayStart = combineDateAndMinutes(date, effectiveStartMin);
     const dayEnd = combineDateAndMinutes(date, effectiveEndMin);
 
+    // ==========================================
+    // CÁLCULO DOS INTERVALOS (ALMOÇO)
+    // ==========================================
+    // Pegamos o intervalo do profissional. Se ele não tiver, pegamos o do salão.
+    const breakStartMin = professionalHour?.breakStartMin ?? tenantHour.breakStartMin;
+    const breakEndMin = professionalHour?.breakEndMin ?? tenantHour.breakEndMin;
+
+    let breakStart: Date | null = null;
+    let breakEnd: Date | null = null;
+
+    if (breakStartMin != null && breakEndMin != null) {
+      breakStart = combineDateAndMinutes(date, breakStartMin);
+      breakEnd = combineDateAndMinutes(date, breakEndMin);
+    }
+
     const [appointments, blocks] = await Promise.all([
       prisma.appointment.findMany({
         where: {
@@ -153,16 +168,9 @@ export async function GET(
       }),
     ]);
 
-    // ==========================================
-    // CORREÇÃO DE FUSO HORÁRIO (TIMEZONE)
-    // ==========================================
     const realNow = new Date();
     const tenantTimezone = tenant.timezone || "America/Sao_Paulo";
-    
-    // Transforma a hora UTC da Vercel na hora local do Brasil (em formato texto)
     const nowInBrazilString = realNow.toLocaleString("en-US", { timeZone: tenantTimezone });
-    
-    // Cria um objeto Date onde as horas/minutos batem com o relógio real do Brasil
     const localNow = new Date(nowInBrazilString);
 
     const minAdvanceHours = tenant.minAdvanceHours ?? 2;
@@ -177,6 +185,14 @@ export async function GET(
       const fitsInHours = slotEnd <= dayEnd;
       const isFuture = cursor > cutoffTime;
 
+      // ==========================================
+      // NOVA TRAVA: VERIFICA SE CAI NO INTERVALO
+      // ==========================================
+      let fallsInBreak = false;
+      if (breakStart && breakEnd) {
+        fallsInBreak = overlaps(cursor, slotEnd, breakStart, breakEnd);
+      }
+
       const appointmentConflict = appointments.some((appointment) =>
         overlaps(cursor, slotEnd, appointment.startAt, appointment.endAt)
       );
@@ -185,7 +201,8 @@ export async function GET(
         overlaps(cursor, slotEnd, block.startAt, block.endAt)
       );
 
-      if (fitsInHours && isFuture && !appointmentConflict && !blockConflict) {
+      // Só adiciona se NÃO cair no intervalo
+      if (fitsInHours && isFuture && !fallsInBreak && !appointmentConflict && !blockConflict) {
         slots.push({
           iso: cursor.toISOString(),
           label: cursor.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
