@@ -2,12 +2,18 @@
 
 export default function LogoutButton() {
   async function handleLogout() {
+    const confirmLogout = window.confirm("Tem certeza que deseja sair?");
+    if (!confirmLogout) return;
+
     try {
       await fetch("/api/auth/logout", {
         method: "POST",
       });
-    } finally {
+
       window.location.href = "/login";
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+      alert("Não foi possível sair.");
     }
   }
 
