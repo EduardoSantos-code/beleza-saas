@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import OnboardingFlow from "./OnboardingFlow";
 
 type Appointment = {
   id: string;
@@ -19,22 +18,16 @@ type Professional = { id: string; name: string };
 type ResponseData = {
   tenant: { id: string; name: string };
   appointments: Appointment[];
-  professionals: Professional[]; // Adicionamos a lista de profissionais aqui
+  professionals: Professional[];
   hasServices: boolean;
   hasProfessionals: boolean;
 };
-
-// ... (as funções statusLabel e statusClasses continuam as mesmas)
 
 export default function AdminAppointmentsClient({ slug }: { slug: string }) {
   const [data, setData] = useState<ResponseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  
-  // ESTADO DA ABA ATIVA (null = Geral/Todos)
   const [activeProfId, setActiveProfId] = useState<string | null>(null);
-
   const [date, setDate] = useState(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -56,7 +49,6 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
 
   useEffect(() => { loadAppointments(); }, [slug, date]);
 
-  // FILTRAGEM DINÂMICA
   const filteredAppointments = useMemo(() => {
     if (!data?.appointments) return [];
     if (!activeProfId) return data.appointments;
@@ -68,41 +60,33 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
     return {
       total: apps.length,
       confirmed: apps.filter((a) => a.status === "CONFIRMED").length,
-      canceled: apps.filter((a) => a.status === "CANCELED").length,
       completed: apps.filter((a) => a.status === "COMPLETED").length,
     };
   }, [filteredAppointments]);
 
-  // ... (função updateStatus continua a mesma)
+  if (loading) return <div className="p-10 text-white">Carregando agenda...</div>;
 
   return (
-    <div className="mx-auto max-w-6xl">
-      {/* Cabeçalho e Data */}
+    <div className="mx-auto max-w-6xl p-4">
       <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">Painel interno</p>
-          <h1 className="mt-1 text-3xl font-bold text-zinc-900 dark:text-white">{data?.tenant.name || "Agenda"}</h1>
+          <p className="text-sm font-bold uppercase tracking-widest text-violet-500">Painel Interno</p>
+          <h1 className="mt-1 text-3xl font-black text-white">{data?.tenant.name}</h1>
         </div>
-
-        <div className="w-full sm:max-w-[200px]">
-          <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Data</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full appearance-none text-left min-h-[50px] [&::-webkit-datetime-edit]:flex [&::-webkit-datetime-edit]:justify-start rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white [color-scheme:light_dark]"
-          />
-        </div>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-white outline-none focus:border-violet-500"
+        />
       </div>
 
-      {/* ABAS DE PROFISSIONAIS (TABS) */}
-      <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+      {/* ABAS DE PROFISSIONAIS */}
+      <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
         <button
           onClick={() => setActiveProfId(null)}
           className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${
-            activeProfId === null 
-              ? "bg-violet-600 text-white" 
-              : "bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-800"
+            activeProfId === null ? "bg-violet-600 text-white" : "bg-zinc-900 text-zinc-400 border border-zinc-800"
           }`}
         >
           Geral
@@ -112,9 +96,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
             key={prof.id}
             onClick={() => setActiveProfId(prof.id)}
             className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${
-              activeProfId === prof.id 
-                ? "bg-violet-600 text-white" 
-                : "bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-800"
+              activeProfId === prof.id ? "bg-violet-600 text-white" : "bg-zinc-900 text-zinc-400 border border-zinc-800"
             }`}
           >
             {prof.name}
@@ -122,21 +104,50 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
         ))}
       </div>
 
-      {/* Cards de Métricas (Agora refletem a aba selecionada) */}
-      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        {/* ... (mesmo código dos cards de stats que já tínhamos) */}
+      {/* CARDS DE STATUS */}
+      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+          <p className="text-sm text-zinc-500">Total do Dia</p>
+          <p className="text-3xl font-black text-white">{stats.total}</p>
+        </div>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+          <p className="text-sm text-zinc-500">Confirmados</p>
+          <p className="text-3xl font-black text-green-500">{stats.confirmed}</p>
+        </div>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+          <p className="text-sm text-zinc-500">Finalizados</p>
+          <p className="text-3xl font-black text-blue-500">{stats.completed}</p>
+        </div>
       </div>
 
-      {/* Listagem de Agendamentos (Filtrada) */}
-      <section className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-        <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-            {activeProfId ? `Agenda de ${data?.professionals?.find(p => p.id === activeProfId)?.name}` : "Agendamentos Gerais"}
+      {/* LISTA DE AGENDAMENTOS */}
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
+        <div className="border-b border-zinc-800 p-4">
+          <h2 className="font-bold text-white">
+            {activeProfId ? `Agenda: ${data?.professionals.find(p => p.id === activeProfId)?.name}` : "Todos os Agendamentos"}
           </h2>
         </div>
-        
-        {/* ... (restante da listagem de agendamentos) */}
-      </section>
+        <div className="divide-y divide-zinc-800">
+          {filteredAppointments.length > 0 ? (
+            filteredAppointments.map((app) => (
+              <div key={app.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 gap-4">
+                <div>
+                  <p className="text-xs font-bold text-violet-500">{new Date(app.startAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</p>
+                  <p className="font-bold text-white">{app.client.name}</p>
+                  <p className="text-sm text-zinc-500">{app.service.name} • {app.professional.name}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                   <span className="text-xs font-bold px-3 py-1 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700">
+                    {app.status}
+                   </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-10 text-center text-zinc-600">Nenhum agendamento para este filtro.</div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
