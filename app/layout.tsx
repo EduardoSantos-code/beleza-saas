@@ -6,9 +6,10 @@ import { Providers } from "./providers"; // Importe aqui
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Studio Bella | Agendamento",
-  description: "Agendamento online prático e rápido.",
-};
+  title: 'TratoMarcado | Agendamento Inteligente',
+  description: 'Agendamento online prático e profissional.',
+}
+
 
 export default function RootLayout({
   children,
