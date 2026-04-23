@@ -102,7 +102,8 @@ export const TenantScalarFieldEnum = {
   stripeSubscriptionId: 'stripeSubscriptionId',
   stripePriceId: 'stripePriceId',
   subscriptionCurrentPeriodEnd: 'subscriptionCurrentPeriodEnd',
-  subscriptionCancelAtPeriodEnd: 'subscriptionCancelAtPeriodEnd'
+  subscriptionCancelAtPeriodEnd: 'subscriptionCancelAtPeriodEnd',
+  minAdvanceHours: 'minAdvanceHours'
 } as const
 
 export type TenantScalarFieldEnum = (typeof TenantScalarFieldEnum)[keyof typeof TenantScalarFieldEnum]

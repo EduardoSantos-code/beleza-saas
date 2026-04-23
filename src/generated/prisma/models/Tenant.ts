@@ -20,8 +20,18 @@ export type TenantModel = runtime.Types.Result.DefaultSelection<Prisma.$TenantPa
 
 export type AggregateTenant = {
   _count: TenantCountAggregateOutputType | null
+  _avg: TenantAvgAggregateOutputType | null
+  _sum: TenantSumAggregateOutputType | null
   _min: TenantMinAggregateOutputType | null
   _max: TenantMaxAggregateOutputType | null
+}
+
+export type TenantAvgAggregateOutputType = {
+  minAdvanceHours: number | null
+}
+
+export type TenantSumAggregateOutputType = {
+  minAdvanceHours: number | null
 }
 
 export type TenantMinAggregateOutputType = {
@@ -44,6 +54,7 @@ export type TenantMinAggregateOutputType = {
   stripePriceId: string | null
   subscriptionCurrentPeriodEnd: Date | null
   subscriptionCancelAtPeriodEnd: boolean | null
+  minAdvanceHours: number | null
 }
 
 export type TenantMaxAggregateOutputType = {
@@ -66,6 +77,7 @@ export type TenantMaxAggregateOutputType = {
   stripePriceId: string | null
   subscriptionCurrentPeriodEnd: Date | null
   subscriptionCancelAtPeriodEnd: boolean | null
+  minAdvanceHours: number | null
 }
 
 export type TenantCountAggregateOutputType = {
@@ -88,9 +100,18 @@ export type TenantCountAggregateOutputType = {
   stripePriceId: number
   subscriptionCurrentPeriodEnd: number
   subscriptionCancelAtPeriodEnd: number
+  minAdvanceHours: number
   _all: number
 }
 
+
+export type TenantAvgAggregateInputType = {
+  minAdvanceHours?: true
+}
+
+export type TenantSumAggregateInputType = {
+  minAdvanceHours?: true
+}
 
 export type TenantMinAggregateInputType = {
   id?: true
@@ -112,6 +133,7 @@ export type TenantMinAggregateInputType = {
   stripePriceId?: true
   subscriptionCurrentPeriodEnd?: true
   subscriptionCancelAtPeriodEnd?: true
+  minAdvanceHours?: true
 }
 
 export type TenantMaxAggregateInputType = {
@@ -134,6 +156,7 @@ export type TenantMaxAggregateInputType = {
   stripePriceId?: true
   subscriptionCurrentPeriodEnd?: true
   subscriptionCancelAtPeriodEnd?: true
+  minAdvanceHours?: true
 }
 
 export type TenantCountAggregateInputType = {
@@ -156,6 +179,7 @@ export type TenantCountAggregateInputType = {
   stripePriceId?: true
   subscriptionCurrentPeriodEnd?: true
   subscriptionCancelAtPeriodEnd?: true
+  minAdvanceHours?: true
   _all?: true
 }
 
@@ -197,6 +221,18 @@ export type TenantAggregateArgs<ExtArgs extends runtime.Types.Extensions.Interna
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: TenantAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: TenantSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: TenantMinAggregateInputType
@@ -227,6 +263,8 @@ export type TenantGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   take?: number
   skip?: number
   _count?: TenantCountAggregateInputType | true
+  _avg?: TenantAvgAggregateInputType
+  _sum?: TenantSumAggregateInputType
   _min?: TenantMinAggregateInputType
   _max?: TenantMaxAggregateInputType
 }
@@ -251,7 +289,10 @@ export type TenantGroupByOutputType = {
   stripePriceId: string | null
   subscriptionCurrentPeriodEnd: Date | null
   subscriptionCancelAtPeriodEnd: boolean
+  minAdvanceHours: number
   _count: TenantCountAggregateOutputType | null
+  _avg: TenantAvgAggregateOutputType | null
+  _sum: TenantSumAggregateOutputType | null
   _min: TenantMinAggregateOutputType | null
   _max: TenantMaxAggregateOutputType | null
 }
@@ -294,6 +335,7 @@ export type TenantWhereInput = {
   stripePriceId?: Prisma.StringNullableFilter<"Tenant"> | string | null
   subscriptionCurrentPeriodEnd?: Prisma.DateTimeNullableFilter<"Tenant"> | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFilter<"Tenant"> | boolean
+  minAdvanceHours?: Prisma.IntFilter<"Tenant"> | number
   memberships?: Prisma.MembershipListRelationFilter
   professionals?: Prisma.ProfessionalListRelationFilter
   services?: Prisma.ServiceListRelationFilter
@@ -326,6 +368,7 @@ export type TenantOrderByWithRelationInput = {
   stripePriceId?: Prisma.SortOrderInput | Prisma.SortOrder
   subscriptionCurrentPeriodEnd?: Prisma.SortOrderInput | Prisma.SortOrder
   subscriptionCancelAtPeriodEnd?: Prisma.SortOrder
+  minAdvanceHours?: Prisma.SortOrder
   memberships?: Prisma.MembershipOrderByRelationAggregateInput
   professionals?: Prisma.ProfessionalOrderByRelationAggregateInput
   services?: Prisma.ServiceOrderByRelationAggregateInput
@@ -361,6 +404,7 @@ export type TenantWhereUniqueInput = Prisma.AtLeast<{
   stripePriceId?: Prisma.StringNullableFilter<"Tenant"> | string | null
   subscriptionCurrentPeriodEnd?: Prisma.DateTimeNullableFilter<"Tenant"> | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFilter<"Tenant"> | boolean
+  minAdvanceHours?: Prisma.IntFilter<"Tenant"> | number
   memberships?: Prisma.MembershipListRelationFilter
   professionals?: Prisma.ProfessionalListRelationFilter
   services?: Prisma.ServiceListRelationFilter
@@ -393,9 +437,12 @@ export type TenantOrderByWithAggregationInput = {
   stripePriceId?: Prisma.SortOrderInput | Prisma.SortOrder
   subscriptionCurrentPeriodEnd?: Prisma.SortOrderInput | Prisma.SortOrder
   subscriptionCancelAtPeriodEnd?: Prisma.SortOrder
+  minAdvanceHours?: Prisma.SortOrder
   _count?: Prisma.TenantCountOrderByAggregateInput
+  _avg?: Prisma.TenantAvgOrderByAggregateInput
   _max?: Prisma.TenantMaxOrderByAggregateInput
   _min?: Prisma.TenantMinOrderByAggregateInput
+  _sum?: Prisma.TenantSumOrderByAggregateInput
 }
 
 export type TenantScalarWhereWithAggregatesInput = {
@@ -421,6 +468,7 @@ export type TenantScalarWhereWithAggregatesInput = {
   stripePriceId?: Prisma.StringNullableWithAggregatesFilter<"Tenant"> | string | null
   subscriptionCurrentPeriodEnd?: Prisma.DateTimeNullableWithAggregatesFilter<"Tenant"> | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolWithAggregatesFilter<"Tenant"> | boolean
+  minAdvanceHours?: Prisma.IntWithAggregatesFilter<"Tenant"> | number
 }
 
 export type TenantCreateInput = {
@@ -443,6 +491,7 @@ export type TenantCreateInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceCreateNestedManyWithoutTenantInput
@@ -475,6 +524,7 @@ export type TenantUncheckedCreateInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalUncheckedCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceUncheckedCreateNestedManyWithoutTenantInput
@@ -507,6 +557,7 @@ export type TenantUpdateInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUpdateManyWithoutTenantNestedInput
@@ -539,6 +590,7 @@ export type TenantUncheckedUpdateInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUncheckedUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUncheckedUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUncheckedUpdateManyWithoutTenantNestedInput
@@ -571,6 +623,7 @@ export type TenantCreateManyInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
 }
 
 export type TenantUpdateManyMutationInput = {
@@ -593,6 +646,7 @@ export type TenantUpdateManyMutationInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type TenantUncheckedUpdateManyInput = {
@@ -615,6 +669,7 @@ export type TenantUncheckedUpdateManyInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
 }
 
 export type TenantCountOrderByAggregateInput = {
@@ -637,6 +692,11 @@ export type TenantCountOrderByAggregateInput = {
   stripePriceId?: Prisma.SortOrder
   subscriptionCurrentPeriodEnd?: Prisma.SortOrder
   subscriptionCancelAtPeriodEnd?: Prisma.SortOrder
+  minAdvanceHours?: Prisma.SortOrder
+}
+
+export type TenantAvgOrderByAggregateInput = {
+  minAdvanceHours?: Prisma.SortOrder
 }
 
 export type TenantMaxOrderByAggregateInput = {
@@ -659,6 +719,7 @@ export type TenantMaxOrderByAggregateInput = {
   stripePriceId?: Prisma.SortOrder
   subscriptionCurrentPeriodEnd?: Prisma.SortOrder
   subscriptionCancelAtPeriodEnd?: Prisma.SortOrder
+  minAdvanceHours?: Prisma.SortOrder
 }
 
 export type TenantMinOrderByAggregateInput = {
@@ -681,6 +742,11 @@ export type TenantMinOrderByAggregateInput = {
   stripePriceId?: Prisma.SortOrder
   subscriptionCurrentPeriodEnd?: Prisma.SortOrder
   subscriptionCancelAtPeriodEnd?: Prisma.SortOrder
+  minAdvanceHours?: Prisma.SortOrder
+}
+
+export type TenantSumOrderByAggregateInput = {
+  minAdvanceHours?: Prisma.SortOrder
 }
 
 export type TenantScalarRelationFilter = {
@@ -710,6 +776,14 @@ export type NullableDateTimeFieldUpdateOperationsInput = {
 
 export type BoolFieldUpdateOperationsInput = {
   set?: boolean
+}
+
+export type IntFieldUpdateOperationsInput = {
+  set?: number
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
 }
 
 export type TenantCreateNestedOneWithoutMembershipsInput = {
@@ -872,6 +946,7 @@ export type TenantCreateWithoutMembershipsInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   professionals?: Prisma.ProfessionalCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceCreateNestedManyWithoutTenantInput
   clients?: Prisma.ClientCreateNestedManyWithoutTenantInput
@@ -903,6 +978,7 @@ export type TenantUncheckedCreateWithoutMembershipsInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   professionals?: Prisma.ProfessionalUncheckedCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceUncheckedCreateNestedManyWithoutTenantInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutTenantInput
@@ -950,6 +1026,7 @@ export type TenantUpdateWithoutMembershipsInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   professionals?: Prisma.ProfessionalUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUpdateManyWithoutTenantNestedInput
   clients?: Prisma.ClientUpdateManyWithoutTenantNestedInput
@@ -981,6 +1058,7 @@ export type TenantUncheckedUpdateWithoutMembershipsInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   professionals?: Prisma.ProfessionalUncheckedUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUncheckedUpdateManyWithoutTenantNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutTenantNestedInput
@@ -1012,6 +1090,7 @@ export type TenantCreateWithoutProfessionalsInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceCreateNestedManyWithoutTenantInput
   clients?: Prisma.ClientCreateNestedManyWithoutTenantInput
@@ -1043,6 +1122,7 @@ export type TenantUncheckedCreateWithoutProfessionalsInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceUncheckedCreateNestedManyWithoutTenantInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutTenantInput
@@ -1090,6 +1170,7 @@ export type TenantUpdateWithoutProfessionalsInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUpdateManyWithoutTenantNestedInput
   clients?: Prisma.ClientUpdateManyWithoutTenantNestedInput
@@ -1121,6 +1202,7 @@ export type TenantUncheckedUpdateWithoutProfessionalsInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUncheckedUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUncheckedUpdateManyWithoutTenantNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutTenantNestedInput
@@ -1152,6 +1234,7 @@ export type TenantCreateWithoutServicesInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalCreateNestedManyWithoutTenantInput
   clients?: Prisma.ClientCreateNestedManyWithoutTenantInput
@@ -1183,6 +1266,7 @@ export type TenantUncheckedCreateWithoutServicesInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalUncheckedCreateNestedManyWithoutTenantInput
   clients?: Prisma.ClientUncheckedCreateNestedManyWithoutTenantInput
@@ -1230,6 +1314,7 @@ export type TenantUpdateWithoutServicesInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUpdateManyWithoutTenantNestedInput
   clients?: Prisma.ClientUpdateManyWithoutTenantNestedInput
@@ -1261,6 +1346,7 @@ export type TenantUncheckedUpdateWithoutServicesInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUncheckedUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUncheckedUpdateManyWithoutTenantNestedInput
   clients?: Prisma.ClientUncheckedUpdateManyWithoutTenantNestedInput
@@ -1292,6 +1378,7 @@ export type TenantCreateWithoutClientsInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceCreateNestedManyWithoutTenantInput
@@ -1323,6 +1410,7 @@ export type TenantUncheckedCreateWithoutClientsInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalUncheckedCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceUncheckedCreateNestedManyWithoutTenantInput
@@ -1370,6 +1458,7 @@ export type TenantUpdateWithoutClientsInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUpdateManyWithoutTenantNestedInput
@@ -1401,6 +1490,7 @@ export type TenantUncheckedUpdateWithoutClientsInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUncheckedUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUncheckedUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUncheckedUpdateManyWithoutTenantNestedInput
@@ -1432,6 +1522,7 @@ export type TenantCreateWithoutAppointmentsInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceCreateNestedManyWithoutTenantInput
@@ -1463,6 +1554,7 @@ export type TenantUncheckedCreateWithoutAppointmentsInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalUncheckedCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceUncheckedCreateNestedManyWithoutTenantInput
@@ -1510,6 +1602,7 @@ export type TenantUpdateWithoutAppointmentsInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUpdateManyWithoutTenantNestedInput
@@ -1541,6 +1634,7 @@ export type TenantUncheckedUpdateWithoutAppointmentsInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUncheckedUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUncheckedUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUncheckedUpdateManyWithoutTenantNestedInput
@@ -1572,6 +1666,7 @@ export type TenantCreateWithoutWhatsappConfigInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceCreateNestedManyWithoutTenantInput
@@ -1603,6 +1698,7 @@ export type TenantUncheckedCreateWithoutWhatsappConfigInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalUncheckedCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceUncheckedCreateNestedManyWithoutTenantInput
@@ -1650,6 +1746,7 @@ export type TenantUpdateWithoutWhatsappConfigInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUpdateManyWithoutTenantNestedInput
@@ -1681,6 +1778,7 @@ export type TenantUncheckedUpdateWithoutWhatsappConfigInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUncheckedUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUncheckedUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUncheckedUpdateManyWithoutTenantNestedInput
@@ -1712,6 +1810,7 @@ export type TenantCreateWithoutBusinessHoursInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceCreateNestedManyWithoutTenantInput
@@ -1743,6 +1842,7 @@ export type TenantUncheckedCreateWithoutBusinessHoursInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalUncheckedCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceUncheckedCreateNestedManyWithoutTenantInput
@@ -1790,6 +1890,7 @@ export type TenantUpdateWithoutBusinessHoursInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUpdateManyWithoutTenantNestedInput
@@ -1821,6 +1922,7 @@ export type TenantUncheckedUpdateWithoutBusinessHoursInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUncheckedUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUncheckedUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUncheckedUpdateManyWithoutTenantNestedInput
@@ -1852,6 +1954,7 @@ export type TenantCreateWithoutBlocksInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceCreateNestedManyWithoutTenantInput
@@ -1883,6 +1986,7 @@ export type TenantUncheckedCreateWithoutBlocksInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalUncheckedCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceUncheckedCreateNestedManyWithoutTenantInput
@@ -1930,6 +2034,7 @@ export type TenantUpdateWithoutBlocksInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUpdateManyWithoutTenantNestedInput
@@ -1961,6 +2066,7 @@ export type TenantUncheckedUpdateWithoutBlocksInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUncheckedUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUncheckedUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUncheckedUpdateManyWithoutTenantNestedInput
@@ -1992,6 +2098,7 @@ export type TenantCreateWithoutInboundMessagesInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceCreateNestedManyWithoutTenantInput
@@ -2023,6 +2130,7 @@ export type TenantUncheckedCreateWithoutInboundMessagesInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalUncheckedCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceUncheckedCreateNestedManyWithoutTenantInput
@@ -2070,6 +2178,7 @@ export type TenantUpdateWithoutInboundMessagesInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUpdateManyWithoutTenantNestedInput
@@ -2101,6 +2210,7 @@ export type TenantUncheckedUpdateWithoutInboundMessagesInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUncheckedUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUncheckedUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUncheckedUpdateManyWithoutTenantNestedInput
@@ -2132,6 +2242,7 @@ export type TenantCreateWithoutOutboundMessagesInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceCreateNestedManyWithoutTenantInput
@@ -2163,6 +2274,7 @@ export type TenantUncheckedCreateWithoutOutboundMessagesInput = {
   stripePriceId?: string | null
   subscriptionCurrentPeriodEnd?: Date | string | null
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: number
   memberships?: Prisma.MembershipUncheckedCreateNestedManyWithoutTenantInput
   professionals?: Prisma.ProfessionalUncheckedCreateNestedManyWithoutTenantInput
   services?: Prisma.ServiceUncheckedCreateNestedManyWithoutTenantInput
@@ -2210,6 +2322,7 @@ export type TenantUpdateWithoutOutboundMessagesInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUpdateManyWithoutTenantNestedInput
@@ -2241,6 +2354,7 @@ export type TenantUncheckedUpdateWithoutOutboundMessagesInput = {
   stripePriceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subscriptionCurrentPeriodEnd?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   subscriptionCancelAtPeriodEnd?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minAdvanceHours?: Prisma.IntFieldUpdateOperationsInput | number
   memberships?: Prisma.MembershipUncheckedUpdateManyWithoutTenantNestedInput
   professionals?: Prisma.ProfessionalUncheckedUpdateManyWithoutTenantNestedInput
   services?: Prisma.ServiceUncheckedUpdateManyWithoutTenantNestedInput
@@ -2375,6 +2489,7 @@ export type TenantSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   stripePriceId?: boolean
   subscriptionCurrentPeriodEnd?: boolean
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: boolean
   memberships?: boolean | Prisma.Tenant$membershipsArgs<ExtArgs>
   professionals?: boolean | Prisma.Tenant$professionalsArgs<ExtArgs>
   services?: boolean | Prisma.Tenant$servicesArgs<ExtArgs>
@@ -2408,6 +2523,7 @@ export type TenantSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   stripePriceId?: boolean
   subscriptionCurrentPeriodEnd?: boolean
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: boolean
 }, ExtArgs["result"]["tenant"]>
 
 export type TenantSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -2430,6 +2546,7 @@ export type TenantSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   stripePriceId?: boolean
   subscriptionCurrentPeriodEnd?: boolean
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: boolean
 }, ExtArgs["result"]["tenant"]>
 
 export type TenantSelectScalar = {
@@ -2452,9 +2569,10 @@ export type TenantSelectScalar = {
   stripePriceId?: boolean
   subscriptionCurrentPeriodEnd?: boolean
   subscriptionCancelAtPeriodEnd?: boolean
+  minAdvanceHours?: boolean
 }
 
-export type TenantOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "slug" | "timezone" | "createdAt" | "logoUrl" | "heroImageUrl" | "primaryColor" | "publicDescription" | "publicPhone" | "address" | "instagram" | "subscriptionStatus" | "trialEndsAt" | "stripeCustomerId" | "stripeSubscriptionId" | "stripePriceId" | "subscriptionCurrentPeriodEnd" | "subscriptionCancelAtPeriodEnd", ExtArgs["result"]["tenant"]>
+export type TenantOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "slug" | "timezone" | "createdAt" | "logoUrl" | "heroImageUrl" | "primaryColor" | "publicDescription" | "publicPhone" | "address" | "instagram" | "subscriptionStatus" | "trialEndsAt" | "stripeCustomerId" | "stripeSubscriptionId" | "stripePriceId" | "subscriptionCurrentPeriodEnd" | "subscriptionCancelAtPeriodEnd" | "minAdvanceHours", ExtArgs["result"]["tenant"]>
 export type TenantInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   memberships?: boolean | Prisma.Tenant$membershipsArgs<ExtArgs>
   professionals?: boolean | Prisma.Tenant$professionalsArgs<ExtArgs>
@@ -2505,6 +2623,7 @@ export type $TenantPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     stripePriceId: string | null
     subscriptionCurrentPeriodEnd: Date | null
     subscriptionCancelAtPeriodEnd: boolean
+    minAdvanceHours: number
   }, ExtArgs["result"]["tenant"]>
   composites: {}
 }
@@ -2957,6 +3076,7 @@ export interface TenantFieldRefs {
   readonly stripePriceId: Prisma.FieldRef<"Tenant", 'String'>
   readonly subscriptionCurrentPeriodEnd: Prisma.FieldRef<"Tenant", 'DateTime'>
   readonly subscriptionCancelAtPeriodEnd: Prisma.FieldRef<"Tenant", 'Boolean'>
+  readonly minAdvanceHours: Prisma.FieldRef<"Tenant", 'Int'>
 }
     
 

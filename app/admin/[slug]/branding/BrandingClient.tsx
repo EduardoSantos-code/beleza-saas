@@ -46,6 +46,7 @@ export default function BrandingClient({ slug }: { slug: string }) {
 
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [minAdvanceHours, setMinAdvanceHours] = useState(2);
 
   async function loadData() {
     try {

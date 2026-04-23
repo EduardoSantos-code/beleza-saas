@@ -65,7 +65,8 @@ export async function GET(
             timezone: true,
             subscriptionStatus: true,
             trialEndsAt: true,
-            subscriptionCurrentPeriodEnd: true
+            subscriptionCurrentPeriodEnd: true,
+            minAdvanceHours: true, // <--- BUSCAMOS O CAMPO AQUI
           },
         }),
         prisma.service.findFirst({
@@ -94,7 +95,6 @@ export async function GET(
       return NextResponse.json({ error: "Salão não encontrado" }, { status: 404 });
     }
 
-    // Bloqueia se o financeiro não estiver em dia
     if (!isTenantBillingActive(tenant)) {
       return NextResponse.json({ slots: [], meta: { reason: "subscription-inactive" } });
     }
@@ -133,7 +133,6 @@ export async function GET(
         where: {
           tenantId: tenant.id,
           professionalId: professional.id,
-          // AQUI ESTÁ A CORREÇÃO: Pegamos apenas agendamentos que NÃO foram cancelados
           status: { not: "CANCELED" }, 
           startAt: { lt: dayEnd },
           endAt: { gt: dayStart },
@@ -155,7 +154,9 @@ export async function GET(
     ]);
 
     const now = new Date();
-    const minAdvanceHours = 2;
+    
+    // AQUI ESTÁ A MÁGICA: Usamos a trava do banco de dados (ou 2 como padrão de segurança)
+    const minAdvanceHours = tenant.minAdvanceHours ?? 2;
     const cutoffTime = new Date(now.getTime() + minAdvanceHours * 60 * 60 * 1000);
 
     const slots: { iso: string; label: string }[] = [];

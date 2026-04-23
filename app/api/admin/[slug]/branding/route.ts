@@ -12,6 +12,7 @@ const BrandingSchema = z.object({
   instagram: z.string().max(120).nullable().optional(),
   logoUrl: z.union([z.string().url(), z.literal(""), z.null()]).optional(),
   heroImageUrl: z.union([z.string().url(), z.literal(""), z.null()]).optional(),
+  minAdvanceHours: z.number().int().min(0).default(2),
 });
 
 function normalizeNullable(value?: string | null) {
@@ -46,6 +47,7 @@ export async function GET(
         publicPhone: true,
         address: true,
         instagram: true,
+        minAdvanceHours: true,
       },
     });
 
@@ -101,6 +103,7 @@ export async function PUT(
         instagram: normalizeNullable(parsed.data.instagram),
         logoUrl: normalizeNullable(parsed.data.logoUrl || null),
         heroImageUrl: normalizeNullable(parsed.data.heroImageUrl || null),
+        minAdvanceHours: parsed.data.minAdvanceHours,
       },
       select: {
         id: true,
@@ -113,6 +116,7 @@ export async function PUT(
         publicPhone: true,
         address: true,
         instagram: true,
+        minAdvanceHours: true,
       },
     });
 
