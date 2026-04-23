@@ -3,23 +3,18 @@ import { getCurrentMembershipBySlug } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+// Validação dos dados que chegam do formulário
 const BrandingSchema = z.object({
-  name: z.string().min(2).max(120),
-  primaryColor: z.string().regex(/^#([0-9A-Fa-f]{6})$/),
-  publicDescription: z.string().max(500).nullable().optional(),
-  publicPhone: z.string().max(30).nullable().optional(),
-  address: z.string().max(255).nullable().optional(),
-  instagram: z.string().max(120).nullable().optional(),
-  logoUrl: z.union([z.string().url(), z.literal(""), z.null()]).optional(),
-  heroImageUrl: z.union([z.string().url(), z.literal(""), z.null()]).optional(),
-  minAdvanceHours: z.number().int().min(0).default(2),
+  name: z.string().min(1),
+  primaryColor: z.string().nullable(),
+  logoUrl: z.string().nullable(),
+  heroImageUrl: z.string().nullable(),
+  publicDescription: z.string().nullable(),
+  publicPhone: z.string().nullable(),
+  instagram: z.string().nullable(),
+  address: z.string().nullable(),
+  minAdvanceHours: z.number().int().min(0).default(2), // O novo campo
 });
-
-function normalizeNullable(value?: string | null) {
-  if (!value) return null;
-  const trimmed = value.trim();
-  return trimmed ? trimmed : null;
-}
 
 export async function GET(
   _req: Request,
@@ -27,7 +22,6 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-
     const membership = await getCurrentMembershipBySlug(slug);
 
     if (!membership) {
@@ -35,47 +29,32 @@ export async function GET(
     }
 
     const tenant = await prisma.tenant.findUnique({
-      where: { slug },
+      where: { id: membership.tenantId },
       select: {
-        id: true,
         name: true,
-        slug: true,
+        primaryColor: true,
         logoUrl: true,
         heroImageUrl: true,
-        primaryColor: true,
         publicDescription: true,
         publicPhone: true,
-        address: true,
         instagram: true,
+        address: true,
         minAdvanceHours: true,
       },
     });
 
-    if (!tenant) {
-      return NextResponse.json(
-        { error: "Salão não encontrado" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ tenant });
+    return NextResponse.json(tenant);
   } catch (error) {
-    console.error("Erro em GET /api/admin/[slug]/branding:", error);
-
-    return NextResponse.json(
-      { error: "Erro interno ao carregar branding" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao buscar branding" }, { status: 500 });
   }
 }
 
-export async function PUT(
+export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const { slug } = await params;
-
     const membership = await getCurrentMembershipBySlug(slug);
 
     if (!membership) {
@@ -86,47 +65,18 @@ export async function PUT(
     const parsed = BrandingSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Dados inválidos", details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Dados inválidos", details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const tenant = await prisma.tenant.update({
+    // Atualiza o salão no banco de dados com todos os campos validados
+    const updated = await prisma.tenant.update({
       where: { id: membership.tenantId },
-      data: {
-        name: parsed.data.name,
-        primaryColor: parsed.data.primaryColor,
-        publicDescription: normalizeNullable(parsed.data.publicDescription),
-        publicPhone: normalizeNullable(parsed.data.publicPhone),
-        address: normalizeNullable(parsed.data.address),
-        instagram: normalizeNullable(parsed.data.instagram),
-        logoUrl: normalizeNullable(parsed.data.logoUrl || null),
-        heroImageUrl: normalizeNullable(parsed.data.heroImageUrl || null),
-        minAdvanceHours: parsed.data.minAdvanceHours,
-      },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        logoUrl: true,
-        heroImageUrl: true,
-        primaryColor: true,
-        publicDescription: true,
-        publicPhone: true,
-        address: true,
-        instagram: true,
-        minAdvanceHours: true,
-      },
+      data: parsed.data,
     });
 
-    return NextResponse.json({ ok: true, tenant });
+    return NextResponse.json(updated);
   } catch (error) {
-    console.error("Erro em PUT /api/admin/[slug]/branding:", error);
-
-    return NextResponse.json(
-      { error: "Erro interno ao salvar branding" },
-      { status: 500 }
-    );
+    console.error("Erro ao salvar branding:", error);
+    return NextResponse.json({ error: "Erro ao salvar no banco de dados" }, { status: 500 });
   }
 }

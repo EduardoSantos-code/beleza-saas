@@ -66,7 +66,7 @@ export async function GET(
             subscriptionStatus: true,
             trialEndsAt: true,
             subscriptionCurrentPeriodEnd: true,
-            minAdvanceHours: true, // <--- BUSCAMOS O CAMPO AQUI
+            minAdvanceHours: true,
           },
         }),
         prisma.service.findFirst({
@@ -153,11 +153,20 @@ export async function GET(
       }),
     ]);
 
-    const now = new Date();
+    // ==========================================
+    // CORREÇÃO DE FUSO HORÁRIO (TIMEZONE)
+    // ==========================================
+    const realNow = new Date();
+    const tenantTimezone = tenant.timezone || "America/Sao_Paulo";
     
-    // AQUI ESTÁ A MÁGICA: Usamos a trava do banco de dados (ou 2 como padrão de segurança)
+    // Transforma a hora UTC da Vercel na hora local do Brasil (em formato texto)
+    const nowInBrazilString = realNow.toLocaleString("en-US", { timeZone: tenantTimezone });
+    
+    // Cria um objeto Date onde as horas/minutos batem com o relógio real do Brasil
+    const localNow = new Date(nowInBrazilString);
+
     const minAdvanceHours = tenant.minAdvanceHours ?? 2;
-    const cutoffTime = new Date(now.getTime() + minAdvanceHours * 60 * 60 * 1000);
+    const cutoffTime = new Date(localNow.getTime() + minAdvanceHours * 60 * 60 * 1000);
 
     const slots: { iso: string; label: string }[] = [];
     let cursor = roundToNextSlot(dayStart, 30);
