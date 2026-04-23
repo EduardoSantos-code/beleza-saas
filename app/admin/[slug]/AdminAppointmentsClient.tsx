@@ -1,7 +1,10 @@
 "use client";
 
+
+import OnboardingFlow from "./OnboardingFlow"; // NOVO IMPORT
 import { useEffect, useMemo, useState } from "react";
 import LogoutButton from "./LogoutButton";
+
 
 type Appointment = {
   id: string;
@@ -29,6 +32,8 @@ type ResponseData = {
     name: string;
   };
   appointments: Appointment[];
+  hasServices: boolean;      // NOVO CAMPO
+  hasProfessionals: boolean; // NOVO CAMPO
 };
 
 function statusLabel(status: Appointment["status"]) {
@@ -162,6 +167,16 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
 
   return (
     <main className="min-h-screen bg-zinc-50 px-4 py-8">
+      {/* NOVO BLOCO DE ONBOARDING */}
+      {data && (!data.hasServices || !data.hasProfessionals) && (
+        <OnboardingFlow
+          slug={slug}
+          hasServices={data.hasServices}
+          hasProfessionals={data.hasProfessionals}
+          onComplete={() => loadAppointments()} // Recarrega os dados para sumir o onboarding
+        />
+      )}
+      {/* FIM DO NOVO BLOCO */}
       <div className="mx-auto max-w-6xl">
         <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           
