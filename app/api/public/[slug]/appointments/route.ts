@@ -32,6 +32,7 @@ export async function POST(
     const end = new Date(start.getTime() + service.durationMin * 60000);
 
     // 3. Salva o agendamento no Banco de Dados
+    // 3. Salva o agendamento vinculando ou criando o cliente
     const appointment = await prisma.appointment.create({
       data: {
         tenantId: tenant.id,
@@ -39,11 +40,30 @@ export async function POST(
         professionalId,
         startAt: start,
         endAt: end,
-        clientName,
-        clientPhoneE164,
         notes,
-        status: "CONFIRMED", // Já entra confirmado
+        status: "CONFIRMED",
+        // Em vez de clientName, usamos a relação 'client'
+        client: {
+          connectOrCreate: {
+            where: { 
+              // Assumindo que seu modelo Client usa o telefone como identificador único
+              phoneE164: clientPhoneE164 
+            },
+            create: {
+              name: clientName,
+              phoneE164: clientPhoneE164,
+              tenantId: tenant.id,
+            }
+          }
+        }
       },
+      // Importante: incluir o profissional e serviço no retorno para usar nas mensagens de Zap abaixo
+      include: {
+        professional: true,
+        service: true,
+        tenant: true,
+        client: true,
+      }
     });
 
     // ==========================================
@@ -76,8 +96,9 @@ export async function POST(
     const timeLabel = start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
     // Enviar para o CLIENTE
-    const clientMsg = `✅ *Agendamento Confirmado!*\n\nOlá ${clientName}, seu horário na *${tenant.name}* foi reservado com sucesso.\n\n📅 *Data:* ${dateLabel}\n⏰ *Hora:* ${timeLabel}\n✂️ *Serviço:* ${service.name}\n👤 *Profissional:* ${professional.name}\n\nLocal: ${tenant.address || 'No endereço do salão'}\n\n_Enviado via TratoMarcado_`;
-    await sendWhatsApp(clientPhoneE164, clientMsg);
+    // Enviar para o CLIENTE
+    const clientMsg = `✅ *Agendamento Confirmado!*\n\nOlá ${appointment.client.name}, seu horário na *${appointment.tenant.name}* foi reservado...`;
+    await sendWhatsApp(appointment.client.phoneE164, clientMsg);
 
     // Enviar para o PROFISSIONAL
     if (professional.phoneE164) {
