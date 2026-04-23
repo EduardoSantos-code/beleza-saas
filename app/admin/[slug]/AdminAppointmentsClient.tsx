@@ -107,7 +107,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
         >
           Geral
         </button>
-        {data?.professionals.map((prof) => (
+        {data?.professionals?.map((prof) => (
           <button
             key={prof.id}
             onClick={() => setActiveProfId(prof.id)}
@@ -131,7 +131,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
       <section className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
         <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-            {activeProfId ? `Agenda de ${data?.professionals.find(p => p.id === activeProfId)?.name}` : "Agendamentos Gerais"}
+            {activeProfId ? `Agenda de ${data?.professionals?.find(p => p.id === activeProfId)?.name}` : "Agendamentos Gerais"}
           </h2>
         </div>
         
