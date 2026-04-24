@@ -25,9 +25,12 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
   const [data, setData] = useState<ResponseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeProfId, setActiveProfId] = useState<string | null>(null);
+  
+  // Inicializa a data com o dia atual no fuso de Brasília
   const [date, setDate] = useState(() => {
-    const today = new Date();
-    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const agora = new Date();
+    const brasilia = agora.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }); 
+    return brasilia; // Retorna no formato YYYY-MM-DD
   });
 
   async function loadAppointments() {
@@ -52,7 +55,6 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
     return data.appointments.filter(a => a.professional.id === activeProfId);
   }, [data, activeProfId]);
 
-  // Lógica atualizada para incluir cancelados e pendentes
   const stats = useMemo(() => {
     const apps = filteredAppointments;
     return {
@@ -76,7 +78,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-white outline-none focus:border-violet-500"
+          className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-white outline-none focus:border-violet-500 [color-scheme:dark]"
         />
       </div>
 
@@ -85,22 +87,19 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
         <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           <button
             onClick={() => setActiveProfId(null)}
-            className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${activeProfId === null
-              ? "bg-violet-600 text-white"
-              : "bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800"
-              }`}
+            className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${
+              activeProfId === null ? "bg-violet-600 text-white" : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+            }`}
           >
             Geral
           </button>
-
           {data.professionals.map((prof) => (
             <button
               key={prof.id}
               onClick={() => setActiveProfId(prof.id)}
-              className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${activeProfId === prof.id
-                ? "bg-violet-600 text-white"
-                : "bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800"
-                }`}
+              className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${
+                activeProfId === prof.id ? "bg-violet-600 text-white" : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+              }`}
             >
               {prof.name}
             </button>
@@ -108,24 +107,23 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
         </div>
       )}
 
-      {/* GRID DE MÉTRICAS - Ajustado para 2x2 no mobile e 4 colunas no desktop */}
+      {/* GRID DE MÉTRICAS */}
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
-          <p className="text-xs md:text-sm text-zinc-500 font-bold uppercase">Total</p>
-          <p className="text-2xl md:text-3xl font-black text-white">{stats.total}</p>
+          <p className="text-xs text-zinc-500 font-bold uppercase">Total</p>
+          <p className="text-2xl font-black text-white">{stats.total}</p>
         </div>
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
-          <p className="text-xs md:text-sm text-zinc-500 font-bold uppercase">Confirmados</p>
-          <p className="text-2xl md:text-3xl font-black text-green-500">{stats.confirmed}</p>
+          <p className="text-xs text-zinc-500 font-bold uppercase">Confirmados</p>
+          <p className="text-2xl font-black text-green-500">{stats.confirmed}</p>
         </div>
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
-          <p className="text-xs md:text-sm text-zinc-500 font-bold uppercase">Finalizados</p>
-          <p className="text-2xl md:text-3xl font-black text-blue-500">{stats.completed}</p>
+          <p className="text-xs text-zinc-500 font-bold uppercase">Finalizados</p>
+          <p className="text-2xl font-black text-blue-500">{stats.completed}</p>
         </div>
-        {/* CARD DE CANCELADOS */}
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
-          <p className="text-xs md:text-sm text-zinc-500 font-bold uppercase">Cancelados</p>
-          <p className="text-2xl md:text-3xl font-black text-red-500">{stats.canceled}</p>
+          <p className="text-xs text-zinc-500 font-bold uppercase">Cancelados</p>
+          <p className="text-2xl font-black text-red-500">{stats.canceled}</p>
         </div>
       </div>
 
@@ -141,25 +139,27 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
             filteredAppointments.map((app) => (
               <div key={app.id} className="flex items-center justify-between p-4 gap-4">
                 <div className="flex-1">
+                  {/* CORREÇÃO DO HORÁRIO NA LISTA */}
                   <p className="text-[10px] font-bold text-violet-500 uppercase tracking-tight">
                     {new Date(app.startAt).toLocaleTimeString('pt-BR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      timeZone: 'America/Sao_Paulo' // Força Brasília
+                      hour: '2-digit', 
+                      minute:'2-digit',
+                      timeZone: 'America/Sao_Paulo'
                     })}
                   </p>
                   <p className="font-bold text-white text-sm md:text-base leading-tight">{app.client.name}</p>
                   <p className="text-xs text-zinc-500 truncate">{app.service.name} • {app.professional.name}</p>
                 </div>
-
-                <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-md border ${app.status === "CONFIRMED" ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                
+                <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-md border ${
+                  app.status === "CONFIRMED" ? "bg-green-500/10 text-green-500 border-green-500/20" :
                   app.status === "CANCELED" ? "bg-red-500/10 text-red-500 border-red-500/20" :
-                    app.status === "COMPLETED" ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
-                      "bg-zinc-800 text-zinc-400 border-zinc-700"
-                  }`}>
-                  {app.status === "CONFIRMED" ? "CONFIRMADO" :
-                    app.status === "CANCELED" ? "CANCELADO" :
-                      app.status === "COMPLETED" ? "FINALIZADO" : "PENDENTE"}
+                  app.status === "COMPLETED" ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
+                  "bg-zinc-800 text-zinc-400 border-zinc-700"
+                }`}>
+                  {app.status === "CONFIRMED" ? "CONFIRMADO" : 
+                   app.status === "CANCELED" ? "CANCELADO" : 
+                   app.status === "COMPLETED" ? "FINALIZADO" : "PENDENTE"}
                 </span>
               </div>
             ))
