@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
+import { formatBR } from "@/lib/date";
 
 type Service = {
   id: string;
@@ -498,13 +499,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                 <div className="mt-2 flex items-center justify-between">
                   <span>Horário</span>
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                    {selectedSlot
-                      ? new Date(selectedSlot).toLocaleString("pt-BR", {
-                         timeZone: "America/Sao_Paulo",
-                         dateStyle: "short",
-                         timeStyle: "short",
-                      })
-                      : "-"}
+                    {formatBR(selectedSlot, "dd/MM/yyyy, HH:mm")}
                   </span>
                 </div>
               </div>
