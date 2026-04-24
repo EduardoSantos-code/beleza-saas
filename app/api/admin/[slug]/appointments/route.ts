@@ -1,31 +1,24 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentMembershipBySlug } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { toZonedTime } from "date-fns-tz";
 
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ slug: string }> }
-) {
+export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params;
     const membership = await getCurrentMembershipBySlug(slug);
-
-    if (!membership) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-    }
+    if (!membership) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const date = searchParams.get("date");
+    const date = searchParams.get("date"); // Ex: 2026-04-23
+    if (!date) return NextResponse.json({ error: "Data não informada" }, { status: 400 });
 
-    if (!date) {
-      return NextResponse.json({ error: "Data não informada" }, { status: 400 });
-    }
+    const timeZone = 'America/Sao_Paulo';
+    
+    // Criamos o início e fim do dia forçando o fuso de Brasília
+    const start = toZonedTime(`${date}T00:00:00`, timeZone);
+    const end = toZonedTime(`${date}T23:59:59`, timeZone);
 
-    // Define o começo e o fim do dia solicitado
-    const start = new Date(`${date}T00:00:00`);
-    const end = new Date(`${date}T23:59:59`);
-
-    // Busca agendamentos, contagens e agora a LISTA DE PROFISSIONAIS
     const [appointments, professionals, servicesCount, professionalsCount] = await Promise.all([
       prisma.appointment.findMany({
         where: {
@@ -35,12 +28,8 @@ export async function GET(
         include: { client: true, service: true, professional: true },
         orderBy: { startAt: "asc" },
       }),
-      // Buscamos os profissionais ativos para preencher as abas no frontend
       prisma.professional.findMany({
-        where: { 
-          tenantId: membership.tenantId,
-          active: true 
-        },
+        where: { tenantId: membership.tenantId, active: true },
         select: { id: true, name: true }
       }),
       prisma.service.count({ where: { tenantId: membership.tenantId } }),
@@ -48,36 +37,20 @@ export async function GET(
     ]);
 
     return NextResponse.json({
-      tenant: {
-        id: membership.tenant.id,
-        name: membership.tenant.name,
-      },
+      tenant: { id: membership.tenant.id, name: membership.tenant.name },
       hasServices: servicesCount > 0,
       hasProfessionals: professionalsCount > 0,
-      professionals, // <-- Enviando a lista para as abas aparecerem
+      professionals,
       appointments: appointments.map((a) => ({
         id: a.id,
         startAt: a.startAt.toISOString(),
-        endAt: a.endAt.toISOString(),
         status: a.status,
-        notes: a.notes,
-        client: {
-          name: a.client.name,
-          phoneE164: a.client.phoneE164,
-        },
-        service: {
-          name: a.service.name,
-          priceCents: a.service.priceCents,
-          durationMin: a.service.durationMin,
-        },
-        professional: {
-          id: a.professional.id, // ID incluído para o filtro das abas funcionar
-          name: a.professional.name,
-        },
+        client: { name: a.client.name },
+        service: { name: a.service.name },
+        professional: { id: a.professional.id, name: a.professional.name },
       })),
     });
   } catch (error) {
-    console.error("Erro ao carregar agendamentos:", error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }

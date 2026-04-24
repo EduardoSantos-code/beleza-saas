@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatBR } from "@/lib/date"; // Usando a nossa nova ferramenta de fuso
 
 type AppointmentData = {
   id: string;
@@ -45,7 +46,7 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Erro ao cancelar.");
-      await loadData();
+      await loadData(); 
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -59,7 +60,7 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
   const primaryColor = data.tenant.primaryColor || "#7c3aed";
   const isCanceled = data.status === "CANCELED";
   
-  // Comparação de data passada ajustada para o fuso local
+  // Comparação de data para saber se o horário já passou
   const isPast = new Date(data.startAt) < new Date();
 
   return (
@@ -95,15 +96,13 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
               <span className="font-medium text-zinc-900">{data.professional.name}</span>
             </div>
             
-            {/* AQUI ESTÁ A CORREÇÃO DO FUSO HORÁRIO */}
             <div className="flex justify-between border-b border-zinc-100 pb-4">
               <span className="text-zinc-500">Data e Hora</span>
               <span className="font-medium text-zinc-900">
-                {new Date(data.startAt).toLocaleString("pt-BR", { 
-                  timeZone: "America/Sao_Paulo",
-                  dateStyle: "short", 
-                  timeStyle: "short" 
-                })}
+                {/* AQUI ESTÁ A MUDANÇA: 
+                   Usamos formatBR para garantir dd/MM/yyyy às HH:mm em Brasília
+                */}
+                {formatBR(data.startAt, "dd/MM/yyyy 'às' HH:mm")}
               </span>
             </div>
 
@@ -124,7 +123,6 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
           )}
 
           <div className="mt-6 text-center">
-            {/* Adicionamos o /s/ antes do slug para voltar para a tela de agendamento correta */}
             <a href={`/s/${slug}`} className="text-sm font-medium text-violet-600 hover:underline">
               Fazer novo agendamento
             </a>

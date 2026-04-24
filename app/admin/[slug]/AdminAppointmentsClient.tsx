@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formatBR } from "@/lib/date"; // Importando a nossa ferramenta de fuso
 
 type Appointment = {
   id: string;
@@ -30,7 +31,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
   const [date, setDate] = useState(() => {
     const agora = new Date();
     const brasilia = agora.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }); 
-    return brasilia; // Retorna no formato YYYY-MM-DD
+    return brasilia; 
   });
 
   async function loadAppointments() {
@@ -107,7 +108,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
         </div>
       )}
 
-      {/* GRID DE MÉTRICAS */}
+      {/* GRID DE MÉTRICAS - 2x2 no mobile */}
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
           <p className="text-xs text-zinc-500 font-bold uppercase">Total</p>
@@ -139,13 +140,11 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
             filteredAppointments.map((app) => (
               <div key={app.id} className="flex items-center justify-between p-4 gap-4">
                 <div className="flex-1">
-                  {/* CORREÇÃO DO HORÁRIO NA LISTA */}
+                  {/* CORREÇÃO DEFINITIVA DO HORÁRIO:
+                      Usando formatBR para mostrar apenas Hora:Minuto
+                  */}
                   <p className="text-[10px] font-bold text-violet-500 uppercase tracking-tight">
-                    {new Date(app.startAt).toLocaleTimeString('pt-BR', {
-                      hour: '2-digit', 
-                      minute:'2-digit',
-                      timeZone: 'America/Sao_Paulo'
-                    })}
+                    {formatBR(app.startAt, "HH:mm")}
                   </p>
                   <p className="font-bold text-white text-sm md:text-base leading-tight">{app.client.name}</p>
                   <p className="text-xs text-zinc-500 truncate">{app.service.name} • {app.professional.name}</p>
