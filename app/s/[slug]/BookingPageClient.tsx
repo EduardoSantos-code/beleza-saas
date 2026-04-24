@@ -256,14 +256,14 @@ export default function BookingPageClient({ slug }: { slug: string }) {
 
         {/* Conteúdo do Banner */}
         <div className="relative z-10 mx-auto flex min-h-[340px] max-w-6xl flex-col justify-end px-4 pb-8 pt-20 md:min-h-[380px] md:pb-12">
-          
+
           {/* Botão de Tema (com pointer-events-auto para ser clicável) */}
           <div className="absolute right-4 top-4 z-20 pointer-events-auto">
             <ThemeToggle />
           </div>
 
           <div className="pointer-events-none mt-auto text-white">
-            
+
             {/* Logo e Nome do Salão */}
             <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               {catalog.tenant.logoUrl ? (
@@ -415,10 +415,10 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                         style={
                           selected
                             ? {
-                                borderColor: primaryColor,
-                                backgroundColor: primaryColor,
-                                color: "white",
-                              }
+                              borderColor: primaryColor,
+                              backgroundColor: primaryColor,
+                              color: "white",
+                            }
                             : undefined
                         }
                       >
@@ -500,9 +500,10 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">
                     {selectedSlot
                       ? new Date(selectedSlot).toLocaleString("pt-BR", {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })
+                         timeZone: "America/Sao_Paulo",
+                         dateStyle: "short",
+                         timeStyle: "short",
+                      })
                       : "-"}
                   </span>
                 </div>
