@@ -12,21 +12,28 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
     }
 
     const { searchParams } = new URL(req.url);
-    const date = searchParams.get("date"); // Recebe ex: 2026-04-24
+    const date = searchParams.get("date");
     
     if (!date) {
       return NextResponse.json({ error: "Data não informada" }, { status: 400 });
     }
 
-    // A mágica acontece aqui: filtramos direto pela coluna de texto da data
     const [appointments, professionals, servicesCount, professionalsCount] = await Promise.all([
       prisma.appointment.findMany({
         where: {
           tenantId: membership.tenantId,
-          businessDate: date, 
+          businessDate: date,
+          // O PONTO 3 (FILTRO) ENTRARÁ AQUI DEPOIS, VAMOS FOCAR NO 1 E 2 AGORA
         },
-        include: { client: true, service: true, professional: true },
-        orderBy: { startMinutes: "asc" }, 
+        include: { 
+          client: true, 
+          service: true, 
+          professional: true 
+        },
+        // CORREÇÃO DO PONTO 2: Ordenando pelo minuto do dia (do menor para o maior)
+        orderBy: { 
+          startMinutes: "asc" 
+        },
       }),
       prisma.professional.findMany({
         where: { tenantId: membership.tenantId, active: true },
@@ -45,13 +52,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
         id: a.id,
         startAt: a.startAt.toISOString(),
         status: a.status,
-        client: { name: a.client.name },
-        service: { name: a.service.name },
+        // DADOS EXTRAS PARA O PONTO 1:
+        client: { 
+          name: a.client.name,
+          phone: a.client.phoneE164 // Enviando o WhatsApp
+        },
+        service: { 
+          name: a.service.name,
+          duration: a.service.durationMin, // Enviando a duração
+          price: a.service.priceCents // Enviando o preço
+        },
         professional: { id: a.professional.id, name: a.professional.name },
       })),
     });
   } catch (error) {
-    console.error("ERRO CRÍTICO API ADMIN:", error);
-    return NextResponse.json({ error: "Erro interno no servidor" }, { status: 500 });
+    console.error("ERRO API ADMIN:", error);
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }

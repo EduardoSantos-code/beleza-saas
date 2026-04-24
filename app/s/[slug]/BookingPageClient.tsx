@@ -180,8 +180,20 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    // VALIDAÇÕES MANUAIS ANTES DE ENVIAR
     if (!selectedSlot) {
-      setErrorMessage("Selecione um horário.");
+      setErrorMessage("Por favor, selecione um horário disponível.");
+      return;
+    }
+
+    if (clientName.trim().length < 3) {
+      setErrorMessage("Por favor, digite seu nome completo (mínimo 3 letras).");
+      return;
+    }
+
+    // Verifica se o telefone tem mais que o +55 (mínimo 12 caracteres: +55 + DDD + Numero)
+    if (clientPhoneE164.trim().length < 12) {
+      setErrorMessage("Por favor, digite o número do WhatsApp com DDD.");
       return;
     }
 
@@ -191,15 +203,13 @@ export default function BookingPageClient({ slug }: { slug: string }) {
 
       const res = await fetch(`/api/public/${slug}/appointments`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           serviceId,
           professionalId,
           startAt: selectedSlot, 
-          clientName,
-          clientPhoneE164,
+          clientName: clientName.trim(),
+          clientPhoneE164: clientPhoneE164.trim(),
           notes,
         }),
       });
@@ -210,7 +220,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
       try {
         data = JSON.parse(text);
       } catch {
-        throw new Error(`Resposta inválida da API de agendamento: ${text}`);
+        throw new Error(`Resposta inválida da API: ${text}`);
       }
 
       if (!res.ok) {
