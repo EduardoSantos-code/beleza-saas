@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentMembershipBySlug } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { toZonedTime } from "date-fns-tz";
+import { brToUtc } from "@/lib/date"; // Nossa nova função
 
 export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
@@ -10,20 +10,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
     if (!membership) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const date = searchParams.get("date"); // Ex: 2026-04-23
+    const date = searchParams.get("date"); // Recebe "2026-04-24"
     if (!date) return NextResponse.json({ error: "Data não informada" }, { status: 400 });
 
-    const timeZone = 'America/Sao_Paulo';
-    
-    // Criamos o início e fim do dia forçando o fuso de Brasília
-    const start = toZonedTime(`${date}T00:00:00`, timeZone);
-    const end = toZonedTime(`${date}T23:59:59`, timeZone);
+    // CRIAMOS A JANELA DE TEMPO EXATA DE BRASÍLIA
+    // O Prisma vai buscar o que aconteceu entre 00:00 e 23:59 de Brasília
+    const start = brToUtc(date, "00:00:00");
+    const end = brToUtc(date, "23:59:59");
 
     const [appointments, professionals, servicesCount, professionalsCount] = await Promise.all([
       prisma.appointment.findMany({
         where: {
           tenantId: membership.tenantId,
-          startAt: { gte: start, lte: end },
+          startAt: { gte: start, lte: end }, // Filtro blindado
         },
         include: { client: true, service: true, professional: true },
         orderBy: { startAt: "asc" },
@@ -43,7 +42,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       professionals,
       appointments: appointments.map((a) => ({
         id: a.id,
-        startAt: a.startAt.toISOString(),
+        startAt: a.startAt.toISOString(), // Enviamos em ISO pura
         status: a.status,
         client: { name: a.client.name },
         service: { name: a.service.name },

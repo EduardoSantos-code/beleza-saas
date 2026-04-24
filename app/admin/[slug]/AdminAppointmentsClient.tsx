@@ -26,7 +26,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
   const [data, setData] = useState<ResponseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeProfId, setActiveProfId] = useState<string | null>(null);
-  
+
   // Inicializa a data com o dia atual no fuso de Brasília
   const [date, setDate] = useState(() => {
     // Pega a data exata de hoje em Brasília no formato YYYY-MM-DD
@@ -90,9 +90,8 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
         <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           <button
             onClick={() => setActiveProfId(null)}
-            className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${
-              activeProfId === null ? "bg-violet-600 text-white" : "bg-zinc-900 text-zinc-400 border border-zinc-800"
-            }`}
+            className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${activeProfId === null ? "bg-violet-600 text-white" : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+              }`}
           >
             Geral
           </button>
@@ -100,9 +99,8 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
             <button
               key={prof.id}
               onClick={() => setActiveProfId(prof.id)}
-              className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${
-                activeProfId === prof.id ? "bg-violet-600 text-white" : "bg-zinc-900 text-zinc-400 border border-zinc-800"
-              }`}
+              className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${activeProfId === prof.id ? "bg-violet-600 text-white" : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+                }`}
             >
               {prof.name}
             </button>
@@ -145,22 +143,22 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
                   {/* CORREÇÃO DEFINITIVA DO HORÁRIO:
                       Usando formatBR para mostrar apenas Hora:Minuto
                   */}
+                  {/* Dentro do map de agendamentos */}
                   <p className="text-[10px] font-bold text-violet-500 uppercase tracking-tight">
                     {formatBR(app.startAt, "HH:mm")}
                   </p>
                   <p className="font-bold text-white text-sm md:text-base leading-tight">{app.client.name}</p>
                   <p className="text-xs text-zinc-500 truncate">{app.service.name} • {app.professional.name}</p>
                 </div>
-                
-                <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-md border ${
-                  app.status === "CONFIRMED" ? "bg-green-500/10 text-green-500 border-green-500/20" :
-                  app.status === "CANCELED" ? "bg-red-500/10 text-red-500 border-red-500/20" :
-                  app.status === "COMPLETED" ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
-                  "bg-zinc-800 text-zinc-400 border-zinc-700"
-                }`}>
-                  {app.status === "CONFIRMED" ? "CONFIRMADO" : 
-                   app.status === "CANCELED" ? "CANCELADO" : 
-                   app.status === "COMPLETED" ? "FINALIZADO" : "PENDENTE"}
+
+                <span className={`shrink-0 text-[10px] font-black px-2 py-1 rounded-md border ${app.status === "CONFIRMED" ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                    app.status === "CANCELED" ? "bg-red-500/10 text-red-500 border-red-500/20" :
+                      app.status === "COMPLETED" ? "bg-blue-500/10 text-blue-500 border-blue-500/20" :
+                        "bg-zinc-800 text-zinc-400 border-zinc-700"
+                  }`}>
+                  {app.status === "CONFIRMED" ? "CONFIRMADO" :
+                    app.status === "CANCELED" ? "CANCELADO" :
+                      app.status === "COMPLETED" ? "FINALIZADO" : "PENDENTE"}
                 </span>
               </div>
             ))
