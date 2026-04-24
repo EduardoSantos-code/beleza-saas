@@ -58,6 +58,18 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+  // PEÇA CHAVE: Descobrimos qual é o texto (label) do horário selecionado
+  const selectedSlotLabel = useMemo(() => {
+    return slots.find((s) => s.iso === selectedSlot)?.label || "";
+  }, [slots, selectedSlot]);
+
+  // Formata a data de exibição sem risco de pular um dia para trás
+  const displayDate = useMemo(() => {
+    if (!date) return "-";
+    const [year, month, day] = date.split("-");
+    return `${day}/${month}/${year}`;
+  }, [date]);
+
   useEffect(() => {
     async function loadCatalog() {
       try {
@@ -95,11 +107,10 @@ export default function BookingPageClient({ slug }: { slug: string }) {
           setProfessionalId(parsed.professionals[0].id);
         }
 
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, "0");
-        const dd = String(today.getDate()).padStart(2, "0");
-        setDate(`${yyyy}-${mm}-${dd}`);
+        // Define a data padrão como hoje em Brasília
+        const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+        setDate(hoje);
+
       } catch (err: any) {
         console.error("Erro ao carregar catálogo:", err);
         setErrorMessage(err.message || "Erro inesperado ao carregar catálogo");
@@ -177,9 +188,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
     try {
       setSubmitting(true);
       setErrorMessage("");
-      setSuccessMessage("");
 
-      // 1. Rota atualizada para a nova API
       const res = await fetch(`/api/public/${slug}/appointments`, {
         method: "POST",
         headers: {
@@ -188,7 +197,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
         body: JSON.stringify({
           serviceId,
           professionalId,
-          startAt: selectedSlot, // 2. Nome do campo ajustado para startAt
+          startAt: selectedSlot, 
           clientName,
           clientPhoneE164,
           notes,
@@ -208,12 +217,10 @@ export default function BookingPageClient({ slug }: { slug: string }) {
         throw new Error(data?.error || "Erro ao criar agendamento");
       }
 
-      // 3. Redireciona o cliente lendo data.id
       if (data?.id) {
         window.location.href = `/s/${slug}/a/${data.id}`;
       }
     } catch (err: any) {
-      console.error("Erro ao agendar:", err);
       setErrorMessage(err.message || "Erro inesperado ao agendar");
     } finally {
       setSubmitting(false);
@@ -245,7 +252,6 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors duration-200">
       <section className="relative w-full bg-zinc-900">
-        {/* Imagem de fundo e degradê */}
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
@@ -255,17 +261,12 @@ export default function BookingPageClient({ slug }: { slug: string }) {
           }}
         />
 
-        {/* Conteúdo do Banner */}
         <div className="relative z-10 mx-auto flex min-h-[340px] max-w-6xl flex-col justify-end px-4 pb-8 pt-20 md:min-h-[380px] md:pb-12">
-
-          {/* Botão de Tema (com pointer-events-auto para ser clicável) */}
           <div className="absolute right-4 top-4 z-20 pointer-events-auto">
             <ThemeToggle />
           </div>
 
           <div className="pointer-events-none mt-auto text-white">
-
-            {/* Logo e Nome do Salão */}
             <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
               {catalog.tenant.logoUrl ? (
                 <img
@@ -292,14 +293,12 @@ export default function BookingPageClient({ slug }: { slug: string }) {
               </div>
             </div>
 
-            {/* Descrição */}
             {catalog.tenant.publicDescription && (
               <p className="max-w-2xl text-sm text-white/90 md:text-base">
                 {catalog.tenant.publicDescription}
               </p>
             )}
 
-            {/* Pílulas de Contato/Endereço */}
             <div className="mt-5 flex flex-wrap gap-2 text-xs md:text-sm">
               {catalog.tenant.publicPhone && (
                 <span className="rounded-full bg-white/20 px-3 py-1.5 backdrop-blur-md">
@@ -317,7 +316,6 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                 </span>
               )}
             </div>
-
           </div>
         </div>
       </section>
@@ -369,7 +367,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full appearance-none text-left min-h-[50px] [&::-webkit-datetime-edit]:flex [&::-webkit-datetime-edit]:justify-start rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 [color-scheme:light_dark]"
+                  className="w-full appearance-none text-left min-h-[50px] rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 [color-scheme:light_dark]"
                 />
               </div>
 
@@ -416,10 +414,10 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                         style={
                           selected
                             ? {
-                              borderColor: primaryColor,
-                              backgroundColor: primaryColor,
-                              color: "white",
-                            }
+                                borderColor: primaryColor,
+                                backgroundColor: primaryColor,
+                                color: "white",
+                              }
                             : undefined
                         }
                       >
@@ -465,9 +463,6 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                   required
                 />
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  Use formato internacional. Ex.: +5511999999999
-                </p>
               </div>
 
               <div>
@@ -496,10 +491,12 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                       : "-"}
                   </span>
                 </div>
+                
+                {/* CORREÇÃO DO HORÁRIO: Mostra a data limpa e o texto exato do botão */}
                 <div className="mt-2 flex items-center justify-between">
                   <span>Horário</span>
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                    {formatBR(selectedSlot, "dd/MM/yyyy, HH:mm")}
+                    {displayDate} {selectedSlotLabel ? `, ${selectedSlotLabel}` : ""}
                   </span>
                 </div>
               </div>
@@ -507,12 +504,6 @@ export default function BookingPageClient({ slug }: { slug: string }) {
               {errorMessage && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
                   {errorMessage}
-                </div>
-              )}
-
-              {successMessage && (
-                <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400">
-                  {successMessage}
                 </div>
               )}
 
