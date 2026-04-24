@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentMembershipBySlug } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { brToUtc } from "@/lib/date";
+import { formatBR } from "@/lib/date";
 
 export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
@@ -10,18 +10,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
     if (!membership) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const date = searchParams.get("date"); 
-    if (!date) return NextResponse.json({ error: "Data não informada" }, { status: 400 });
+    const targetDate = searchParams.get("date"); // Recebe ex: "2026-04-24"
+    if (!targetDate) return NextResponse.json({ error: "Data não informada" }, { status: 400 });
 
-    // Janela de tempo travada em Brasília
-    const start = brToUtc(date, "00:00:00");
-    const end = brToUtc(date, "23:59:59");
+    // A FORÇA BRUTA: Vamos criar uma janela de busca de 3 dias para não depender do banco
+    // Pegamos do dia anterior até o dia seguinte
+    const baseDate = new Date(`${targetDate}T12:00:00Z`); // Meio dia UTC como base segura
+    const searchStart = new Date(baseDate.getTime() - 24 * 60 * 60 * 1000); // -1 dia
+    const searchEnd = new Date(baseDate.getTime() + 24 * 60 * 60 * 1000);   // +1 dia
 
-    const [appointments, professionals, servicesCount, professionalsCount] = await Promise.all([
+    const [rawAppointments, professionals, servicesCount, professionalsCount] = await Promise.all([
       prisma.appointment.findMany({
         where: {
           tenantId: membership.tenantId,
-          startAt: { gte: start, lte: end },
+          // Busca todo mundo dessa janela enorme de 3 dias
+          startAt: { gte: searchStart, lte: searchEnd }, 
         },
         include: { client: true, service: true, professional: true },
         orderBy: { startAt: "asc" },
@@ -34,12 +37,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       prisma.professional.count({ where: { tenantId: membership.tenantId } }),
     ]);
 
+    // O HACK: Filtramos na mão, dentro do JavaScript, usando o nosso formato de Brasília
+    // Se o agendamento cair no dia exato no fuso de SP, ele passa. Senão, é ignorado.
+    const filteredAppointments = rawAppointments.filter((app) => {
+      const appDateBR = formatBR(app.startAt, "yyyy-MM-dd");
+      return appDateBR === targetDate;
+    });
+
     return NextResponse.json({
       tenant: { id: membership.tenant.id, name: membership.tenant.name },
       hasServices: servicesCount > 0,
       hasProfessionals: professionalsCount > 0,
       professionals,
-      appointments: appointments.map((a) => ({
+      appointments: filteredAppointments.map((a) => ({
         id: a.id,
         startAt: a.startAt.toISOString(),
         status: a.status,
@@ -49,6 +59,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       })),
     });
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
