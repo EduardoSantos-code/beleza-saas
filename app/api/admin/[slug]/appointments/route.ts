@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentMembershipBySlug } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { brToUtc } from "@/lib/date"; // Nossa nova função
+import { brToUtc } from "@/lib/date";
 
 export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
@@ -10,11 +10,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
     if (!membership) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const date = searchParams.get("date"); // Recebe "2026-04-24"
+    const date = searchParams.get("date"); 
     if (!date) return NextResponse.json({ error: "Data não informada" }, { status: 400 });
 
-    // CRIAMOS A JANELA DE TEMPO EXATA DE BRASÍLIA
-    // O Prisma vai buscar o que aconteceu entre 00:00 e 23:59 de Brasília
+    // Janela de tempo travada em Brasília
     const start = brToUtc(date, "00:00:00");
     const end = brToUtc(date, "23:59:59");
 
@@ -22,7 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       prisma.appointment.findMany({
         where: {
           tenantId: membership.tenantId,
-          startAt: { gte: start, lte: end }, // Filtro blindado
+          startAt: { gte: start, lte: end },
         },
         include: { client: true, service: true, professional: true },
         orderBy: { startAt: "asc" },
@@ -42,7 +41,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
       professionals,
       appointments: appointments.map((a) => ({
         id: a.id,
-        startAt: a.startAt.toISOString(), // Enviamos em ISO pura
+        startAt: a.startAt.toISOString(),
         status: a.status,
         client: { name: a.client.name },
         service: { name: a.service.name },
