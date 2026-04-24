@@ -3,8 +3,7 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 enum MembershipRole {
@@ -65,19 +64,18 @@ enum TenantSubscriptionStatus {
 }
 
 model Tenant {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  timezone  String   @default("America/Sao_Paulo")
-  createdAt DateTime @default(now())
-
-  logoUrl           String?
-  heroImageUrl      String?
-  primaryColor      String? @default("#7c3aed")
+  id            String                    @id @default(cuid())
+  name          String
+  slug          String                    @unique
+  timezone      String                    @default("America/Sao_Paulo")
+  createdAt     DateTime                  @default(now())
+  logoUrl       String?
+  heroImageUrl  String?
+  primaryColor  String?                   @default("#7c3aed")
   publicDescription String?
-  publicPhone       String?
-  address           String?
-  instagram         String?
+  publicPhone   String?
+  address       String?
+  instagram     String?
 
   subscriptionStatus            TenantSubscriptionStatus @default(NONE)
   trialEndsAt                   DateTime?
@@ -101,13 +99,12 @@ model Tenant {
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String       @id @default(cuid())
   name         String
-  email        String   @unique
+  email        String       @unique
   passwordHash String
-  createdAt    DateTime @default(now())
-
-  memberships Membership[]
+  createdAt    DateTime     @default(now())
+  memberships  Membership[]
 }
 
 model Membership {
@@ -123,12 +120,11 @@ model Membership {
 }
 
 model Professional {
-  id       String  @id @default(cuid())
-  tenantId String
-  name     String
-  phoneE164 String?
-  active   Boolean @default(true)
-
+  id            String                     @id @default(cuid())
+  tenantId      String
+  name          String
+  phoneE164     String?
+  active        Boolean                    @default(true)
   tenant        Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointments  Appointment[]
   businessHours ProfessionalBusinessHour[]
@@ -138,13 +134,12 @@ model Professional {
 }
 
 model Service {
-  id          String  @id @default(cuid())
-  tenantId    String
-  name        String
-  durationMin Int
-  priceCents  Int
-  active      Boolean @default(true)
-
+  id           String        @id @default(cuid())
+  tenantId     String
+  name         String
+  durationMin  Int
+  priceCents   Int
+  active       Boolean       @default(true)
   tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointments Appointment[]
 
@@ -152,13 +147,12 @@ model Service {
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  tenantId  String
-  name      String
-  phoneE164 String
-  email     String?
-  createdAt DateTime @default(now())
-
+  id               String                    @id @default(cuid())
+  tenantId         String
+  name             String
+  phoneE164        String
+  email            String?
+  createdAt        DateTime                  @default(now())
   tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointments     Appointment[]
   inboundMessages  WhatsAppInboundMessage[]
@@ -174,6 +168,12 @@ model Appointment {
   professionalId String
   serviceId      String
   clientId       String
+  
+  timeZone       String            @default("America/Sao_Paulo")
+  businessDate   String            
+  startMinutes   Int               
+  endMinutes     Int               
+
   startAt        DateTime
   endAt          DateTime
   status         AppointmentStatus @default(PENDING)
@@ -189,6 +189,7 @@ model Appointment {
 
   @@index([tenantId, professionalId, startAt])
   @@index([tenantId, status])
+  @@index([tenantId, businessDate])
 }
 
 model Reminder {
@@ -214,8 +215,7 @@ model WhatsappConfig {
   verifyToken   String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model TenantBusinessHour {
@@ -229,44 +229,41 @@ model TenantBusinessHour {
   breakEndMin   Int?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, weekday])
   @@index([tenantId, weekday])
 }
 
 model ProfessionalBusinessHour {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   professionalId String
   weekday        Weekday
-  isOpen         Boolean  @default(false)
+  isOpen         Boolean      @default(false)
   startMin       Int?
   endMin         Int?
   breakStartMin  Int?
   breakEndMin    Int?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
 
   @@unique([professionalId, weekday])
   @@index([professionalId, weekday])
 }
 
 model ScheduleBlock {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   tenantId       String
   professionalId String?
   title          String
   startAt        DateTime
   endAt          DateTime
-  allDay         Boolean  @default(false)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  professional Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  allDay         Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  professional   Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, startAt])
   @@index([professionalId, startAt])
@@ -284,9 +281,8 @@ model WhatsAppInboundMessage {
   textBody      String?
   rawJson       Json
   createdAt     DateTime                   @default(now())
-
-  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  client Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  tenant        Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client        Client?                    @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, createdAt])
   @@index([clientId, createdAt])
@@ -303,9 +299,8 @@ model WhatsAppOutboundMessage {
   textBody      String
   rawJson       Json?
   createdAt     DateTime @default(now())
-
-  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  client Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client        Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, createdAt])
   @@index([clientId, createdAt])

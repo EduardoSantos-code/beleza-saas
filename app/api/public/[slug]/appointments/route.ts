@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 
 interface AppointmentBody {
   serviceId: string;
@@ -28,10 +29,22 @@ export async function POST(
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
-    const start = new Date(startAt);
-    const end = new Date(start.getTime() + service.durationMin * 60000);
+    const TZ = "America/Sao_Paulo";
 
-    // 1. Cria ou atualiza o cliente
+    // 1. Extração limpa de Data e Hora (evita bugs de fuso do navegador)
+    const rawDate = startAt.split("T")[0]; // Retorna "2026-04-24"
+    const rawTime = startAt.split("T")[1]?.substring(0, 5) || "00:00"; // Retorna "09:00"
+
+    // 2. Conversão para o instante UTC real para salvar no banco
+    const startUtc = fromZonedTime(`${rawDate}T${rawTime}:00`, TZ);
+    const endUtc = new Date(startUtc.getTime() + service.durationMin * 60000);
+
+    // 3. Cálculo dos minutos (A solução definitiva para a agenda)
+    const [hours, minutes] = rawTime.split(":").map(Number);
+    const startMinutes = hours * 60 + minutes;
+    const endMinutes = startMinutes + service.durationMin;
+
+    // 4. Cria ou atualiza o cliente
     const clientRecord = await prisma.client.upsert({
       where: {
         tenantId_phoneE164: { tenantId: tenant.id, phoneE164: clientPhoneE164 }
@@ -40,22 +53,31 @@ export async function POST(
       create: { tenantId: tenant.id, name: clientName, phoneE164: clientPhoneE164 }
     });
 
-    // 2. Cria o agendamento
+    // 5. Cria o agendamento preenchendo TODOS os campos novos
     const appointment = await prisma.appointment.create({
       data: {
         tenantId: tenant.id,
         serviceId,
         professionalId,
         clientId: clientRecord.id,
-        startAt: start,
-        endAt: end,
+        
+        // CAMPOS BLINDADOS (O que estava faltando no seu print)
+        businessDate: rawDate,
+        startMinutes: startMinutes,
+        endMinutes: endMinutes,
+        timeZone: TZ,
+
+        // HORÁRIOS GLOBAIS
+        startAt: startUtc,
+        endAt: endUtc,
+
         notes,
         status: "CONFIRMED",
       },
       include: { professional: true, service: true, tenant: true, client: true }
     });
 
-    // 3. Disparo de WhatsApp (Envolvido em try/catch para não travar a API)
+    // 6. Disparo de WhatsApp
     try {
       const token = process.env.WHATSAPP_MASTER_TOKEN;
       const phoneId = process.env.WHATSAPP_MASTER_PHONE_ID;
@@ -63,19 +85,10 @@ export async function POST(
       if (token && phoneId) {
         const url = `https://graph.facebook.com/v18.0/${phoneId}/messages`;
 
-        // DENTRO DO SEU ARQUIVO ROUTE.TS
-        const dateLabel = start.toLocaleDateString("pt-BR", {
-          timeZone: "America/Sao_Paulo",
-        });
+        const dateLabel = formatInTimeZone(startUtc, TZ, "dd/MM/yyyy");
+        const timeLabel = formatInTimeZone(startUtc, TZ, "HH:mm");
 
-        const timeLabel = start.toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: "America/Sao_Paulo",
-          hour12: false
-        });
-
-        // Mensagem Cliente
+        // Mensagem para o Cliente
         await fetch(url, {
           method: "POST",
           headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
@@ -87,7 +100,7 @@ export async function POST(
           }),
         });
 
-        // Mensagem Profissional
+        // Mensagem para o Profissional
         if (professional.phoneE164) {
           await fetch(url, {
             method: "POST",
@@ -102,10 +115,9 @@ export async function POST(
         }
       }
     } catch (wsError) {
-      console.error("Erro no disparo do WhatsApp, mas agendamento foi salvo:", wsError);
+      console.error("Erro no WhatsApp:", wsError);
     }
 
-    // SEMPRE retorna o agendamento como JSON, mesmo que o Zap falhe
     return NextResponse.json(appointment);
 
   } catch (error: any) {
