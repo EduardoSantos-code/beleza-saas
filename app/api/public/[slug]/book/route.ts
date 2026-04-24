@@ -1,24 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import { sendWhatsAppText } from "@/lib/whatsapp";
-import { z } from "zod";
 import { NextResponse } from "next/server";
-import { logWhatsAppOutboundMessage } from "@/lib/whatsapp-log";
-import { isTenantBillingActive } from "@/lib/billing";
+import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 
-const BookSchema = z.object({
-  serviceId: z.string().min(1),
-  professionalId: z.string().min(1),
-  startAtISO: z.string().min(1),
-  clientName: z.string().min(2),
-  clientPhoneE164: z.string().regex(/^\+\d{10,15}$/),
-  notes: z.string().max(500).optional().or(z.literal("")),
-});
-
-function formatDateTime(date: Date) {
-  return date.toLocaleString("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
+interface BookBody {
+  serviceId: string;
+  professionalId: string;
+  startAt: string;
+  clientName: string;
+  clientPhoneE164: string;
+  notes?: string;
 }
 
 export async function POST(
@@ -27,186 +17,96 @@ export async function POST(
 ) {
   try {
     const { slug } = await params;
-    const body = await req.json();
+    const body = (await req.json()) as BookBody;
 
-    const parsed = BookSchema.safeParse(body);
+    const { serviceId, professionalId, startAt, clientName, clientPhoneE164, notes } = body;
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Dados inválidos", details: parsed.error.flatten() },
-        { status: 400 }
-      );
+    const tenant = await prisma.tenant.findUnique({ where: { slug } });
+    const service = await prisma.service.findUnique({ where: { id: serviceId } });
+    const professional = await prisma.professional.findUnique({ where: { id: professionalId } });
+
+    if (!tenant || !service || !professional) {
+      return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
-    const tenant = await prisma.tenant.findUnique({
-      where: { slug },
-      include: {
-        whatsappConfig: true,
-      },
-    });
+    const TZ = "America/Sao_Paulo";
 
-    if (!tenant) {
-      return NextResponse.json(
-        { error: "Salão não encontrado" },
-        { status: 404 }
-      );
-    }
-    if (!isTenantBillingActive(tenant)) {
-      return NextResponse.json(
-        { error: "Este salão está temporariamente indisponível para novos agendamentos." },
-        { status: 402 }
-      );
-    }
+    // 1. EXTRAÇÃO DAS STRINGS (Blindagem contra fuso)
+    const rawDate = startAt.split("T")[0]; // "2026-04-24"
+    const rawTime = startAt.split("T")[1]?.substring(0, 5) || "00:00"; // "09:00"
 
-    const service = await prisma.service.findFirst({
+    // 2. CONVERSÃO PARA UTC REAL
+    const startUtc = fromZonedTime(`${rawDate}T${rawTime}:00`, TZ);
+    const endUtc = new Date(startUtc.getTime() + service.durationMin * 60000);
+
+    // 3. CÁLCULO DOS MINUTOS DO DIA (O que o Prisma está exigindo)
+    const [hours, minutes] = rawTime.split(":").map(Number);
+    const startMinutes = hours * 60 + minutes;
+    const endMinutes = startMinutes + service.durationMin;
+
+    // 4. Cria ou atualiza o cliente
+    const clientRecord = await prisma.client.upsert({
       where: {
-        id: parsed.data.serviceId,
-        tenantId: tenant.id,
-        active: true,
+        tenantId_phoneE164: { tenantId: tenant.id, phoneE164: clientPhoneE164 }
       },
+      update: { name: clientName },
+      create: { tenantId: tenant.id, name: clientName, phoneE164: clientPhoneE164 }
     });
 
-    const professional = await prisma.professional.findFirst({
-      where: {
-        id: parsed.data.professionalId,
-        tenantId: tenant.id,
-        active: true,
-      },
-    });
-
-    if (!service || !professional) {
-      return NextResponse.json(
-        { error: "Serviço ou profissional inválido" },
-        { status: 400 }
-      );
-    }
-
-    const startAt = new Date(parsed.data.startAtISO);
-
-    if (Number.isNaN(startAt.getTime())) {
-      return NextResponse.json(
-        { error: "Horário inválido" },
-        { status: 400 }
-      );
-    }
-
-    const endAt = new Date(startAt.getTime() + service.durationMin * 60 * 1000);
-
-    const conflict = await prisma.appointment.findFirst({
-      where: {
-        tenantId: tenant.id,
-        professionalId: professional.id,
-        status: { in: ["PENDING", "CONFIRMED"] },
-        startAt: { lt: endAt },
-        endAt: { gt: startAt },
-      },
-      select: { id: true },
-    });
-
-    if (conflict) {
-      return NextResponse.json(
-        { error: "Horário indisponível" },
-        { status: 409 }
-      );
-    }
-
-    const client = await prisma.client.upsert({
-      where: {
-        tenantId_phoneE164: {
-          tenantId: tenant.id,
-          phoneE164: parsed.data.clientPhoneE164,
-        },
-      },
-      create: {
-        tenantId: tenant.id,
-        name: parsed.data.clientName,
-        phoneE164: parsed.data.clientPhoneE164,
-      },
-      update: {
-        name: parsed.data.clientName,
-      },
-    });
-
+    // 5. CRIAÇÃO DO AGENDAMENTO (Agora com todos os campos obrigatórios)
     const appointment = await prisma.appointment.create({
       data: {
         tenantId: tenant.id,
         professionalId: professional.id,
         serviceId: service.id,
-        clientId: client.id,
-        startAt,
-        endAt,
+        clientId: clientRecord.id,
+        
+        // CAMPOS DO NEGÓCIO (Solução definitiva)
+        businessDate: rawDate,
+        startMinutes: startMinutes,
+        endMinutes: endMinutes,
+        timeZone: TZ,
+
+        // HORÁRIOS GLOBAIS
+        startAt: startUtc,
+        endAt: endUtc,
+
+        notes: notes || null,
         status: "CONFIRMED",
-        notes: parsed.data.notes || null,
       },
+      include: { professional: true, service: true, tenant: true, client: true }
     });
 
-    const sendAt = new Date(startAt.getTime() - 24 * 60 * 60 * 1000);
+    // 6. WhatsApp
+    try {
+      const token = process.env.WHATSAPP_MASTER_TOKEN;
+      const phoneId = process.env.WHATSAPP_MASTER_PHONE_ID;
 
-    if (sendAt > new Date()) {
-      await prisma.reminder.create({
-        data: {
-          appointmentId: appointment.id,
-          sendAt,
-        },
-      });
-    }
+      if (token && phoneId) {
+        const url = `https://graph.facebook.com/v18.0/${phoneId}/messages`;
+        const dateLabel = formatInTimeZone(startUtc, TZ, "dd/MM/yyyy");
+        const timeLabel = formatInTimeZone(startUtc, TZ, "HH:mm");
 
-    let whatsappSent = false;
-    let whatsappError: string | null = null;
-
-    if (tenant.whatsappConfig) {
-      try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-        const manageLink = `${appUrl}/s/${tenant.slug}/a/${appointment.id}`;
-
-        const confirmationText =
-          `Olá, ${client.name}! Seu agendamento foi confirmado.\n\n` +
-          `Salão: ${tenant.name}\n` +
-          `Serviço: ${service.name}\n` +
-          `Profissional: ${professional.name}\n` +
-          `Data e hora: ${formatDateTime(startAt)}\n\n` +
-          `Você pode ver os detalhes ou cancelar seu agendamento através deste link:\n` +
-          `${manageLink}`;
-
-        const waResponse = await sendWhatsAppText({
-          phoneNumberId: tenant.whatsappConfig.phoneNumberId,
-          accessToken: tenant.whatsappConfig.accessToken,
-          to: client.phoneE164,
-          text: confirmationText,
+        // Mensagem Cliente
+        await fetch(url, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: clientPhoneE164,
+            type: "text",
+            text: { body: `✅ *Agendamento Confirmado!*\n\nOlá ${clientName}, seu horário na *${tenant.name}* foi reservado.\n\n📅 *Data:* ${dateLabel}\n⏰ *Hora:* ${timeLabel}\n\n_TratoMarcado_` }
+          }),
         });
-
-        await logWhatsAppOutboundMessage({
-          tenantId: tenant.id,
-          clientId: client.id,
-          phoneNumberId: tenant.whatsappConfig.phoneNumberId,
-          toPhoneE164: client.phoneE164,
-          textBody: confirmationText,
-          waMessageId: waResponse?.messages?.[0]?.id ?? null,
-          rawJson: waResponse,
-        });
-
-        whatsappSent = true;
-      } catch (error: any) {
-        console.error("Erro ao enviar confirmação WhatsApp:", error);
-        whatsappError = error?.message || "Erro ao enviar WhatsApp";
       }
+    } catch (e) {
+      console.error("Erro zap:", e);
     }
 
-    return NextResponse.json(
-      {
-        ok: true,
-        appointmentId: appointment.id,
-        whatsappSent,
-        whatsappError,
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error("Erro em /api/public/[slug]/book:", error);
+    return NextResponse.json(appointment);
 
-    return NextResponse.json(
-      { error: "Erro interno ao criar agendamento" },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    console.error("Erro na rota book:", error);
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
