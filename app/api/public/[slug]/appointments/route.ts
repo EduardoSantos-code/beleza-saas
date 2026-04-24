@@ -62,9 +62,17 @@ export async function POST(
 
       if (token && phoneId) {
         const url = `https://graph.facebook.com/v18.0/${phoneId}/messages`;
-        
-        const dateLabel = start.toLocaleDateString("pt-BR");
-        const timeLabel = start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+        // Localize onde você define dateLabel e timeLabel e substitua:
+        const dateLabel = start.toLocaleDateString("pt-BR", {
+          timeZone: "America/Sao_Paulo",
+        });
+
+        const timeLabel = start.toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "America/Sao_Paulo",
+        });
 
         // Mensagem Cliente
         await fetch(url, {

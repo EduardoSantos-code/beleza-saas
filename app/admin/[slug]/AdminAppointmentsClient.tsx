@@ -86,8 +86,8 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
           <button
             onClick={() => setActiveProfId(null)}
             className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${activeProfId === null
-                ? "bg-violet-600 text-white"
-                : "bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800"
+              ? "bg-violet-600 text-white"
+              : "bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800"
               }`}
           >
             Geral
@@ -98,8 +98,8 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
               key={prof.id}
               onClick={() => setActiveProfId(prof.id)}
               className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${activeProfId === prof.id
-                  ? "bg-violet-600 text-white"
-                  : "bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800"
+                ? "bg-violet-600 text-white"
+                : "bg-zinc-900 text-zinc-400 border border-zinc-800 hover:bg-zinc-800"
                 }`}
             >
               {prof.name}
@@ -142,7 +142,11 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
               <div key={app.id} className="flex items-center justify-between p-4 gap-4">
                 <div className="flex-1">
                   <p className="text-[10px] font-bold text-violet-500 uppercase tracking-tight">
-                    {new Date(app.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(app.startAt).toLocaleTimeString('pt-BR', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      timeZone: 'America/Sao_Paulo' // Força Brasília
+                    })}
                   </p>
                   <p className="font-bold text-white text-sm md:text-base leading-tight">{app.client.name}</p>
                   <p className="text-xs text-zinc-500 truncate">{app.service.name} • {app.professional.name}</p>

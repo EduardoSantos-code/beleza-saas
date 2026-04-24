@@ -1,124 +1,114 @@
-"use client";
+import { prisma } from "@/lib/prisma";
+import { notFound } from "next/navigation";
+import Link from "next/link";
 
-import { useEffect, useState } from "react";
+export default async function ReceiptPage({
+  params,
+}: {
+  params: Promise<{ slug: string; id: string }>;
+}) {
+  const { id } = await params;
 
-type AppointmentData = {
-  id: string;
-  startAt: string;
-  status: "PENDING" | "CONFIRMED" | "CANCELED" | "COMPLETED";
-  service: { name: string; priceCents: number; durationMin: number };
-  professional: { name: string };
-  tenant: { name: string; primaryColor: string | null; logoUrl: string | null };
-};
+  // Busca o agendamento com todos os detalhes
+  const appointment = await prisma.appointment.findUnique({
+    where: { id },
+    include: {
+      tenant: true,
+      service: true,
+      professional: true,
+      client: true,
+    },
+  });
 
-export default function ManageAppointmentClient({ slug, id }: { slug: string; id: string }) {
-  const [data, setData] = useState<AppointmentData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [canceling, setCanceling] = useState(false);
-  const [error, setError] = useState("");
-
-  async function loadData() {
-    try {
-      const res = await fetch(`/api/public/${slug}/appointments/${id}`);
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Erro ao carregar dados.");
-      setData(json.appointment);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+  if (!appointment) {
+    return notFound();
   }
 
-  useEffect(() => {
-    loadData();
-  }, [slug, id]);
+  // CONFIGURAÇÃO DE FUSO HORÁRIO BRASÍLIA
+  const dateLabel = appointment.startAt.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Sao_Paulo",
+  });
 
-  async function handleCancel() {
-    const confirm = window.confirm("Tem certeza que deseja cancelar este agendamento?");
-    if (!confirm) return;
+  const timeLabel = appointment.startAt.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
 
-    try {
-      setCanceling(true);
-      const res = await fetch(`/api/public/${slug}/appointments/${id}`, {
-        method: "PATCH",
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Erro ao cancelar.");
-      await loadData(); // Recarrega para atualizar o status
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setCanceling(false);
-    }
-  }
-
-  if (loading) return <div className="p-10 text-center text-zinc-500">Carregando...</div>;
-  if (error || !data) return <div className="p-10 text-center text-red-500">{error || "Não encontrado"}</div>;
-
-  const primaryColor = data.tenant.primaryColor || "#7c3aed";
-  const isCanceled = data.status === "CANCELED";
-  const isPast = new Date(data.startAt) < new Date();
+  const primaryColor = appointment.tenant.primaryColor || "#7c3aed";
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-4 py-12">
-      <div className="mx-auto max-w-lg overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-zinc-200">
-        <div className="p-8 text-center" style={{ backgroundColor: primaryColor }}>
-          {data.tenant.logoUrl && (
-            <img src={data.tenant.logoUrl} alt="Logo" className="mx-auto mb-4 h-16 w-16 rounded-2xl object-cover shadow-md" />
-          )}
-          <h1 className="text-2xl font-bold text-white">{data.tenant.name}</h1>
-          <p className="text-white/80">Detalhes do Agendamento</p>
+    <main className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
+        
+        {/* Cabeçalho com o nome do Salão */}
+        <div className="p-8 text-center border-b border-zinc-800">
+          <div 
+            className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center text-2xl font-bold text-white shadow-lg"
+            style={{ backgroundColor: primaryColor }}
+          >
+            {appointment.tenant.name.charAt(0).toUpperCase()}
+          </div>
+          <h1 className="text-xl font-black text-white">{appointment.tenant.name}</h1>
+          <p className="text-zinc-500 text-sm mt-1">Recibo de Agendamento</p>
         </div>
 
-        <div className="p-8">
-          {isCanceled && (
-            <div className="mb-6 rounded-xl bg-red-50 p-4 text-center font-medium text-red-700">
-              Agendamento Cancelado
+        {/* Detalhes do "Trato" */}
+        <div className="p-8 space-y-6">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400">
+              📅
             </div>
-          )}
-          {data.status === "COMPLETED" && (
-            <div className="mb-6 rounded-xl bg-green-50 p-4 text-center font-medium text-green-700">
-              Atendimento Concluído
-            </div>
-          )}
-
-          <div className="space-y-4 text-zinc-700">
-            <div className="flex justify-between border-b border-zinc-100 pb-4">
-              <span className="text-zinc-500">Serviço</span>
-              <span className="font-medium text-zinc-900">{data.service.name}</span>
-            </div>
-            <div className="flex justify-between border-b border-zinc-100 pb-4">
-              <span className="text-zinc-500">Profissional</span>
-              <span className="font-medium text-zinc-900">{data.professional.name}</span>
-            </div>
-            <div className="flex justify-between border-b border-zinc-100 pb-4">
-              <span className="text-zinc-500">Data e Hora</span>
-              <span className="font-medium text-zinc-900">
-                {new Date(data.startAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
-              </span>
-            </div>
-            <div className="flex justify-between pb-2">
-              <span className="text-zinc-500">Valor</span>
-              <span className="font-medium text-zinc-900">R$ {(data.service.priceCents / 100).toFixed(2)}</span>
+            <div>
+              <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Data e Hora</p>
+              <p className="text-white font-bold">{dateLabel}</p>
+              <p className="text-violet-400 font-bold text-lg">{timeLabel}</p>
             </div>
           </div>
 
-          {!isCanceled && !isPast && data.status !== "COMPLETED" && (
-            <button
-              onClick={handleCancel}
-              disabled={canceling}
-              className="mt-8 w-full rounded-xl border border-red-200 bg-red-50 py-3 font-medium text-red-600 transition hover:bg-red-100 disabled:opacity-50"
-            >
-              {canceling ? "Cancelando..." : "Cancelar Agendamento"}
-            </button>
-          )}
-
-          <div className="mt-6 text-center">
-            <a href={`/s/${slug}`} className="text-sm font-medium text-violet-600 hover:underline">
-              Fazer novo agendamento
-            </a>
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400">
+              ✂️
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Serviço</p>
+              <p className="text-white font-bold">{appointment.service.name}</p>
+              <p className="text-zinc-400 text-sm">R$ {(appointment.service.priceCents / 100).toFixed(2)}</p>
+            </div>
           </div>
+
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400">
+              👤
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Profissional</p>
+              <p className="text-white font-bold">{appointment.professional.name}</p>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-zinc-800">
+            <p className="text-xs text-zinc-600 text-center">
+              Agendado por {appointment.client.name}
+            </p>
+          </div>
+        </div>
+
+        {/* Botão de Voltar/Home */}
+        <div className="p-6 bg-zinc-800/30">
+          <Link 
+            href={`/${appointment.tenant.slug}`}
+            className="block w-full py-4 text-center rounded-2xl font-black text-sm uppercase tracking-widest transition hover:brightness-110"
+            style={{ backgroundColor: primaryColor, color: '#fff' }}
+          >
+            Novo Agendamento
+          </Link>
+          <p className="text-[10px] text-zinc-600 text-center mt-4 uppercase tracking-tighter">
+            TratoMarcado • Sistema de Gestão
+          </p>
         </div>
       </div>
     </main>
