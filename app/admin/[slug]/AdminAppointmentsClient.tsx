@@ -29,15 +29,17 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
   
   // Inicializa a data com o dia atual no fuso de Brasília
   const [date, setDate] = useState(() => {
-    const agora = new Date();
-    const brasilia = agora.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" }); 
-    return brasilia; 
+    // Pega a data exata de hoje em Brasília no formato YYYY-MM-DD
+    return formatBR(new Date(), "yyyy-MM-dd");
   });
 
   async function loadAppointments() {
     try {
       setLoading(true);
-      const res = await fetch(`/api/admin/${slug}/appointments?date=${date}`);
+      // Forçamos a busca sem cache para garantir que venha o dado novo
+      const res = await fetch(`/api/admin/${slug}/appointments?date=${date}`, {
+        cache: 'no-store'
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Erro ao carregar");
       setData(json);
