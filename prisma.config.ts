@@ -1,11 +1,11 @@
 import { defineConfig } from '@prisma/config';
 import * as dotenv from 'dotenv';
 
-// Isso aqui é o que estava faltando: ele vai ler o seu arquivo .env
 dotenv.config();
 
 export default defineConfig({
   datasource: {
-    url: process.env.DATABASE_URL,
+    // Mudamos aqui para DIRECT_URL para ele conseguir criar as colunas
+    url: process.env.DIRECT_URL, 
   },
 });
