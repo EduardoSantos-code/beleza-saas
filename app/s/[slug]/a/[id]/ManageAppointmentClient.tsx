@@ -124,7 +124,8 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
           )}
 
           <div className="mt-6 text-center">
-            <a href={`/${slug}`} className="text-sm font-medium text-violet-600 hover:underline">
+            {/* Adicionamos o /s/ antes do slug para voltar para a tela de agendamento correta */}
+            <a href={`/s/${slug}`} className="text-sm font-medium text-violet-600 hover:underline">
               Fazer novo agendamento
             </a>
           </div>
