@@ -1,0 +1,72 @@
+[33m7af8a73[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{0}: reset: moving to 7af8a73
+[33m5eabe78[m[33m ([m[1;31morigin/main[m[33m)[m HEAD@{1}: commit: fix: atualização pagina de recibo
+[33m7af8a73[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{2}: commit: fix: atualização de painel
+[33mc538db9[m HEAD@{3}: commit: fix: blinda fuso horario no painel de admin
+[33m4dec187[m HEAD@{4}: commit: fix: atualia
+[33m2d31fb6[m HEAD@{5}: commit: fix: atualia
+[33mf0d867a[m HEAD@{6}: commit: fix: atualia
+[33m6401512[m HEAD@{7}: commit: fix: atualia funcoes da date-fns-tz para v3
+[33mb507709[m HEAD@{8}: commit: fix: atualia funcoes da date-fns-tz para v3
+[33m0d0b8f5[m HEAD@{9}: commit: fix: atualia funcoes da date-fns-tz para v3 e resolve erro de import
+[33ma97931e[m HEAD@{10}: commit: fix: atualiza funcoes da date-fns-tz para v3 e resolve erro de import
+[33m0e6bd37[m HEAD@{11}: commit: chore: instala date-fns para fix definitivo de fuso horario
+[33m90394c2[m HEAD@{12}: commit: chore: instala date-fns para fix definitivo de fuso horario
+[33mef0a8e0[m HEAD@{13}: commit: fix: blinda fuso horario no painel de admin
+[33mded9b8a[m HEAD@{14}: commit: fix: blinda fuso horario no painel de admin
+[33m35c9a57[m HEAD@{15}: commit: fix: corrige rota do link de novo agendamento para incluir o prefixo /s/
+[33mdd6635d[m HEAD@{16}: commit: fix: restaura design original e blinda fuso horario no recibo
+[33m0648474[m HEAD@{17}: commit: fix: unifica recibo e resolve erro de slug
+[33m4c70993[m HEAD@{18}: commit: feat: cria pagina de recibo com fuso horario de brasilia blindado
+[33m38cc159[m HEAD@{19}: commit: fix: correção painel
+[33m51d7852[m HEAD@{20}: commit: fix: restaura painel admin e habilita gestao completa de profissionais
+[33m54f1fcb[m HEAD@{21}: commit: fix: restaura painel admin e habilita gestao completa de profissionais
+[33mb8eb167[m HEAD@{22}: commit: correção agendamentos
+[33m479aef4[m HEAD@{23}: commit: fix: adiciona optional chaining para evitar crash na renderização da agenda
+[33m0e64609[m HEAD@{24}: commit: correção banco de dados prisma
+[33m257bc83[m HEAD@{25}: commit: criação de numeros para profissionais
+[33m5cbb137[m HEAD@{26}: commit: feat: conecta formulario publico de agendamento a nova API de disparo de whatsapp duplo
+[33me314a21[m HEAD@{27}: commit: feat: cria API de agendamento com disparo duplo de WhatsApp via central TratoMarcado
+[33mc24023b[m HEAD@{28}: commit: feat: cria API de agendamento com disparo duplo de WhatsApp via central TratoMarcado
+[33m56b7941[m HEAD@{29}: commit: feat: adiciona protecao de usuario e senha no painel master
+[33m75af021[m HEAD@{30}: commit: feat: cria painel master para gerenciar todos os saloes do TratoMarcado
+[33mea42e94[m HEAD@{31}: commit: chore: atualiza nome na guia do navegador para TratoMarcado
+[33ma58a669[m HEAD@{32}: commit: fix: atualiza nome do app
+[33mbd6af66[m HEAD@{33}: commit: fix: corrige alinhamento e altura do input de data no iphone safari
+[33mcb13714[m HEAD@{34}: commit: feat: implementa layout global com sidebar responsiva e modo escuro em todo o painel admin do TratoMarcado
+[33me190d39[m HEAD@{35}: commit: style: transforma cards de metricas em grid 2x2 no mobile
+[33m04b8277[m HEAD@{36}: commit: feat: adiciona layout de sidebar estilo youtube e suporte a modo escuro em todo o admin
+[33mced0261[m HEAD@{37}: commit: style: fixa modo claro e melhora proporcao do grid no painel de branding
+[33m461336a[m HEAD@{38}: commit: fix: corrige salvamento do campo minAdvanceHours no branding
+[33mf50dc8b[m HEAD@{39}: commit: feat: permite que salao configure horas de antecedencia minima para agendar two
+[33m61b0b3b[m HEAD@{40}: commit: feat: permite que salao configure horas de antecedencia minima para agendar
+[33m32ff480[m HEAD@{41}: commit: feat: substitui confirm nativo por modal do tailwind no logout
+[33m3ee6dd4[m HEAD@{42}: commit: feat: adiciona confirmacao antes do logout
+[33mbe26637[m HEAD@{43}: commit: style: destaca botao de sair com cor vermelha e largura total no mobile
+[33me9613ba[m HEAD@{44}: commit: style: transforma menu em dropdown responsivo com animacao suave
+[33m7adb1f0[m HEAD@{45}: commit: feat: adiciona botao magico para importar servicos de barbearia no onboarding
+[33mfd80c8e[m HEAD@{46}: commit: fix: corrige erro de sintaxe na rota de agendamentos para o onboarding
+[33m6964120[m HEAD@{47}: commit: style: melhora responsividade e espacamento do banner no celular
+[33m1d7fd09[m HEAD@{48}: commit: fix: adiciona aspas simples no url do banner css
+[33m736f43d[m HEAD@{49}: commit: feat: bloqueia alteracao de status para agendamentos cancelados ou concluidos
+[33mf0e6bb5[m HEAD@{50}: commit: fix: ajusta caminho de importacao do ThemeToggle
+[33m64c0ef7[m HEAD@{51}: commit: feat: aplica suporte a dark mode na tela publica de agendamento
+[33m873e293[m HEAD@{52}: commit: feat: adiciona trava de 2 horas de antecedencia para agendamentos online
+[33mfa12923[m HEAD@{53}: commit: fix: corrige chaves e redirecionamento no handleSubmit do agendamento
+[33m44e15bd[m HEAD@{54}: commit: fix: padroniza rota de atualizacao de agendamento com slug
+[33m0571fde[m HEAD@{55}: commit: feat: adiciona menu hamburger responsivo no painel admin
+[33m6465317[m HEAD@{56}: commit: style: transforma menu de botoes em carrossel horizontal no mobile
+[33mac510c6[m HEAD@{57}: commit: fix: add tailwind v3 config file
+[33mfbe1ecb[m HEAD@{58}: commit: security: update next.js to patch vulnerability
+[33m22fedc0[m HEAD@{59}: commit: fix: resolve TS error in webhook and ignore eslint on build
+[33m62b82da[m HEAD@{60}: commit: fix: downgrade tailwind config to v3 for stability
+[33m7aecad0[m HEAD@{61}: commit: fix: add missing @tailwindcss/postcss
+[33m417f04e[m HEAD@{62}: commit: fix: remove geist font and use inter from google fonts
+[33m7d88185[m HEAD@{63}: commit: fix: force legacy peer deps on vercel
+[33m5f5c56b[m HEAD@{64}: commit: fix: resolve npm peer dependencies
+[33maf73e94[m HEAD@{65}: Branch: renamed refs/heads/main to refs/heads/main
+[33maf73e94[m HEAD@{67}: Branch: renamed refs/heads/main to refs/heads/main
+[33maf73e94[m HEAD@{69}: Branch: renamed refs/heads/main to refs/heads/main
+[33maf73e94[m HEAD@{71}: Branch: renamed refs/heads/main to refs/heads/main
+[33maf73e94[m HEAD@{73}: Branch: renamed refs/heads/main to refs/heads/main
+[33maf73e94[m HEAD@{75}: Branch: renamed refs/heads/main to refs/heads/main
+[33maf73e94[m HEAD@{77}: commit (initial): primeira versao

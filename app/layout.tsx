@@ -10,16 +10,16 @@ export const metadata: Metadata = {
   description: 'Agendamento online prático e profissional.',
 }
 
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
-      <body className={inter.className}>
-        <Providers>{children}</Providers>
+    <html lang="pt-BR" suppressHydrationWarning className="dark">
+      <body 
+        className={`${inter.className} bg-black text-white antialiased`} 
+        suppressHydrationWarning // ADICIONE ISSO AQUI TAMBÉM
+      >
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

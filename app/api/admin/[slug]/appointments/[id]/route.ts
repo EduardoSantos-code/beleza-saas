@@ -1,38 +1,28 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-export async function GET(
-  req: Request,
+export async function PATCH(
+  req: Request, 
   { params }: { params: Promise<{ slug: string; id: string }> }
 ) {
   try {
-    const { slug, id } = await params;
+    const { id } = await params;
+    
+    // 1. Pegamos o status que o seu front-end enviou (COMPLETED ou CANCELED)
+    const body = await req.json();
+    const { status } = body;
 
-    const appointment = await prisma.appointment.findUnique({
+    // 2. Atualizamos com o status dinâmico
+    const updated = await prisma.appointment.update({
       where: { id },
-      include: {
-        tenant: { select: { name: true, slug: true } },
-        service: { select: { name: true, priceCents: true, durationMin: true } },
-        professional: { select: { name: true } },
-        client: { select: { name: true } },
+      data: { 
+        status: status // Agora ele vai salvar o que o botão mandou!
       },
     });
 
-    // Se não achou o agendamento
-    if (!appointment) {
-      console.error(`❌ Agendamento ${id} não encontrado no banco.`);
-      return NextResponse.json({ error: "Não encontrado" }, { status: 404 });
-    }
-
-    // Comparação de slug ignorando maiúsculas/minúsculas
-    if (appointment.tenant.slug.toLowerCase() !== slug.toLowerCase()) {
-      console.error(`❌ Slug incompatível: ${appointment.tenant.slug} vs ${slug}`);
-      return NextResponse.json({ error: "Slug inválido" }, { status: 403 });
-    }
-
-    return NextResponse.json(appointment);
+    return NextResponse.json({ ok: true, appointment: updated });
   } catch (error) {
-    console.error("❌ Erro na API de detalhes:", error);
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+    console.error("Erro na API Admin:", error);
+    return NextResponse.json({ error: "Erro ao atualizar" }, { status: 500 });
   }
 }

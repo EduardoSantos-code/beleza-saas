@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
-import { sendWhatsAppMessage } from "@/lib/whatsapp"; // Importando a nossa função nova
+import { formatInTimeZone } from "date-fns-tz";
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
@@ -9,7 +8,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const body = await req.json();
     const { serviceId, professionalId, startAt, clientName, clientPhoneE164, notes } = body;
 
-    // 1. VALIDAÇÃO DE SEGURANÇA
+    // VALIDAÇÃO DE SEGURANÇA
     if (!clientName || clientName.trim().length < 3) {
       return NextResponse.json({ error: "Nome inválido ou muito curto." }, { status: 400 });
     }
@@ -26,56 +25,52 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     }
 
     const TZ = "America/Sao_Paulo";
-    const rawDate = startAt.split("T")[0];
-    const rawTime = startAt.split("T")[1]?.substring(0, 5) || "00:00";
-    const startUtc = fromZonedTime(`${rawDate}T${rawTime}:00`, TZ);
+
+    // 1. A MÁGICA: O front-end já envia a data certinha em UTC. 
+    // Basta criar o objeto Date direto, sem quebrar o texto.
+    const startUtc = new Date(startAt);
+    
+    // Se a data for inválida, barramos aqui
+    if (isNaN(startUtc.getTime())) {
+      return NextResponse.json({ error: "Data de agendamento inválida." }, { status: 400 });
+    }
+
     const endUtc = new Date(startUtc.getTime() + service.durationMin * 60000);
 
-    const [hours, minutes] = rawTime.split(":").map(Number);
+    // 2. Extraindo a hora e data local (Brasil) para salvar os minutos e o businessDate no banco
+    const localTimeString = formatInTimeZone(startUtc, TZ, "HH:mm");
+    const localDateString = formatInTimeZone(startUtc, TZ, "yyyy-MM-dd");
+
+    const [hours, minutes] = localTimeString.split(":").map(Number);
     const startMinutes = hours * 60 + minutes;
     const endMinutes = startMinutes + service.durationMin;
 
-    // 2. CRIA OU ATUALIZA O CLIENTE
     const clientRecord = await prisma.client.upsert({
       where: { tenantId_phoneE164: { tenantId: tenant.id, phoneE164: clientPhoneE164 } },
       update: { name: clientName },
       create: { tenantId: tenant.id, name: clientName, phoneE164: clientPhoneE164 }
     });
 
-    // 3. CRIA O AGENDAMENTO NO BANCO
     const appointment = await prisma.appointment.create({
       data: {
         tenantId: tenant.id,
         serviceId,
         professionalId,
         clientId: clientRecord.id,
-        businessDate: rawDate,
+        businessDate: localDateString, 
         startMinutes,
         endMinutes,
         timeZone: TZ,
-        startAt: startUtc,
+        startAt: startUtc, // Salva a data cravada
         endAt: endUtc,
         notes,
         status: "CONFIRMED",
       }
     });
 
-    // 4. DISPARO DO WHATSAPP (Evolution API)
-    // Usamos um try/catch aqui para que, se o Zap falhar, o agendamento não seja cancelado
-    try {
-      const dateLabel = formatInTimeZone(startUtc, TZ, "dd/MM/yyyy");
-      const timeLabel = formatInTimeZone(startUtc, TZ, "HH:mm");
-
-      const message = `✅ *Agendamento Confirmado!*\n\nOlá *${clientName}*, seu horário na *${tenant.name}* foi reservado com sucesso.\n\n✂️ *Serviço:* ${service.name}\n📅 *Data:* ${dateLabel}\n⏰ *Hora:* ${timeLabel}\n\nTe esperamos lá!`;
-
-      await sendWhatsAppMessage(clientPhoneE164, message);
-    } catch (wsError) {
-      console.error("❌ Erro ao enviar mensagem de WhatsApp:", wsError);
-    }
-
     return NextResponse.json(appointment);
   } catch (error: any) {
-    console.error("❌ Erro interno na rota de agendamento:", error);
+    console.error(error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
