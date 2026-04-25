@@ -7,6 +7,7 @@ const INSTANCE_NAME = "TratoMarcado_Master";
 interface SendMessageOptions {
   to: string;
   text: string;
+  replyToMessageId?: string; // AGORA O TYPESCRIPT CONHECE ESSA PROPRIEDADE
   phoneNumberId?: string;
   accessToken?: string;
 }
@@ -17,19 +18,22 @@ export async function sendWhatsAppMessage(
 ) {
   let to: string;
   let message: string;
+  let replyToId: string | undefined;
 
+  // 1. Extraímos os dados independente do formato que venha
   if (typeof firstArg === "string") {
     to = firstArg;
     message = secondArg || "";
   } else {
     to = firstArg.to;
     message = firstArg.text;
+    replyToId = firstArg.replyToMessageId; // CAPTURAMOS O ID DA RESPOSTA
   }
 
   const cleanNumber = to.replace(/\D/g, "");
 
   if (!EVOLUTION_URL || !EVOLUTION_API_KEY) {
-    console.error("❌ Configuração ausente");
+    console.error("❌ Configuração Evolution ausente");
     return { success: false, data: null, messages: [] };
   }
 
@@ -42,22 +46,27 @@ export async function sendWhatsAppMessage(
       },
       body: JSON.stringify({
         number: cleanNumber,
-        options: { delay: 1200, presence: "composing" },
+        options: { 
+          delay: 1200, 
+          presence: "composing",
+          // 2. SE TIVER UM ID DE RESPOSTA, CONFIGURAMOS O 'QUOTED' PARA A EVOLUTION
+          ...(replyToId && { 
+            quoted: { 
+              key: { id: replyToId } 
+            } 
+          })
+        },
         textMessage: { text: message }
       }),
     });
 
     const data = await res.json();
-
-    // --- A SOLUÇÃO PARA O ERRO DE BUILD ---
-    // A Evolution API retorna o ID em data.key.id ou data.id
-    // Nós mapeamos isso para o formato que o seu reply/route.ts espera
     const messageId = data?.key?.id || data?.id || null;
 
     return { 
       success: res.ok, 
       data: data, 
-      messages: messageId ? [{ id: messageId }] : [] // Simula o formato da Meta
+      messages: messageId ? [{ id: messageId }] : [] 
     };
 
   } catch (error) {
