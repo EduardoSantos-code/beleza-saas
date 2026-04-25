@@ -1,134 +1,147 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { formatBR } from "@/lib/date"; // Usando a nossa nova ferramenta de fuso
-
-type AppointmentData = {
-  id: string;
-  startAt: string;
-  status: "PENDING" | "CONFIRMED" | "CANCELED" | "COMPLETED";
-  service: { name: string; priceCents: number; durationMin: number };
-  professional: { name: string };
-  tenant: { name: string; primaryColor: string | null; logoUrl: string | null };
-};
+import { useEffect, useState, useCallback } from "react";
+import { formatBR } from "@/lib/date";
+import { CheckCircle2, Calendar, Clock, Scissors, Phone, Printer } from "lucide-react";
 
 export default function ManageAppointmentClient({ slug, id }: { slug: string; id: string }) {
-  const [data, setData] = useState<AppointmentData | null>(null);
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [canceling, setCanceling] = useState(false);
-  const [error, setError] = useState("");
+  const [mounted, setMounted] = useState(false);
+  const [error, setError] = useState(false);
 
-  async function loadData() {
+  // 1. Evita erro de Hydration (espera o navegador carregar)
+  useEffect(() => { setMounted(true); }, []);
+
+  // 2. Função de carregamento com "Retry" (tenta 3 vezes se não achar)
+  const loadAppointment = useCallback(async (retryCount = 0) => {
     try {
       const res = await fetch(`/api/public/${slug}/appointments/${id}`);
+      
+      if (!res.ok) {
+        // Se deu 404 (Não achou), tenta de novo até 3 vezes com um intervalo
+        if (res.status === 404 && retryCount < 3) {
+          setTimeout(() => loadAppointment(retryCount + 1), 1500);
+          return;
+        }
+        setError(true);
+        setLoading(false);
+        return;
+      }
+
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Erro ao carregar dados.");
-      setData(json.appointment);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+      setData(json);
+      setLoading(false);
+    } catch (err) {
+      setError(true);
       setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    loadData();
   }, [slug, id]);
 
-  async function handleCancel() {
-    const confirm = window.confirm("Tem certeza que deseja cancelar este agendamento?");
-    if (!confirm) return;
+  useEffect(() => {
+    if (slug && id) loadAppointment();
+  }, [slug, id, loadAppointment]);
 
-    try {
-      setCanceling(true);
-      const res = await fetch(`/api/public/${slug}/appointments/${id}`, {
-        method: "PATCH",
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Erro ao cancelar.");
-      await loadData(); 
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setCanceling(false);
-    }
+  // Enquanto carrega ou monta a tela
+  if (!mounted || loading) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
+        <div className="w-10 h-10 border-4 border-violet-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">Confirmando reserva...</p>
+      </div>
+    );
   }
 
-  if (loading) return <div className="p-10 text-center text-zinc-500">Carregando...</div>;
-  if (error || !data) return <div className="p-10 text-center text-red-500">{error || "Não encontrado"}</div>;
-
-  const primaryColor = data.tenant.primaryColor || "#7c3aed";
-  const isCanceled = data.status === "CANCELED";
-  
-  // Comparação de data para saber se o horário já passou
-  const isPast = new Date(data.startAt) < new Date();
+  // Se após as tentativas não achar nada
+  if (error || !data?.tenant) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-6 text-center">
+        <div className="max-w-xs">
+          <p className="text-4xl mb-4">⏳</p>
+          <h2 className="text-white font-bold text-xl mb-2">Quase lá...</h2>
+          <p className="text-zinc-500 text-sm mb-6">Seu agendamento está sendo processado. Se não aparecer em instantes, verifique seu WhatsApp ou atualize a página.</p>
+          <button onClick={() => window.location.reload()} className="bg-violet-600 text-white px-8 py-3 rounded-2xl font-bold text-sm active:scale-95 transition">
+            Atualizar Agora
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-4 py-12">
-      <div className="mx-auto max-w-lg overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-zinc-200">
-        <div className="p-8 text-center" style={{ backgroundColor: primaryColor }}>
-          {data.tenant.logoUrl && (
-            <img src={data.tenant.logoUrl} alt="Logo" className="mx-auto mb-4 h-16 w-16 rounded-2xl object-cover shadow-md" />
-          )}
-          <h1 className="text-2xl font-bold text-white">{data.tenant.name}</h1>
-          <p className="text-white/80">Detalhes do Agendamento</p>
+    <div className="min-h-screen bg-black text-white p-4 flex flex-col items-center justify-center">
+      <div className="w-full max-w-md animate-in fade-in zoom-in duration-500">
+        
+        {/* Ícone de Sucesso */}
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mb-4 border border-green-500/20">
+            <CheckCircle2 className="w-10 h-10 text-green-500" />
+          </div>
+          <h1 className="text-3xl font-black italic uppercase tracking-tighter">Confirmado!</h1>
+          <p className="text-zinc-400 mt-2">Sua vaga está garantida na agenda.</p>
         </div>
 
-        <div className="p-8">
-          {isCanceled && (
-            <div className="mb-6 rounded-xl bg-red-50 p-4 text-center font-medium text-red-700">
-              Agendamento Cancelado
-            </div>
-          )}
-          {data.status === "COMPLETED" && (
-            <div className="mb-6 rounded-xl bg-green-50 p-4 text-center font-medium text-green-700">
-              Atendimento Concluído
-            </div>
-          )}
-
-          <div className="space-y-4 text-zinc-700">
-            <div className="flex justify-between border-b border-zinc-100 pb-4">
-              <span className="text-zinc-500">Serviço</span>
-              <span className="font-medium text-zinc-900">{data.service.name}</span>
-            </div>
-            <div className="flex justify-between border-b border-zinc-100 pb-4">
-              <span className="text-zinc-500">Profissional</span>
-              <span className="font-medium text-zinc-900">{data.professional.name}</span>
-            </div>
+        {/* Card do Recibo */}
+        <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
+          <div className="p-8 space-y-6">
             
-            <div className="flex justify-between border-b border-zinc-100 pb-4">
-              <span className="text-zinc-500">Data e Hora</span>
-              <span className="font-medium text-zinc-900">
-                {/* AQUI ESTÁ A MUDANÇA: 
-                   Usamos formatBR para garantir dd/MM/yyyy às HH:mm em Brasília
-                */}
-                {formatBR(data.startAt, "dd/MM/yyyy 'às' HH:mm")}
-              </span>
+            <div className="pb-6 border-b border-zinc-800">
+              <p className="text-[10px] font-bold text-violet-500 uppercase tracking-widest mb-1">Local do Atendimento</p>
+              <h2 className="text-2xl font-black">{data.tenant.name}</h2>
             </div>
 
-            <div className="flex justify-between pb-2">
-              <span className="text-zinc-500">Valor</span>
-              <span className="font-medium text-zinc-900">R$ {(data.service.priceCents / 100).toFixed(2)}</span>
+            <div className="space-y-5">
+              <div className="flex items-center gap-4">
+                <Calendar className="w-5 h-5 text-zinc-500" />
+                <div>
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase">Data</p>
+                  <p className="font-bold">{formatBR(data.startAt, "dd 'de' MMMM")}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <Clock className="w-5 h-5 text-zinc-500" />
+                <div>
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase">Horário</p>
+                  <p className="font-bold">{formatBR(data.startAt, "HH:mm")}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <Scissors className="w-5 h-5 text-zinc-500" />
+                <div>
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase">Serviço</p>
+                  <p className="font-bold">{data.service.name} <span className="text-zinc-500 font-normal">com</span> {data.professional.name}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-zinc-800 flex justify-between items-center">
+              <div>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase">Total</p>
+                <p className="text-2xl font-black text-white">R$ {(data.service.priceCents / 100).toFixed(2).replace('.', ',')}</p>
+              </div>
+              <span className="text-[10px] bg-zinc-800 px-3 py-1 rounded-lg font-bold text-zinc-400 uppercase">No Local</span>
             </div>
           </div>
 
-          {!isCanceled && !isPast && data.status !== "COMPLETED" && (
-            <button
-              onClick={handleCancel}
-              disabled={canceling}
-              className="mt-8 w-full rounded-xl border border-red-200 bg-red-50 py-3 font-medium text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+          <div className="bg-zinc-800/30 p-4 flex gap-2">
+            <button 
+              onClick={() => window.print()}
+              className="flex-1 py-4 bg-white text-black rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-zinc-200 transition flex items-center justify-center gap-2"
             >
-              {canceling ? "Cancelando..." : "Cancelar Agendamento"}
+              <Printer className="w-4 h-4" /> Imprimir
             </button>
-          )}
-
-          <div className="mt-6 text-center">
-            <a href={`/s/${slug}`} className="text-sm font-medium text-violet-600 hover:underline">
-              Fazer novo agendamento
+            <a 
+              href={`/s/${slug}`}
+              className="flex-1 py-4 bg-zinc-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest border border-zinc-700 hover:bg-zinc-700 transition text-center flex items-center justify-center"
+            >
+              Novo Agendamento
             </a>
           </div>
         </div>
+
       </div>
-    </main>
+    </div>
   );
 }

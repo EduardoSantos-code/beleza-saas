@@ -1,48 +1,36 @@
-type SendWhatsAppTextInput = {
-  phoneNumberId: string;
-  accessToken: string;
-  to: string;
-  text: string;
-  replyToMessageId?: string;
-};
+// lib/whatsapp.ts
 
-export async function sendWhatsAppText(input: SendWhatsAppTextInput) {
-  const apiVersion = process.env.WHATSAPP_API_VERSION || "v20.0";
-  const url = `https://graph.facebook.com/${apiVersion}/${input.phoneNumberId}/messages`;
+const EVOLUTION_URL = process.env.EVOLUTION_URL; // Ex: http://seu-ip:8080
+const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY; // Uma senha que você define
+const INSTANCE_NAME = "TratoMarcado_Master"; // Nome da conexão que você vai criar
 
-  const body: Record<string, unknown> = {
-    messaging_product: "whatsapp",
-    to: input.to.replace("+", ""),
-    type: "text",
-    text: {
-      preview_url: false,
-      body: input.text,
-    },
-  };
+export async function sendWhatsAppMessage(to: string, message: string) {
+  // Limpa o número: remove o '+' e garante que só tenha números
+  const cleanNumber = to.replace(/\D/g, "");
 
-  if (input.replyToMessageId) {
-    body.context = {
-      message_id: input.replyToMessageId,
-    };
+  try {
+    const res = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_NAME}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": EVOLUTION_API_KEY as string,
+      },
+      body: JSON.stringify({
+        number: cleanNumber,
+        options: {
+          delay: 1200, // Simula uma pessoa digitando (evita ban)
+          presence: "composing"
+        },
+        textMessage: {
+          text: message
+        }
+      }),
+    });
+
+    const data = await res.json();
+    return { success: res.ok, data };
+  } catch (error) {
+    console.error("❌ Erro Evolution API:", error);
+    return { success: false, error };
   }
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${input.accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    console.error("Erro WhatsApp API:", data);
-    throw new Error(
-      data?.error?.message || "Erro ao enviar mensagem pelo WhatsApp"
-    );
-  }
-
-  return data;
 }

@@ -1,13 +1,10 @@
-import ManageAppointmentClient from "./ManageAppointmentClient";
+// app/s/[slug]/a/[id]/page.tsx
 
-export default async function Page({
-  params,
-}: {
-  params: Promise<{ slug: string; id: string }>;
-}) {
-  // Pega as informações da URL de forma segura
+import AppointmentSuccessPage from "./ManageAppointmentClient"; // ou o nome que você deu
+
+export default async function Page({ params }: { params: Promise<{ slug: string; id: string }> }) {
+  // O SEGREDO: Você PRECISA dar await nos params antes de passar para o componente
   const { slug, id } = await params;
 
-  // Envia essas informações para o componente de design acima
-  return <ManageAppointmentClient slug={slug} id={id} />;
+  return <AppointmentSuccessPage slug={slug} id={id} />;
 }

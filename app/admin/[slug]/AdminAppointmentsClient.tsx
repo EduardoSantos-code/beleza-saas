@@ -9,7 +9,6 @@ type Appointment = {
   endAt: string;
   status: "PENDING" | "CONFIRMED" | "CANCELED" | "COMPLETED";
   notes?: string | null;
-  // CORREÇÃO 1: O nome aqui agora é apenas "phone" igual a API envia
   client: { name: string; phone: string };
   service: { name: string; price: number; duration: number };
   professional: { id: string; name: string };
@@ -27,6 +26,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
   const [data, setData] = useState<ResponseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeProfId, setActiveProfId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null); // Estado para o loading do botão
 
   const [date, setDate] = useState(() => {
     return formatBR(new Date(), "yyyy-MM-dd");
@@ -48,6 +48,27 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
     }
   }
 
+  // NOVA FUNÇÃO: Mudar Status (Finalizar/Cancelar)
+  async function handleStatusChange(id: string, newStatus: string) {
+    try {
+      setUpdatingId(id);
+      const res = await fetch(`/api/admin/${slug}/appointments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!res.ok) throw new Error("Erro ao atualizar");
+      
+      // Recarrega a lista para o item sumir e as métricas atualizarem
+      await loadAppointments();
+    } catch (err) {
+      alert("Erro ao atualizar o agendamento.");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
   useEffect(() => { loadAppointments(); }, [slug, date]);
 
   const professionalAppointments = useMemo(() => {
@@ -66,6 +87,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
     };
   }, [professionalAppointments]);
 
+  // Filtra para exibir apenas o que o barbeiro precisa ver agora
   const visibleAppointments = useMemo(() => {
     return professionalAppointments.filter(
       (a) => a.status !== "CANCELED" && a.status !== "COMPLETED"
@@ -153,28 +175,19 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
                   </div>
                   
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400">
-                    <p className="text-zinc-300 font-medium">
-                      {app.service.name}
-                    </p>
+                    <p className="text-zinc-300 font-medium">{app.service.name}</p>
                     <span className="hidden sm:inline text-zinc-700">•</span>
-                    <p>
-                      ⏱ {app.service.duration} min
-                    </p>
+                    <p>⏱ {app.service.duration} min</p>
                     <span className="hidden sm:inline text-zinc-700">•</span>
-                    <p>
-                      💰 R$ {(app.service.price / 100).toFixed(2).replace('.', ',')}
-                    </p>
+                    <p>💰 R$ {(app.service.price / 100).toFixed(2).replace('.', ',')}</p>
                     {activeProfId === null && (
                       <>
                         <span className="hidden sm:inline text-zinc-700">•</span>
-                        <p className="text-zinc-500">
-                          ✂️ {app.professional.name}
-                        </p>
+                        <p className="text-zinc-500">✂️ {app.professional.name}</p>
                       </>
                     )}
                   </div>
 
-                  {/* CORREÇÃO 2: Lê o app.client.phone e limpa os caracteres especiais pro Zap não bugar */}
                   {app.client.phone && (
                     <a 
                       href={`https://wa.me/${app.client.phone.replace(/\D/g, '')}`}
@@ -187,13 +200,27 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className={`text-[10px] font-black px-3 py-1.5 rounded-md border ${
-                      app.status === "CONFIRMED" ? "bg-green-500/10 text-green-500 border-green-500/20" :
-                      "bg-zinc-800 text-zinc-400 border-zinc-700"
-                    }`}>
-                    {app.status === "CONFIRMED" ? "CONFIRMADO" : "PENDENTE"}
-                  </span>
+                {/* BOTÕES DE AÇÃO */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    disabled={updatingId === app.id}
+                    onClick={() => handleStatusChange(app.id, "COMPLETED")}
+                    className="flex-1 md:flex-none bg-green-500/10 hover:bg-green-500 text-green-500 hover:text-white border border-green-500/20 px-3 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50"
+                  >
+                    {updatingId === app.id ? "..." : "Finalizar"}
+                  </button>
+                  
+                  <button
+                    disabled={updatingId === app.id}
+                    onClick={() => {
+                      if(confirm("Deseja realmente cancelar este horário?")) {
+                        handleStatusChange(app.id, "CANCELED");
+                      }
+                    }}
+                    className="flex-1 md:flex-none bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-3 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50"
+                  >
+                    {updatingId === app.id ? "..." : "Cancelar"}
+                  </button>
                 </div>
               </div>
             ))
