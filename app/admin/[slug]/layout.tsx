@@ -96,7 +96,7 @@ export default function AdminLayout({
           })}
         </nav>
 
-        <div className="border-t border-zinc-200 p-4 dark:border-zinc-800 space-y-4">
+        <div className="border-t border-zinc-200 p-4 pb-12 lg:pb-4 dark:border-zinc-800 space-y-4">
           <div className="hidden md:flex items-center justify-between px-2">
             <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Tema</span>
             <ThemeToggle />
