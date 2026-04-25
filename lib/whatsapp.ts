@@ -3,7 +3,7 @@
 const EVOLUTION_URL = process.env.EVOLUTION_URL; // Ex: http://seu-ip:8080
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY; // Uma senha que você define
 const INSTANCE_NAME = "TratoMarcado_Master"; // Nome da conexão que você vai criar
-
+export const sendWhatsAppText = sendWhatsAppMessage;
 export async function sendWhatsAppMessage(to: string, message: string) {
   // Limpa o número: remove o '+' e garante que só tenha números
   const cleanNumber = to.replace(/\D/g, "");
