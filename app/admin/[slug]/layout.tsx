@@ -34,7 +34,7 @@ export default function AdminLayout({
   if (!slug) return <>{children}</>;
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-zinc-950 md:flex-row">
+    <div className="flex min-h-[100dvh] flex-col bg-zinc-50 dark:bg-zinc-950 md:flex-row">
 
       {/* Barra superior (Apenas para Celular) */}
       <div className="flex items-center justify-between border-b border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 md:hidden">
