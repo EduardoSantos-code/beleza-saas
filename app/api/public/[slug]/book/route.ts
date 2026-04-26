@@ -150,7 +150,7 @@ export async function PATCH(
 
     const cancelledApp = await prisma.appointment.update({
       where: { id: appointmentId },
-      data: { status: "CANCELLED" },
+      data: { status: "CANCELED" },
       include: { 
         professional: true, 
         client: true,
