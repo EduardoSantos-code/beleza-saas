@@ -77,14 +77,26 @@ function HourTable({
 
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead className="bg-zinc-50 dark:bg-zinc-800/50">
-            <tr className="text-left text-zinc-600 dark:text-zinc-400">
-              <th className="px-4 py-3">Dia</th>
-              <th className="px-4 py-3">Aberto</th>
-              <th className="px-4 py-3">Início</th>
-              <th className="px-4 py-3">Fim</th>
-              <th className="px-4 py-3">Intervalo início</th>
-              <th className="px-4 py-3">Intervalo fim</th>
+          <thead className="bg-zinc-50/50 dark:bg-zinc-800/50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                Dia
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                Aberto
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                Início
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                Fim
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                Intervalo início
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+                Intervalo fim
+              </th>
             </tr>
           </thead>
 
@@ -122,7 +134,7 @@ function HourTable({
                         startMin: timeToMin(e.target.value),
                       })
                     }
-                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:disabled:bg-zinc-900 dark:disabled:text-zinc-600 [color-scheme:light_dark] outline-none focus:border-violet-500"
+                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 [color-scheme:light_dark]"
                   />
                 </td>
 
@@ -136,7 +148,7 @@ function HourTable({
                         endMin: timeToMin(e.target.value),
                       })
                     }
-                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:disabled:bg-zinc-900 dark:disabled:text-zinc-600 [color-scheme:light_dark] outline-none focus:border-violet-500"
+                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 [color-scheme:light_dark]"
                   />
                 </td>
 
@@ -150,7 +162,7 @@ function HourTable({
                         breakStartMin: timeToMin(e.target.value),
                       })
                     }
-                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:disabled:bg-zinc-900 dark:disabled:text-zinc-600 [color-scheme:light_dark] outline-none focus:border-violet-500"
+                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 [color-scheme:light_dark]"
                   />
                 </td>
 
@@ -164,7 +176,7 @@ function HourTable({
                         breakEndMin: timeToMin(e.target.value),
                       })
                     }
-                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:disabled:bg-zinc-900 dark:disabled:text-zinc-600 [color-scheme:light_dark] outline-none focus:border-violet-500"
+                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 [color-scheme:light_dark]"
                   />
                 </td>
               </tr>
@@ -285,12 +297,12 @@ export default function HoursSettingsClient({ slug }: { slug: string }) {
         </div>
 
         <div className="flex gap-3">
-          <a
-            href={`/admin/${slug}`}
-            className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition"
+          <button
+            onClick={() => window.location.href = `/admin/${slug}`}
+            className="rounded-xl border border-zinc-300 bg-white px-6 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             Voltar para agenda
-          </a>
+          </button>
 
           <button
             type="button"

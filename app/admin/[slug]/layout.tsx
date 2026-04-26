@@ -100,17 +100,30 @@ export default function AdminLayout({
 
     {/* FUNDO: Rodapé fixo com botão de Sair */}
     <div className="shrink-0 border-t border-zinc-200 p-4 pb-12 dark:border-zinc-800 space-y-4 bg-white dark:bg-zinc-900">
-      <div className="hidden md:flex items-center justify-between px-2">
-        <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Tema</span>
-        <ThemeToggle />
-      </div>
       <LogoutButton />
     </div>
   </aside>
 
   {/* Conteúdo Principal */}
-  <main className="flex-1 w-full overflow-x-hidden p-4 md:p-8 lg:p-10">
+  <main className="flex-1 w-full overflow-x-hidden">
+    <header className="h-16 flex items-center justify-between px-8 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hidden md:flex">
+      <h1 className="text-lg font-semibold text-zinc-900 dark:text-white">Painel Admin</h1>
+      <div className="flex items-center gap-4">
+        <ThemeToggle />
+        <div className="flex items-center gap-3 pl-4 border-l border-zinc-200 dark:border-zinc-800">
+          <div className="flex flex-col text-right hidden sm:flex">
+            <span className="text-sm font-semibold text-zinc-900 dark:text-white">Eduardo</span>
+            <span className="text-xs text-zinc-500">Administrador</span>
+          </div>
+          <div className="h-9 w-9 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-white dark:ring-zinc-900">
+            E
+          </div>
+        </div>
+      </div>
+    </header>
+    <div className="p-4 md:p-8 lg:p-10">
     {children}
+    </div>
   </main>
 </div>
   );

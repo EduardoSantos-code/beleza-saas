@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatBR } from "@/lib/date"; 
+import { Calendar } from "lucide-react";
 
 type Appointment = {
   id: string;
@@ -101,14 +102,19 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
       <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-bold uppercase tracking-widest text-violet-500">Painel Interno</p>
-          <h1 className="mt-1 text-3xl font-black text-white">{data?.tenant.name}</h1>
+          <h2 className="text-4xl font-extrabold text-zinc-900 dark:text-white tracking-tighter">
+            {data?.tenant.name}
+          </h2>
         </div>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-white outline-none focus:border-violet-500 [color-scheme:dark]"
-        />
+        <div className="relative">
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+          />
+          <button className="flex items-center gap-3 px-5 py-2.5 rounded-xl font-bold transition-all border   /* Modo Claro */   bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50   /* Modo Escuro */   dark:bg-zinc-900 dark:border-zinc-800 dark:text-white dark:hover:bg-zinc-800" >   <span>{date.split('-').reverse().join('/')}</span>   <Calendar size={18} className="text-violet-600" /> </button>
+        </div>
       </div>
 
       {/* ABAS DE PROFISSIONAIS */}
@@ -116,8 +122,11 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
         <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           <button
             onClick={() => setActiveProfId(null)}
-            className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${activeProfId === null ? "bg-violet-600 text-white" : "bg-zinc-900 text-zinc-400 border border-zinc-800"
-              }`}
+            className={`shrink-0 px-6 py-2 rounded-full font-bold transition-all ${
+              activeProfId === null
+                ? "bg-violet-600 text-white"
+                : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+            }`}
           >
             Geral
           </button>
@@ -125,8 +134,11 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
             <button
               key={prof.id}
               onClick={() => setActiveProfId(prof.id)}
-              className={`shrink-0 rounded-full px-6 py-2 text-sm font-bold transition ${activeProfId === prof.id ? "bg-violet-600 text-white" : "bg-zinc-900 text-zinc-400 border border-zinc-800"
-                }`}
+              className={`shrink-0 px-6 py-2 rounded-full font-bold transition-all ${
+                activeProfId === prof.id
+                  ? "bg-violet-600 text-white"
+                  : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+              }`}
             >
               {prof.name}
             </button>
@@ -136,53 +148,54 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
 
       {/* GRID DE MÉTRICAS */}
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
-          <p className="text-xs text-zinc-500 font-bold uppercase">Total</p>
-          <p className="text-2xl font-black text-white">{stats.total}</p>
+        <div className="rounded-2xl p-6 transition-all border bg-white border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-none">
+          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Total</p>
+          <p className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">{stats.total}</p>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
-          <p className="text-xs text-zinc-500 font-bold uppercase">Confirmados</p>
-          <p className="text-2xl font-black text-green-500">{stats.confirmed}</p>
+        <div className="rounded-2xl p-6 transition-all border bg-white border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-none">
+          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Confirmados</p>
+          <p className="mt-2 text-3xl font-bold text-green-600 dark:text-green-500">{stats.confirmed}</p>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
-          <p className="text-xs text-zinc-500 font-bold uppercase">Finalizados</p>
-          <p className="text-2xl font-black text-blue-500">{stats.completed}</p>
+        <div className="rounded-2xl p-6 transition-all border bg-white border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-none">
+          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Finalizados</p>
+          <p className="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-500">{stats.completed}</p>
         </div>
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4 md:p-6">
-          <p className="text-xs text-zinc-500 font-bold uppercase">Cancelados</p>
-          <p className="text-2xl font-black text-red-500">{stats.canceled}</p>
+        <div className="rounded-2xl p-6 transition-all border bg-white border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-none">
+          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Cancelados</p>
+          <p className="mt-2 text-3xl font-bold text-red-600 dark:text-red-500">{stats.canceled}</p>
         </div>
       </div>
 
       {/* LISTA DE AGENDAMENTOS */}
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden">
-        <div className="border-b border-zinc-800 p-4">
-          <h2 className="font-bold text-white">
+      <div className="mt-8 overflow-hidden rounded-3xl border    /* Modo Claro */   bg-white border-zinc-200    /* Modo Escuro */   dark:bg-zinc-900 dark:border-zinc-800">
+        <div className="px-8 py-5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
+          <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
             {activeProfId ? `Agenda: ${data?.professionals.find(p => p.id === activeProfId)?.name}` : "Próximos Atendimentos"}
-          </h2>
+          </h3>
         </div>
-        <div className="divide-y divide-zinc-800">
+
+        <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
           {visibleAppointments.length > 0 ? (
             visibleAppointments.map((app) => (
-              <div key={app.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4 transition hover:bg-zinc-800/50">
+              <div key={app.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 gap-4 transition hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                 
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <p className="text-[14px] font-bold text-violet-500 uppercase tracking-tight bg-violet-500/10 px-2 py-1 rounded-md">
                       {formatBR(app.startAt, "HH:mm")}
                     </p>
-                    <p className="font-bold text-white text-lg leading-tight">{app.client.name}</p>
+                    <p className="font-bold text-zinc-900 dark:text-white text-lg leading-tight">{app.client.name}</p>
                   </div>
                   
                   <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400">
-                    <p className="text-zinc-300 font-medium">{app.service.name}</p>
-                    <span className="hidden sm:inline text-zinc-700">•</span>
+                    <p className="text-zinc-600 dark:text-zinc-300 font-medium">{app.service.name}</p>
+                    <span className="hidden sm:inline text-zinc-300 dark:text-zinc-700">•</span>
                     <p>⏱ {app.service.duration} min</p>
-                    <span className="hidden sm:inline text-zinc-700">•</span>
+                    <span className="hidden sm:inline text-zinc-300 dark:text-zinc-700">•</span>
                     <p>💰 R$ {(app.service.price / 100).toFixed(2).replace('.', ',')}</p>
                     {activeProfId === null && (
                       <>
-                        <span className="hidden sm:inline text-zinc-700">•</span>
+                        <span className="hidden sm:inline text-zinc-300 dark:text-zinc-700">•</span>
                         <p className="text-zinc-500">✂️ {app.professional.name}</p>
                       </>
                     )}
@@ -225,9 +238,11 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
               </div>
             ))
           ) : (
-            <div className="p-12 flex flex-col items-center justify-center gap-2">
-              <span className="text-4xl">🎉</span>
-              <p className="text-center text-zinc-500 font-medium">Todos os atendimentos concluídos ou lista vazia.</p>
+            <div className="p-12 flex flex-col items-center justify-center min-h-[350px]">
+              <span className="text-4xl mb-4">🎉</span>
+              <p className="text-zinc-500 dark:text-zinc-400 font-medium text-center max-w-[250px]">
+                Todos os atendimentos concluídos ou lista vazia.
+              </p>
             </div>
           )}
         </div>

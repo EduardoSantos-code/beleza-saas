@@ -99,12 +99,12 @@ export default function MetricsClient({ slug }: { slug: string }) {
         <select
           value={range}
           onChange={(e) => setRange(e.target.value)}
-          className="w-full lg:w-auto rounded-xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3 text-sm shadow-sm"
+          className="w-full lg:w-auto rounded-xl px-4 py-3 text-sm font-medium shadow-sm outline-none transition-all bg-white border-zinc-200 text-zinc-900 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
         >
-          <option value="1">Hoje</option>
-          <option value="7">Últimos 7 dias</option>
-          <option value="30">Últimos 30 dias</option>
-          <option value="90">Últimos 90 dias</option>
+          <option value="1" className="text-zinc-900 dark:text-white">Hoje</option>
+          <option value="7" className="text-zinc-900 dark:text-white">Últimos 7 dias</option>
+          <option value="30" className="text-zinc-900 dark:text-white">Últimos 30 dias</option>
+          <option value="90" className="text-zinc-900 dark:text-white">Últimos 90 dias</option>
         </select>
       </div>
 
@@ -130,7 +130,7 @@ export default function MetricsClient({ slug }: { slug: string }) {
         />
         <Card
           title="Clientes"
-          value={data.summary.totalClients.toString()}
+          value={data.summary.totalClients}
           color="text-zinc-900 dark:text-white"
           className="p-3 md:p-6"
         />
@@ -161,7 +161,13 @@ export default function MetricsClient({ slug }: { slug: string }) {
                 />
                 <Tooltip
                   cursor={false}
-                  contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                  contentStyle={{
+                    backgroundColor: typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? '#18181b' : '#fff',
+                    border: '1px solid #e4e4e7',
+                    borderRadius: '8px',
+                    fontSize: '12px'
+                  }}
+                  itemStyle={{ color: '#8b5cf6' }}
                 />
                 <Bar
                   dataKey="faturamento"
