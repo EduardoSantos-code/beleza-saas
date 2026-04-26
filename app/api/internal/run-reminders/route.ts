@@ -10,6 +10,8 @@ export async function GET(req: Request) {
     // 1. Segurança: Verifique uma chave secreta para ninguém externo disparar seus envios
     const { searchParams } = new URL(req.url);
     const cronKey = searchParams.get("key");
+    console.log("Chave que veio na URL:", cronKey);
+    console.log("Chave que está no .env:", process.env.CRON_SECRET);
     if (cronKey !== process.env.CRON_SECRET) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
