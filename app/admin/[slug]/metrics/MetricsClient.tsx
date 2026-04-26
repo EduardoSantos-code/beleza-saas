@@ -282,19 +282,20 @@ export default function MetricsClient({ slug }: { slug: string }) {
   );
 }
 
-function Card({
-  title,
-  value,
-  color = "text-zinc-900 dark:text-white",
-}: {
+interface CardProps {
   title: string;
-  value: string;
+  value: string | number;
   color?: string;
-}) {
+  className?: string;
+}
+
+function Card({ title, value, color, className }: CardProps) {
   return (
-    <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+    <div className={`rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800 ${className}`}>
       <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
-      <p className={`mt-2 text-2xl font-bold ${color}`}>{value}</p>
+      <p className={`mt-2 text-2xl font-bold ${color || 'text-zinc-900 dark:text-white'}`}>
+        {value}
+      </p>
     </div>
   );
 }
