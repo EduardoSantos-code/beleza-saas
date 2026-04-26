@@ -76,3 +76,28 @@ export async function sendWhatsAppMessage(
 }
 
 export const sendWhatsAppText = sendWhatsAppMessage;
+
+export async function sendZap(to: string, text: string) {
+  try {
+    const url = `${process.env.EVOLUTION_API_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE}`;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+
+    if (!url || !apiKey || !to) return;
+
+    // Limpa o número (remove espaços, traços e garante o 55)
+    const cleanNumber = to.replace(/\D/g, "");
+    const formattedNumber = cleanNumber.startsWith("55") ? cleanNumber : `55${cleanNumber}`;
+
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": apiKey },
+      body: JSON.stringify({
+        number: formattedNumber,
+        text: text,
+        delay: 1000,
+      }),
+    });
+  } catch (error) {
+    console.error("Erro Evolution API:", error);
+  }
+}

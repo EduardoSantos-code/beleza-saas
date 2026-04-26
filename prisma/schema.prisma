@@ -189,6 +189,7 @@ model Appointment {
   service      Service      @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   client       Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
   reminder     Reminder?
+  reminderSent Boolean      @default(false)
 
   @@index([tenantId, professionalId, startAt])
   @@index([tenantId, status])

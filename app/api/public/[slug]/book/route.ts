@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
+import { sendZap } from "@/lib/whatsapp";
 
 interface BookBody {
   serviceId: string;
@@ -10,6 +11,27 @@ interface BookBody {
   clientPhoneE164: string;
   notes?: string;
 }
+
+const sendEvolutionMessage = async (to: string, text: string) => {
+  try {
+    const url = `${process.env.EVOLUTION_API_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE}`;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+
+    if (!process.env.EVOLUTION_API_URL || !apiKey) return;
+
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": apiKey },
+      body: JSON.stringify({
+        number: to,
+        text: text,
+        delay: 1000,
+      }),
+    });
+  } catch (error) {
+    console.error("Erro ao enviar WhatsApp:", error);
+  }
+};
 
 export async function POST(
   req: Request,
@@ -77,30 +99,37 @@ export async function POST(
       include: { professional: true, service: true, tenant: true, client: true }
     });
 
-    // 6. WhatsApp
+    // 6. WhatsApp Notification
     try {
-      const token = process.env.WHATSAPP_MASTER_TOKEN;
-      const phoneId = process.env.WHATSAPP_MASTER_PHONE_ID;
+      const dateLabel = formatInTimeZone(startUtc, TZ, "dd/MM/yyyy");
+      const timeLabel = formatInTimeZone(startUtc, TZ, "HH:mm");
 
-      if (token && phoneId) {
-        const url = `https://graph.facebook.com/v18.0/${phoneId}/messages`;
-        const dateLabel = formatInTimeZone(startUtc, TZ, "dd/MM/yyyy");
-        const timeLabel = formatInTimeZone(startUtc, TZ, "HH:mm");
+      // NOTIFICAR BARBEIRO
+      if (appointment.professional?.phoneE164) {
+        const msgBarbeiro = `🚨 *Novo Cliente na área!*\n\n` +
+          `Fala, *${appointment.professional.name}*, você tem um novo agendamento:\n\n` +
+          `👤 *Cliente:* ${appointment.client?.name}\n` +
+          `💈 *Serviço:* ${appointment.service?.name}\n` +
+          `📅 *Data:* ${dateLabel}\n` +
+          `🕒 *Hora:* ${timeLabel}\n\n` +
+          `Dá uma olhada na sua agenda completa no painel do TratoMarcado.`;
 
-        // Mensagem Cliente
-        await fetch(url, {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            to: clientPhoneE164,
-            type: "text",
-            text: { body: `✅ *Agendamento Confirmado!*\n\nOlá ${clientName}, seu horário na *${tenant.name}* foi reservado.\n\n📅 *Data:* ${dateLabel}\n⏰ *Hora:* ${timeLabel}\n\n_TratoMarcado_` }
-          }),
-        });
+        await sendZap(appointment.professional.phoneE164, msgBarbeiro);
+      }
+
+      // NOTIFICAR CLIENTE
+      if (appointment.client?.phoneE164) {
+        const msgCliente = `Fala, ${appointment.client.name}! ✂️\n\n` +
+          `Seu trato tá oficialmente marcado na *${appointment.tenant?.name}*.\n\n` +
+          `📅 *Data:* ${dateLabel}\n` +
+          `🕒 *Hora:* ${timeLabel}\n` +
+          `💈 *Barbeiro:* ${appointment.professional?.name}\n\n` +
+          `Dica: Se precisar desmarcar, avise a gente com antecedência. Nos vemos em breve! 👊`;
+
+        await sendZap(appointment.client.phoneE164, msgCliente);
       }
     } catch (e) {
-      console.error("Erro zap:", e);
+      console.error("Erro ao avisar o barbeiro:", e);
     }
 
     return NextResponse.json(appointment);
@@ -108,5 +137,55 @@ export async function POST(
   } catch (error: any) {
     console.error("Erro na rota book:", error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const { appointmentId } = await req.json();
+    const TZ = "America/Sao_Paulo";
+
+    const cancelledApp = await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: "CANCELLED" },
+      include: { 
+        professional: true, 
+        client: true,
+        tenant: true,
+        service: true 
+      },
+    });
+
+    // WhatsApp Notification for Cancellation
+    try {
+      const dateLabel = formatInTimeZone(cancelledApp.startAt, TZ, "dd/MM/yyyy");
+      const timeLabel = formatInTimeZone(cancelledApp.startAt, TZ, "HH:mm");
+
+      // 1. NOTIFICAR BARBEIRO (Cancelamento)
+      if (cancelledApp.professional?.phoneE164) {
+        const msgBarbeiro = `❌ *Horário Liberado!*\n\nO cliente *${cancelledApp.client?.name}* cancelou o horário das ${timeLabel} no dia ${dateLabel}. Esse horário já voltou para a sua agenda e está disponível para novos agendamentos. 🔄`;
+        await sendEvolutionMessage(cancelledApp.professional?.phoneE164, msgBarbeiro);
+      }
+
+      // 2. NOTIFICAR CLIENTE (Confirmação de Cancelamento)
+      if (cancelledApp.client?.phoneE164) {
+        const msgCliente = `❌ *Cancelamento Confirmado*\n\n` +
+          `Olá ${cancelledApp.client?.name}, seu agendamento na *${cancelledApp.tenant?.name}* para o dia ${dateLabel} às ${timeLabel} foi cancelado.`;
+        await sendEvolutionMessage(cancelledApp.client?.phoneE164, msgCliente);
+      }
+    } catch (e) {
+      console.error("Erro zap cancelamento:", e);
+    }
+
+    return NextResponse.json(cancelledApp);
+  } catch (error: any) {
+    console.error("Erro no cancelamento:", error);
+    return NextResponse.json(
+      { error: "Erro ao cancelar agendamento" },
+      { status: 500 }
+    );
   }
 }

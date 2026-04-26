@@ -1,28 +1,57 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { formatInTimeZone } from "date-fns-tz";
+
+const sendEvolutionMessage = async (to: string, text: string) => {
+  try {
+    const url = `${process.env.EVOLUTION_API_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE}`;
+    const apiKey = process.env.EVOLUTION_API_KEY;
+    if (!process.env.EVOLUTION_API_URL || !apiKey) return;
+
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": apiKey },
+      body: JSON.stringify({
+        number: to,
+        text: text,
+        delay: 1000,
+      }),
+    });
+  } catch (error) {
+    console.error("Erro ao enviar WhatsApp:", error);
+  }
+};
 
 export async function PATCH(
-  req: Request, 
-  { params }: { params: Promise<{ slug: string; id: string }> }
+  req: Request
 ) {
   try {
-    const { id } = await params;
-    
-    // 1. Pegamos o status que o seu front-end enviou (COMPLETED ou CANCELED)
-    const body = await req.json();
-    const { status } = body;
+    const { appointmentId } = await req.json();
+    const TZ = "America/Sao_Paulo";
 
-    // 2. Atualizamos com o status dinâmico
-    const updated = await prisma.appointment.update({
-      where: { id },
-      data: { 
-        status: status // Agora ele vai salvar o que o botão mandou!
-      },
+    const cancelledApp = await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { status: "CANCELLED" },
+      include: { professional: true, client: true, service: true, tenant: true },
     });
 
-    return NextResponse.json({ ok: true, appointment: updated });
+    const dateLabel = formatInTimeZone(cancelledApp.startAt, TZ, "dd/MM/yyyy");
+    const timeLabel = formatInTimeZone(cancelledApp.startAt, TZ, "HH:mm");
+
+    // 1. NOTIFICAR BARBEIRO (Cancelamento)
+    if (cancelledApp.professional?.phoneE164) {
+      const msgBarbeiro = `❌ *Agendamento Cancelado*\n\nO cliente *${cancelledApp.client?.name}* cancelou o horário de ${timeLabel} no dia ${dateLabel}.\n\nO horário já está livre na sua agenda.`;
+      await sendEvolutionMessage(cancelledApp.professional?.phoneE164, msgBarbeiro);
+    }
+
+    // 2. NOTIFICAR CLIENTE (Confirmação de Cancelamento)
+    if (cancelledApp.client?.phoneE164) {
+      const msgCliente = `❌ *Cancelamento Confirmado*\n\nOlá ${cancelledApp.client?.name}, seu agendamento na *${cancelledApp.tenant?.name}* para o dia ${dateLabel} às ${timeLabel} foi cancelado.`;
+      await sendEvolutionMessage(cancelledApp.client?.phoneE164, msgCliente);
+    }
+
+    return NextResponse.json(cancelledApp);
   } catch (error) {
-    console.error("Erro na API Admin:", error);
-    return NextResponse.json({ error: "Erro ao atualizar" }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao cancelar" }, { status: 500 });
   }
 }

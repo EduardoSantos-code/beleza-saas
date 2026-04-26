@@ -376,6 +376,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                 <input
                   type="date"
                   value={date}
+                  onClick={(e) => e.currentTarget.showPicker()}
                   onChange={(e) => setDate(e.target.value)}
                   className="w-full appearance-none text-left min-h-[50px] rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 [color-scheme:light_dark]"
                 />
