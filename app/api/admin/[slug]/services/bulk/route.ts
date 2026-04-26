@@ -7,7 +7,7 @@ const BulkServiceSchema = z.array(
   z.object({
     name: z.string().min(1, "Nome é obrigatório"),
     durationMin: z.number().int().positive(),
-    priceCents: z.number().int().nonnegative(),
+    price: z.number().int().nonnegative(),
     active: z.boolean().default(true),
   })
 );

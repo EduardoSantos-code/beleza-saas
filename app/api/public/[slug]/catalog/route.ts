@@ -38,7 +38,7 @@ export async function GET(
           id: true,
           name: true,
           durationMin: true,
-          priceCents: true,
+          price: true,
         },
         orderBy: { name: "asc" },
       }),

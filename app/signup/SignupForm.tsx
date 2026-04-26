@@ -41,7 +41,7 @@ export default function SignupForm() {
         body: JSON.stringify({
           tenantName,
           slug: slug || suggestedSlug,
-          ownerName,
+          ownerName, // Enviado como ownerName para ser usado como name do profissional no backend
           email,
           password,
         }),

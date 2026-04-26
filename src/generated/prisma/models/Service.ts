@@ -28,12 +28,12 @@ export type AggregateService = {
 
 export type ServiceAvgAggregateOutputType = {
   durationMin: number | null
-  priceCents: number | null
+  price: number | null
 }
 
 export type ServiceSumAggregateOutputType = {
   durationMin: number | null
-  priceCents: number | null
+  price: number | null
 }
 
 export type ServiceMinAggregateOutputType = {
@@ -41,7 +41,7 @@ export type ServiceMinAggregateOutputType = {
   tenantId: string | null
   name: string | null
   durationMin: number | null
-  priceCents: number | null
+  price: number | null
   active: boolean | null
 }
 
@@ -50,7 +50,7 @@ export type ServiceMaxAggregateOutputType = {
   tenantId: string | null
   name: string | null
   durationMin: number | null
-  priceCents: number | null
+  price: number | null
   active: boolean | null
 }
 
@@ -59,7 +59,7 @@ export type ServiceCountAggregateOutputType = {
   tenantId: number
   name: number
   durationMin: number
-  priceCents: number
+  price: number
   active: number
   _all: number
 }
@@ -67,12 +67,12 @@ export type ServiceCountAggregateOutputType = {
 
 export type ServiceAvgAggregateInputType = {
   durationMin?: true
-  priceCents?: true
+  price?: true
 }
 
 export type ServiceSumAggregateInputType = {
   durationMin?: true
-  priceCents?: true
+  price?: true
 }
 
 export type ServiceMinAggregateInputType = {
@@ -80,7 +80,7 @@ export type ServiceMinAggregateInputType = {
   tenantId?: true
   name?: true
   durationMin?: true
-  priceCents?: true
+  price?: true
   active?: true
 }
 
@@ -89,7 +89,7 @@ export type ServiceMaxAggregateInputType = {
   tenantId?: true
   name?: true
   durationMin?: true
-  priceCents?: true
+  price?: true
   active?: true
 }
 
@@ -98,7 +98,7 @@ export type ServiceCountAggregateInputType = {
   tenantId?: true
   name?: true
   durationMin?: true
-  priceCents?: true
+  price?: true
   active?: true
   _all?: true
 }
@@ -194,7 +194,7 @@ export type ServiceGroupByOutputType = {
   tenantId: string
   name: string
   durationMin: number
-  priceCents: number
+  price: number
   active: boolean
   _count: ServiceCountAggregateOutputType | null
   _avg: ServiceAvgAggregateOutputType | null
@@ -226,7 +226,7 @@ export type ServiceWhereInput = {
   tenantId?: Prisma.StringFilter<"Service"> | string
   name?: Prisma.StringFilter<"Service"> | string
   durationMin?: Prisma.IntFilter<"Service"> | number
-  priceCents?: Prisma.IntFilter<"Service"> | number
+  price?: Prisma.IntFilter<"Service"> | number
   active?: Prisma.BoolFilter<"Service"> | boolean
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
   appointments?: Prisma.AppointmentListRelationFilter
@@ -237,7 +237,7 @@ export type ServiceOrderByWithRelationInput = {
   tenantId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   durationMin?: Prisma.SortOrder
-  priceCents?: Prisma.SortOrder
+  price?: Prisma.SortOrder
   active?: Prisma.SortOrder
   tenant?: Prisma.TenantOrderByWithRelationInput
   appointments?: Prisma.AppointmentOrderByRelationAggregateInput
@@ -251,7 +251,7 @@ export type ServiceWhereUniqueInput = Prisma.AtLeast<{
   tenantId?: Prisma.StringFilter<"Service"> | string
   name?: Prisma.StringFilter<"Service"> | string
   durationMin?: Prisma.IntFilter<"Service"> | number
-  priceCents?: Prisma.IntFilter<"Service"> | number
+  price?: Prisma.IntFilter<"Service"> | number
   active?: Prisma.BoolFilter<"Service"> | boolean
   tenant?: Prisma.XOR<Prisma.TenantScalarRelationFilter, Prisma.TenantWhereInput>
   appointments?: Prisma.AppointmentListRelationFilter
@@ -262,7 +262,7 @@ export type ServiceOrderByWithAggregationInput = {
   tenantId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   durationMin?: Prisma.SortOrder
-  priceCents?: Prisma.SortOrder
+  price?: Prisma.SortOrder
   active?: Prisma.SortOrder
   _count?: Prisma.ServiceCountOrderByAggregateInput
   _avg?: Prisma.ServiceAvgOrderByAggregateInput
@@ -279,7 +279,7 @@ export type ServiceScalarWhereWithAggregatesInput = {
   tenantId?: Prisma.StringWithAggregatesFilter<"Service"> | string
   name?: Prisma.StringWithAggregatesFilter<"Service"> | string
   durationMin?: Prisma.IntWithAggregatesFilter<"Service"> | number
-  priceCents?: Prisma.IntWithAggregatesFilter<"Service"> | number
+  price?: Prisma.IntWithAggregatesFilter<"Service"> | number
   active?: Prisma.BoolWithAggregatesFilter<"Service"> | boolean
 }
 
@@ -287,7 +287,7 @@ export type ServiceCreateInput = {
   id?: string
   name: string
   durationMin: number
-  priceCents: number
+  price: number
   active?: boolean
   tenant: Prisma.TenantCreateNestedOneWithoutServicesInput
   appointments?: Prisma.AppointmentCreateNestedManyWithoutServiceInput
@@ -298,7 +298,7 @@ export type ServiceUncheckedCreateInput = {
   tenantId: string
   name: string
   durationMin: number
-  priceCents: number
+  price: number
   active?: boolean
   appointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutServiceInput
 }
@@ -307,7 +307,7 @@ export type ServiceUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   durationMin?: Prisma.IntFieldUpdateOperationsInput | number
-  priceCents?: Prisma.IntFieldUpdateOperationsInput | number
+  price?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   tenant?: Prisma.TenantUpdateOneRequiredWithoutServicesNestedInput
   appointments?: Prisma.AppointmentUpdateManyWithoutServiceNestedInput
@@ -318,7 +318,7 @@ export type ServiceUncheckedUpdateInput = {
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   durationMin?: Prisma.IntFieldUpdateOperationsInput | number
-  priceCents?: Prisma.IntFieldUpdateOperationsInput | number
+  price?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   appointments?: Prisma.AppointmentUncheckedUpdateManyWithoutServiceNestedInput
 }
@@ -328,7 +328,7 @@ export type ServiceCreateManyInput = {
   tenantId: string
   name: string
   durationMin: number
-  priceCents: number
+  price: number
   active?: boolean
 }
 
@@ -336,7 +336,7 @@ export type ServiceUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   durationMin?: Prisma.IntFieldUpdateOperationsInput | number
-  priceCents?: Prisma.IntFieldUpdateOperationsInput | number
+  price?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
@@ -345,7 +345,7 @@ export type ServiceUncheckedUpdateManyInput = {
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   durationMin?: Prisma.IntFieldUpdateOperationsInput | number
-  priceCents?: Prisma.IntFieldUpdateOperationsInput | number
+  price?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
@@ -364,13 +364,13 @@ export type ServiceCountOrderByAggregateInput = {
   tenantId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   durationMin?: Prisma.SortOrder
-  priceCents?: Prisma.SortOrder
+  price?: Prisma.SortOrder
   active?: Prisma.SortOrder
 }
 
 export type ServiceAvgOrderByAggregateInput = {
   durationMin?: Prisma.SortOrder
-  priceCents?: Prisma.SortOrder
+  price?: Prisma.SortOrder
 }
 
 export type ServiceMaxOrderByAggregateInput = {
@@ -378,7 +378,7 @@ export type ServiceMaxOrderByAggregateInput = {
   tenantId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   durationMin?: Prisma.SortOrder
-  priceCents?: Prisma.SortOrder
+  price?: Prisma.SortOrder
   active?: Prisma.SortOrder
 }
 
@@ -387,13 +387,13 @@ export type ServiceMinOrderByAggregateInput = {
   tenantId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   durationMin?: Prisma.SortOrder
-  priceCents?: Prisma.SortOrder
+  price?: Prisma.SortOrder
   active?: Prisma.SortOrder
 }
 
 export type ServiceSumOrderByAggregateInput = {
   durationMin?: Prisma.SortOrder
-  priceCents?: Prisma.SortOrder
+  price?: Prisma.SortOrder
 }
 
 export type ServiceScalarRelationFilter = {
@@ -461,7 +461,7 @@ export type ServiceCreateWithoutTenantInput = {
   id?: string
   name: string
   durationMin: number
-  priceCents: number
+  price: number
   active?: boolean
   appointments?: Prisma.AppointmentCreateNestedManyWithoutServiceInput
 }
@@ -470,7 +470,7 @@ export type ServiceUncheckedCreateWithoutTenantInput = {
   id?: string
   name: string
   durationMin: number
-  priceCents: number
+  price: number
   active?: boolean
   appointments?: Prisma.AppointmentUncheckedCreateNestedManyWithoutServiceInput
 }
@@ -509,7 +509,7 @@ export type ServiceScalarWhereInput = {
   tenantId?: Prisma.StringFilter<"Service"> | string
   name?: Prisma.StringFilter<"Service"> | string
   durationMin?: Prisma.IntFilter<"Service"> | number
-  priceCents?: Prisma.IntFilter<"Service"> | number
+  price?: Prisma.IntFilter<"Service"> | number
   active?: Prisma.BoolFilter<"Service"> | boolean
 }
 
@@ -517,7 +517,7 @@ export type ServiceCreateWithoutAppointmentsInput = {
   id?: string
   name: string
   durationMin: number
-  priceCents: number
+  price: number
   active?: boolean
   tenant: Prisma.TenantCreateNestedOneWithoutServicesInput
 }
@@ -527,7 +527,7 @@ export type ServiceUncheckedCreateWithoutAppointmentsInput = {
   tenantId: string
   name: string
   durationMin: number
-  priceCents: number
+  price: number
   active?: boolean
 }
 
@@ -551,7 +551,7 @@ export type ServiceUpdateWithoutAppointmentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   durationMin?: Prisma.IntFieldUpdateOperationsInput | number
-  priceCents?: Prisma.IntFieldUpdateOperationsInput | number
+  price?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   tenant?: Prisma.TenantUpdateOneRequiredWithoutServicesNestedInput
 }
@@ -561,7 +561,7 @@ export type ServiceUncheckedUpdateWithoutAppointmentsInput = {
   tenantId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   durationMin?: Prisma.IntFieldUpdateOperationsInput | number
-  priceCents?: Prisma.IntFieldUpdateOperationsInput | number
+  price?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
@@ -569,7 +569,7 @@ export type ServiceCreateManyTenantInput = {
   id?: string
   name: string
   durationMin: number
-  priceCents: number
+  price: number
   active?: boolean
 }
 
@@ -577,7 +577,7 @@ export type ServiceUpdateWithoutTenantInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   durationMin?: Prisma.IntFieldUpdateOperationsInput | number
-  priceCents?: Prisma.IntFieldUpdateOperationsInput | number
+  price?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   appointments?: Prisma.AppointmentUpdateManyWithoutServiceNestedInput
 }
@@ -586,7 +586,7 @@ export type ServiceUncheckedUpdateWithoutTenantInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   durationMin?: Prisma.IntFieldUpdateOperationsInput | number
-  priceCents?: Prisma.IntFieldUpdateOperationsInput | number
+  price?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   appointments?: Prisma.AppointmentUncheckedUpdateManyWithoutServiceNestedInput
 }
@@ -595,7 +595,7 @@ export type ServiceUncheckedUpdateManyWithoutTenantInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   durationMin?: Prisma.IntFieldUpdateOperationsInput | number
-  priceCents?: Prisma.IntFieldUpdateOperationsInput | number
+  price?: Prisma.IntFieldUpdateOperationsInput | number
   active?: Prisma.BoolFieldUpdateOperationsInput | boolean
 }
 
@@ -635,7 +635,7 @@ export type ServiceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   tenantId?: boolean
   name?: boolean
   durationMin?: boolean
-  priceCents?: boolean
+  price?: boolean
   active?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   appointments?: boolean | Prisma.Service$appointmentsArgs<ExtArgs>
@@ -647,7 +647,7 @@ export type ServiceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   tenantId?: boolean
   name?: boolean
   durationMin?: boolean
-  priceCents?: boolean
+  price?: boolean
   active?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["service"]>
@@ -657,7 +657,7 @@ export type ServiceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   tenantId?: boolean
   name?: boolean
   durationMin?: boolean
-  priceCents?: boolean
+  price?: boolean
   active?: boolean
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["service"]>
@@ -667,11 +667,11 @@ export type ServiceSelectScalar = {
   tenantId?: boolean
   name?: boolean
   durationMin?: boolean
-  priceCents?: boolean
+  price?: boolean
   active?: boolean
 }
 
-export type ServiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "name" | "durationMin" | "priceCents" | "active", ExtArgs["result"]["service"]>
+export type ServiceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "name" | "durationMin" | "price" | "active", ExtArgs["result"]["service"]>
 export type ServiceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tenant?: boolean | Prisma.TenantDefaultArgs<ExtArgs>
   appointments?: boolean | Prisma.Service$appointmentsArgs<ExtArgs>
@@ -695,7 +695,7 @@ export type $ServicePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     tenantId: string
     name: string
     durationMin: number
-    priceCents: number
+    price: number
     active: boolean
   }, ExtArgs["result"]["service"]>
   composites: {}
@@ -1126,7 +1126,7 @@ export interface ServiceFieldRefs {
   readonly tenantId: Prisma.FieldRef<"Service", 'String'>
   readonly name: Prisma.FieldRef<"Service", 'String'>
   readonly durationMin: Prisma.FieldRef<"Service", 'Int'>
-  readonly priceCents: Prisma.FieldRef<"Service", 'Int'>
+  readonly price: Prisma.FieldRef<"Service", 'Int'>
   readonly active: Prisma.FieldRef<"Service", 'Boolean'>
 }
     

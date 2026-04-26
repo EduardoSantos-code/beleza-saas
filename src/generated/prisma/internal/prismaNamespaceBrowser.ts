@@ -146,7 +146,7 @@ export const ServiceScalarFieldEnum = {
   tenantId: 'tenantId',
   name: 'name',
   durationMin: 'durationMin',
-  priceCents: 'priceCents',
+  price: 'price',
   active: 'active'
 } as const
 

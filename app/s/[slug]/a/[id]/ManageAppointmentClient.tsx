@@ -115,7 +115,7 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
             </div>
 
             <div className="pt-6 border-t border-zinc-800 flex justify-between items-center">
-              <p className="text-2xl font-black italic">R$ {((data.service?.priceCents || 0) / 100).toFixed(2).replace('.', ',')}</p>
+              <p className="text-2xl font-black italic">R$ {((data.service?.price || 0) / 100).toFixed(2).replace('.', ',')}</p>
               <span className="text-[10px] bg-zinc-800 px-3 py-1 rounded-lg font-bold text-zinc-400 uppercase">No Local</span>
             </div>
           </div>

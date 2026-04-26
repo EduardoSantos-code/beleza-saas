@@ -214,19 +214,19 @@ async function main() {
           tenantId: tenant.id,
           name: "Corte feminino",
           durationMin: 60,
-          priceCents: 7000,
+          price: 7000,
         },
         {
           tenantId: tenant.id,
           name: "Escova",
           durationMin: 45,
-          priceCents: 5000,
+          price: 5000,
         },
         {
           tenantId: tenant.id,
           name: "Manicure",
           durationMin: 40,
-          priceCents: 3500,
+          price: 3500,
         },
       ],
     });

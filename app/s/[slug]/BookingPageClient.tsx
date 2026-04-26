@@ -8,7 +8,7 @@ type Service = {
   id: string;
   name: string;
   durationMin: number;
-  priceCents: number;
+  price: number;
 };
 
 type Professional = {
@@ -346,7 +346,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   {catalog.services.map((service) => (
                     <option key={service.id} value={service.id}>
                       {service.name} — {service.durationMin} min — R${" "}
-                      {(service.priceCents / 100).toFixed(2)}
+                      {(service.price / 100).toFixed(2)}
                     </option>
                   ))}
                 </select>
@@ -497,7 +497,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   <span>Preço</span>
                   <span className="font-medium text-zinc-900 dark:text-zinc-100">
                     {selectedService
-                      ? `R$ ${(selectedService.priceCents / 100).toFixed(2)}`
+                      ? `R$ ${(selectedService.price / 100).toFixed(2)}`
                       : "-"}
                   </span>
                 </div>

@@ -60,7 +60,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ slug: st
         service: { 
           name: a.service.name,
           duration: a.service.durationMin, // Enviando a duração
-          price: a.service.priceCents // Enviando o preço
+          price: a.service.price // Enviando o preço
         },
         professional: { id: a.professional.id, name: a.professional.name },
       })),

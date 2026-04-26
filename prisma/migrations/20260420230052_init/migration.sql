@@ -55,7 +55,7 @@ CREATE TABLE "Service" (
     "tenantId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "durationMin" INTEGER NOT NULL,
-    "priceCents" INTEGER NOT NULL,
+    "price" INTEGER NOT NULL,
     "active" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "Service_pkey" PRIMARY KEY ("id")

@@ -11,11 +11,11 @@ type OnboardingProps = {
 
 // Templates Prontos para o Botão Mágico
 const BARBERSHOP_TEMPLATES = [
-  { name: "Corte Clássico", durationMin: 30, priceCents: 4500, active: true },
-  { name: "Barba Terapia", durationMin: 30, priceCents: 3500, active: true },
-  { name: "Combo: Corte + Barba", durationMin: 60, priceCents: 7500, active: true },
-  { name: "Acabamento / Pezinho", durationMin: 15, priceCents: 2000, active: true },
-  { name: "Sobrancelha Masculina", durationMin: 15, priceCents: 1500, active: true },
+  { name: "Corte Clássico", durationMin: 30, price: 4500, active: true },
+  { name: "Barba Terapia", durationMin: 30, price: 3500, active: true },
+  { name: "Combo: Corte + Barba", durationMin: 60, price: 7500, active: true },
+  { name: "Acabamento / Pezinho", durationMin: 15, price: 2000, active: true },
+  { name: "Sobrancelha Masculina", durationMin: 15, price: 1500, active: true },
 ];
 
 export default function OnboardingFlow({ slug, hasServices, hasProfessionals, onComplete }: OnboardingProps) {
@@ -47,7 +47,7 @@ export default function OnboardingFlow({ slug, hasServices, hasProfessionals, on
         body: JSON.stringify({
           name,
           durationMin: Number(duration),
-          priceCents: brlToCents(price),
+          price: brlToCents(price),
           active: true,
         }),
       });

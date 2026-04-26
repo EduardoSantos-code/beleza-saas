@@ -6,7 +6,7 @@ import { z } from "zod";
 const UpdateServiceSchema = z.object({
   name: z.string().min(2).max(120),
   durationMin: z.number().int().min(5).max(480),
-  priceCents: z.number().int().min(0).max(100000000),
+  price: z.number().int().min(0).max(100000000),
   active: z.boolean(),
 });
 
@@ -53,7 +53,7 @@ export async function PATCH(
       data: {
         name: parsed.data.name,
         durationMin: parsed.data.durationMin,
-        priceCents: parsed.data.priceCents,
+        price: parsed.data.price,
         active: parsed.data.active,
       },
     });

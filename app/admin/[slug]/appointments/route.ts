@@ -65,7 +65,7 @@ export async function GET(
         },
         service: {
           name: a.service.name,
-          priceCents: a.service.priceCents,
+          price: a.service.price,
           durationMin: a.service.durationMin,
         },
         professional: {

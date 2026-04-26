@@ -6,7 +6,7 @@ type Service = {
   id: string;
   name: string;
   durationMin: number;
-  priceCents: number;
+  price: number;
   active: boolean;
 };
 
@@ -83,7 +83,7 @@ export default function ServicesClient({ slug }: { slug: string }) {
         rows[service.id] = {
           name: service.name,
           durationMin: String(service.durationMin),
-          price: centsToBRL(service.priceCents),
+          price: centsToBRL(service.price),
           active: service.active,
         };
       }
@@ -117,7 +117,7 @@ export default function ServicesClient({ slug }: { slug: string }) {
         body: JSON.stringify({
           name: newName,
           durationMin: Number(newDurationMin),
-          priceCents: brlToCents(newPrice),
+          price: brlToCents(newPrice),
           active: true,
         }),
       });
@@ -158,7 +158,7 @@ export default function ServicesClient({ slug }: { slug: string }) {
         body: JSON.stringify({
           name: row.name,
           durationMin: Number(row.durationMin),
-          priceCents: brlToCents(row.price),
+          price: brlToCents(row.price),
           active: row.active,
         }),
       });

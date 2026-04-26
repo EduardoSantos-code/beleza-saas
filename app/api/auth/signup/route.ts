@@ -166,7 +166,7 @@ export async function POST(req: Request) {
           tenantId: tenant.id,
           name: "Serviço principal",
           durationMin: 60,
-          priceCents: 5000,
+          price: 5000,
           active: true,
         },
       });
