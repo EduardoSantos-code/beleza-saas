@@ -23,10 +23,17 @@ const sendEvolutionMessage = async (to: string, text: string) => {
 };
 
 export async function PATCH(
-  req: Request
+  req: Request,
+  { params }: { params: Promise<{ slug: string; id: string }> }
 ) {
   try {
-    const { appointmentId } = await req.json();
+    const resolvedParams = await params;
+    const appointmentId = resolvedParams.id;
+
+    if (!appointmentId) {
+      return NextResponse.json({ error: "ID não encontrada na URL" }, { status: 400 });
+    }
+
     const TZ = "America/Sao_Paulo";
 
     const cancelledApp = await prisma.appointment.update({
@@ -52,6 +59,7 @@ export async function PATCH(
 
     return NextResponse.json(cancelledApp);
   } catch (error) {
+    console.error("🔥 Erro fatal ao cancelar agendamento:", error);
     return NextResponse.json({ error: "Erro ao cancelar" }, { status: 500 });
   }
 }

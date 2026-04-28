@@ -110,6 +110,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
           <input
             type="date"
             value={date}
+            onClick={(e) => e.currentTarget.showPicker()}
             onChange={(e) => setDate(e.target.value)}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
           />

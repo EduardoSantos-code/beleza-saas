@@ -216,6 +216,7 @@ export default function BlocksClient({ slug }: { slug: string }) {
             <input
               type="date"
               value={date}
+              onClick={(e) => e.currentTarget.showPicker()}
               onChange={(e) => setDate(e.target.value)}
               className="w-full appearance-none text-left min-h-[50px] [&::-webkit-datetime-edit]:flex [&::-webkit-datetime-edit]:justify-start rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white [color-scheme:light_dark]"
               required

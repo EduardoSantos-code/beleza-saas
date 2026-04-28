@@ -16,21 +16,11 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    // 2. Definir a "janela" de busca (daqui a exatas 2 horas)
-    // Vamos buscar agendamentos que comecem entre 1h50 e 2h10 a partir de agora
-    const now = new Date();
-    const targetTimeStart = addHours(now, 1.8); // ~1h50min à frente
-    const targetTimeEnd = addHours(now, 2.2);   // ~2h10min à frente
-
-    // 3. Buscar no Prisma
+    // 3. Buscar no Prisma (Opção Nuclear: Ignora a hora, busca tudo que tá confirmado)
     const appointmentsToRemind = await prisma.appointment.findMany({
       where: {
         status: "CONFIRMED",
-        startAt: {
-          gte: targetTimeStart,
-          lte: targetTimeEnd,
-        },
-        reminderSent: false, // Importante: criar esse campo no banco para não repetir o aviso
+        reminderSent: false,
       },
       include: {
         client: true,
