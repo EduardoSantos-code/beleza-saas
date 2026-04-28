@@ -34,11 +34,14 @@ export async function GET(
 }
 
 export async function PATCH(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ slug: string; id: string }> }
 ) {
   try {
     const { slug, id } = await params;
+
+    const body = await req.json();
+    const novoStatus = body.status;
 
     const appointment = await prisma.appointment.findFirst({
       where: {
@@ -60,7 +63,7 @@ export async function PATCH(
 
     const updated = await prisma.appointment.update({
       where: { id },
-      data: { status: "CANCELED" },
+      data: { status: novoStatus },
     });
 
     return NextResponse.json({ ok: true, appointment: updated });

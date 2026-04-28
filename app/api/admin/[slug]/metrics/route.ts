@@ -133,20 +133,22 @@ export async function GET(
       detalheProfissionais[profName].comissao += comissao;
     });
 
-    // 6. RETORNO NO FORMATO QUE O FRONTEND ESPERA
+    // 6. RETORNO NO FORMATO QUE O FRONTEND ESPERA (Tudo blindado)
     return NextResponse.json({
       summary: {
         totalAppointments: appointments.length,
         completedAppointments: completed.length,
-        totalClients: new Set(appointments.map((a: any) => a.clientPhone || a.id)).size,
+        // Usando a.clientId que é mais seguro que clientPhone caso esteja vazio
+        totalClients: new Set(appointments.map((a: any) => a.clientId || a.id)).size,
         totalRevenue: totalBruto,
         totalComissoes: totalComissoes,
         lucroLiquido: totalBruto - totalComissoes,
       },
       chartData,
-      topServices: Object.values(serviceMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5),
-      topProfessionals: Object.values(professionalMap).sort((a, b) => b.count - a.count).slice(0, 5),
-      detalheProfissionais,
+      topServices: Object.values(serviceMap).sort((a: any, b: any) => b.revenue - a.revenue).slice(0, 5),
+      topProfessionals: Object.values(professionalMap).sort((a: any, b: any) => b.count - a.count).slice(0, 5),
+      // 🔥 AQUI ESTAVA O BUG: Transformamos o Objeto em um Array para o React conseguir ler!
+      detalheProfissionais: Object.values(detalheProfissionais),
     });
 
   } catch (error) {

@@ -21,20 +21,29 @@ export async function PATCH(
 
     return NextResponse.json(updated);
   } catch (error) {
+    console.error("Erro ao atualizar profissional:", error);
     return NextResponse.json({ error: "Erro ao atualizar" }, { status: 500 });
   }
 }
 
-// EXCLUIR
+// EXCLUIR (Transformado em Soft Delete)
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ slug: string; id: string }> }
 ) {
   try {
     const { id } = await params;
-    await prisma.professional.delete({ where: { id } });
+    
+    // Soft Delete: Em vez de apagar do banco, apenas desativamos.
+    // Isso mantém todo o histórico de agendamentos e financeiro intacto!
+    await prisma.professional.update({ 
+      where: { id },
+      data: { active: false } // O pulo do gato!
+    });
+    
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json({ error: "Erro ao excluir. Verifique se ele possui agendamentos." }, { status: 500 });
+    console.error("Erro ao tentar excluir (desativar) profissional:", error);
+    return NextResponse.json({ error: "Erro interno ao desativar o profissional." }, { status: 500 });
   }
 }

@@ -25,6 +25,7 @@ export async function GET(
     const professionals = await prisma.professional.findMany({
       where: {
         tenantId: membership.tenantId,
+        active: true
       },
       orderBy: [
         { active: "desc" },
