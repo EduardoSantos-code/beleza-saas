@@ -121,7 +121,7 @@ export async function POST(req: Request) {
     }
 
     const passwordHash = hashPassword(password);
-    const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+    const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({

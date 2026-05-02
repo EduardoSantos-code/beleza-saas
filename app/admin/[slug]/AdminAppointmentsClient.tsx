@@ -2,7 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatBR } from "@/lib/date"; 
-import { Calendar } from "lucide-react";
+import { 
+  Calendar, 
+  Clock, 
+  Scissors, 
+  DollarSign, 
+  MessageCircle, 
+  CheckCircle2, 
+  XCircle,
+  CalendarDays,
+  User,
+  ChevronDown
+} from "lucide-react";
 
 type Appointment = {
   id: string;
@@ -27,7 +38,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
   const [data, setData] = useState<ResponseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeProfId, setActiveProfId] = useState<string | null>(null);
-  const [updatingId, setUpdatingId] = useState<string | null>(null); // Estado para o loading do botão
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const [date, setDate] = useState(() => {
     return formatBR(new Date(), "yyyy-MM-dd");
@@ -49,7 +60,6 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
     }
   }
 
-  // NOVA FUNÇÃO: Mudar Status (Finalizar/Cancelar)
   async function handleStatusChange(id: string, newStatus: string) {
     try {
       setUpdatingId(id);
@@ -60,8 +70,6 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
       });
 
       if (!res.ok) throw new Error("Erro ao atualizar");
-      
-      // Recarrega a lista para o item sumir e as métricas atualizarem
       await loadAppointments();
     } catch (err) {
       alert("Erro ao atualizar o agendamento.");
@@ -82,31 +90,41 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
     const apps = professionalAppointments;
     return {
       total: apps.length,
-      confirmed: apps.filter((a) => a.status === "CONFIRMED").length,
+      confirmed: apps.filter((a) => a.status === "CONFIRMED" || a.status === "PENDING").length, // Agendados pro dia
       completed: apps.filter((a) => a.status === "COMPLETED").length,
       canceled: apps.filter((a) => a.status === "CANCELED").length,
     };
   }, [professionalAppointments]);
 
-  // Filtra para exibir apenas o que o barbeiro precisa ver agora
   const visibleAppointments = useMemo(() => {
     return professionalAppointments.filter(
       (a) => a.status !== "CANCELED" && a.status !== "COMPLETED"
     );
   }, [professionalAppointments]);
 
-  if (loading) return <div className="p-10 text-white">Carregando agenda...</div>;
+  if (loading) return (
+    <div className="p-10 flex items-center gap-3 text-zinc-800 dark:text-zinc-200 font-bold italic">
+      <div className="animate-spin h-5 w-5 border-2 border-emerald-500 border-t-transparent rounded-full" />
+      Sincronizando Agenda...
+    </div>
+  );
 
   return (
-    <div className="mx-auto max-w-6xl p-4">
-      <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+    <div className="mx-auto max-w-6xl space-y-8 p-4 pb-20">
+      
+      {/* HEADER & DATE PICKER */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-bold uppercase tracking-widest text-brand-500">Painel Interno</p>
-          <h2 className="text-4xl font-extrabold text-zinc-900 dark:text-white tracking-tighter">
-            {data?.tenant.name}
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-widest text-xs">
+            <CalendarDays className="h-4 w-4" />
+            Painel Interno
+          </div>
+          <h2 className="mt-2 text-4xl font-black text-zinc-900 dark:text-white italic tracking-tighter">
+            {data?.tenant.name || "Sua Barbearia"}
           </h2>
         </div>
-        <div className="relative">
+        
+        <div className="relative group w-full lg:w-auto">
           <input
             type="date"
             value={date}
@@ -114,92 +132,114 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
             onChange={(e) => setDate(e.target.value)}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
           />
-          <button className="flex items-center gap-3 px-5 py-2.5 rounded-xl font-bold transition-all border   /* Modo Claro */   bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50   /* Modo Escuro */   dark:bg-zinc-900 dark:border-zinc-800 dark:text-white dark:hover:bg-zinc-800" >   <span>{date.split('-').reverse().join('/')}</span>   <Calendar size={18} className="text-brand-600" /> </button>
+          <button className="w-full flex justify-between lg:justify-start items-center gap-4 px-6 py-4 rounded-2xl font-black transition-all bg-white border border-zinc-200 text-zinc-900 group-hover:border-emerald-500 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white dark:group-hover:border-emerald-500 shadow-xl shadow-zinc-200/50 dark:shadow-none uppercase tracking-widest text-sm"> 
+            <div className="flex items-center gap-3">
+              <Calendar size={20} className="text-emerald-500" /> 
+              <span>{date.split('-').reverse().join('/')}</span>
+            </div>
+            <ChevronDown size={16} className="text-zinc-400" />
+          </button>
         </div>
       </div>
 
-      {/* ABAS DE PROFISSIONAIS */}
+      {/* ABAS DE PROFISSIONAIS (TOGGLE PREMIUM) */}
       {data?.professionals && data.professionals.length > 1 && (
-        <div className="mb-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
           <button
             onClick={() => setActiveProfId(null)}
-            className={`shrink-0 px-6 py-2 rounded-full font-bold transition-all ${
+            className={`shrink-0 px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all ${
               activeProfId === null
-                ? "bg-brand-600 text-white"
-                : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                ? "bg-zinc-900 text-white dark:bg-emerald-500 dark:text-zinc-950 shadow-lg"
+                : "bg-white text-zinc-500 border border-zinc-200 hover:border-zinc-300 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400 hover:dark:border-zinc-700"
             }`}
           >
-            Geral
+            Todos
           </button>
           {data.professionals.map((prof) => (
             <button
               key={prof.id}
               onClick={() => setActiveProfId(prof.id)}
-              className={`shrink-0 px-6 py-2 rounded-full font-bold transition-all ${
+              className={`shrink-0 px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2 ${
                 activeProfId === prof.id
-                  ? "bg-brand-600 text-white"
-                  : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                  ? "bg-zinc-900 text-white dark:bg-emerald-500 dark:text-zinc-950 shadow-lg"
+                  : "bg-white text-zinc-500 border border-zinc-200 hover:border-zinc-300 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400 hover:dark:border-zinc-700"
               }`}
             >
-              {prof.name}
+              <User size={14} /> {prof.name}
             </button>
           ))}
         </div>
       )}
 
-      {/* GRID DE MÉTRICAS */}
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-2xl p-6 transition-all border bg-white border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-none">
-          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Total</p>
-          <p className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">{stats.total}</p>
+      {/* GRID DE MÉTRICAS RÁPIDAS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-3xl p-6 bg-white border border-zinc-200 shadow-xl shadow-zinc-200/30 dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-none">
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Total do Dia</p>
+          <p className="mt-1 text-3xl font-black text-zinc-900 dark:text-white italic">{stats.total}</p>
         </div>
-        <div className="rounded-2xl p-6 transition-all border bg-white border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-none">
-          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Confirmados</p>
-          <p className="mt-2 text-3xl font-bold text-green-600 dark:text-green-500">{stats.confirmed}</p>
+        <div className="rounded-3xl p-6 bg-white border border-zinc-200 shadow-xl shadow-zinc-200/30 dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-none">
+          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-500">Agendados</p>
+          <p className="mt-1 text-3xl font-black text-emerald-600 dark:text-emerald-400 italic">{stats.confirmed}</p>
         </div>
-        <div className="rounded-2xl p-6 transition-all border bg-white border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-none">
-          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Finalizados</p>
-          <p className="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-500">{stats.completed}</p>
+        <div className="rounded-3xl p-6 bg-white border border-zinc-200 shadow-xl shadow-zinc-200/30 dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-none">
+          <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-500">Finalizados</p>
+          <p className="mt-1 text-3xl font-black text-blue-600 dark:text-blue-400 italic">{stats.completed}</p>
         </div>
-        <div className="rounded-2xl p-6 transition-all border bg-white border-zinc-200 shadow-sm dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-none">
-          <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">Cancelados</p>
-          <p className="mt-2 text-3xl font-bold text-red-600 dark:text-red-500">{stats.canceled}</p>
+        <div className="rounded-3xl p-6 bg-white border border-zinc-200 shadow-xl shadow-zinc-200/30 dark:bg-zinc-900 dark:border-zinc-800 dark:shadow-none">
+          <p className="text-[10px] font-black uppercase tracking-widest text-red-600 dark:text-red-500">Cancelados</p>
+          <p className="mt-1 text-3xl font-black text-red-600 dark:text-red-500 italic">{stats.canceled}</p>
         </div>
       </div>
 
-      {/* LISTA DE AGENDAMENTOS */}
-      <div className="mt-8 overflow-hidden rounded-3xl border    /* Modo Claro */   bg-white border-zinc-200    /* Modo Escuro */   dark:bg-zinc-900 dark:border-zinc-800">
-        <div className="px-8 py-5 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
-            {activeProfId ? `Agenda: ${data?.professionals.find(p => p.id === activeProfId)?.name}` : "Próximos Atendimentos"}
+      {/* LISTA DE AGENDAMENTOS (TIMELINE / TICKETS) */}
+      <section className="space-y-6">
+        <div className="flex items-center justify-between px-2">
+          <h3 className="text-xs font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+            {activeProfId ? `Próximos de ${data?.professionals.find(p => p.id === activeProfId)?.name}` : "Próximos Atendimentos"}
           </h3>
+          <span className="text-[10px] font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-3 py-1 rounded-full">
+            {visibleAppointments.length} na fila
+          </span>
         </div>
 
-        <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-          {visibleAppointments.length > 0 ? (
-            visibleAppointments.map((app) => (
-              <div key={app.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 gap-4 transition hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <p className="text-[14px] font-bold text-brand-500 uppercase tracking-tight bg-brand-500/10 px-2 py-1 rounded-md">
+        {visibleAppointments.length > 0 ? (
+          <div className="grid gap-4">
+            {visibleAppointments.map((app) => (
+              <div 
+                key={app.id} 
+                className="group flex flex-col lg:flex-row bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/40 dark:shadow-none overflow-hidden transition-all hover:border-emerald-500/50"
+              >
+                {/* BLOCO DE TEMPO (Destaque máximo) */}
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-6 flex lg:flex-col items-center justify-between lg:justify-center border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 lg:w-48">
+                  <div className="text-center">
+                    <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-1">Horário</p>
+                    <p className="text-4xl font-black text-zinc-900 dark:text-white italic tracking-tighter">
                       {formatBR(app.startAt, "HH:mm")}
                     </p>
-                    <p className="font-bold text-zinc-900 dark:text-white text-lg leading-tight">{app.client.name}</p>
                   </div>
+                  {activeProfId === null && (
+                    <div className="mt-0 lg:mt-4 flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-900 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-800">
+                      <Scissors size={12} /> {app.professional.name.split(' ')[0]}
+                    </div>
+                  )}
+                </div>
+                
+                {/* DADOS DO CLIENTE & SERVIÇO */}
+                <div className="flex-1 p-6 flex flex-col justify-center">
+                  <h4 className="font-black text-2xl text-zinc-900 dark:text-white uppercase tracking-tight mb-3">
+                    {app.client.name}
+                  </h4>
                   
-                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400">
-                    <p className="text-zinc-600 dark:text-zinc-300 font-medium">{app.service.name}</p>
-                    <span className="hidden sm:inline text-zinc-300 dark:text-zinc-700">•</span>
-                    <p>⏱ {app.service.duration} min</p>
-                    <span className="hidden sm:inline text-zinc-300 dark:text-zinc-700">•</span>
-                    <p>💰 R$ {(app.service.price / 100).toFixed(2).replace('.', ',')}</p>
-                    {activeProfId === null && (
-                      <>
-                        <span className="hidden sm:inline text-zinc-300 dark:text-zinc-700">•</span>
-                        <p className="text-zinc-500">✂️ {app.professional.name}</p>
-                      </>
-                    )}
+                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                    <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-3 py-1.5 rounded-lg">
+                      <Scissors size={14} className="text-emerald-500" /> {app.service.name}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-3 py-1.5 rounded-lg">
+                      <Clock size={14} className="text-blue-500" /> {app.service.duration} min
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-3 py-1.5 rounded-lg">
+                      <DollarSign size={14} className="text-emerald-500" /> R$ {(app.service.price / 100).toFixed(2).replace('.', ',')}
+                    </span>
                   </div>
 
                   {app.client.phone && (
@@ -207,21 +247,26 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
                       href={`https://wa.me/${app.client.phone.replace(/\D/g, '')}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-2 inline-flex text-xs text-green-500 hover:text-green-400 hover:underline"
+                      className="inline-flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 transition-colors w-fit bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 rounded-xl"
                     >
-                      💬 {app.client.phone}
+                      <MessageCircle size={16} /> 
+                      Chamar no WhatsApp ({app.client.phone})
                     </a>
                   )}
                 </div>
 
-                {/* BOTÕES DE AÇÃO */}
-                <div className="flex items-center gap-2 shrink-0">
+                {/* BOTÕES DE AÇÃO LATERAIS */}
+                <div className="p-6 bg-zinc-50/50 dark:bg-zinc-950/30 border-t lg:border-t-0 lg:border-l border-zinc-100 dark:border-zinc-800 flex flex-row lg:flex-col gap-3 justify-center">
                   <button
                     disabled={updatingId === app.id}
                     onClick={() => handleStatusChange(app.id, "COMPLETED")}
-                    className="flex-1 md:flex-none bg-green-500/10 hover:bg-green-500 text-green-500 hover:text-white border border-green-500/20 px-3 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                   >
-                    {updatingId === app.id ? "..." : "Finalizar"}
+                    {updatingId === app.id ? (
+                       <span className="animate-pulse">...</span>
+                    ) : (
+                       <><CheckCircle2 size={18} /> Finalizar</>
+                    )}
                   </button>
                   
                   <button
@@ -231,23 +276,26 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
                         handleStatusChange(app.id, "CANCELED");
                       }
                     }}
-                    className="flex-1 md:flex-none bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-3 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-2 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white dark:bg-red-500/10 dark:text-red-500 px-6 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all disabled:opacity-50"
                   >
-                    {updatingId === app.id ? "..." : "Cancelar"}
+                    <XCircle size={16} /> Cancelar
                   </button>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="p-12 flex flex-col items-center justify-center min-h-[350px]">
-              <span className="text-4xl mb-4">🎉</span>
-              <p className="text-zinc-500 dark:text-zinc-400 font-medium text-center max-w-[250px]">
-                Todos os atendimentos concluídos ou lista vazia.
-              </p>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 p-16 flex flex-col items-center justify-center bg-white/50 dark:bg-zinc-900/50">
+            <div className="h-20 w-20 bg-emerald-50 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mb-6">
+              <CalendarDays className="h-10 w-10 text-emerald-500" />
             </div>
-          )}
-        </div>
-      </div>
+            <h3 className="text-xl font-black text-zinc-900 dark:text-white uppercase tracking-tight mb-2">Agenda Livre</h3>
+            <p className="text-zinc-500 dark:text-zinc-400 font-medium text-center max-w-sm">
+              Nenhum cliente aguardando na fila para esta data ou filtro selecionado.
+            </p>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

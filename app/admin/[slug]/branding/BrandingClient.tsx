@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Store } from "lucide-react";
 
 export default function BrandingClient({ slug }: { slug: string }) {
   const [name, setName] = useState("");
@@ -48,23 +49,49 @@ export default function BrandingClient({ slug }: { slug: string }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onloadend = async () => {
-      const base64Image = reader.result;
+    // Trava de segurança para evitar lentidão
+    if (file.size > 5 * 1024 * 1024) {
+      alert("A imagem é muito pesada! Escolha uma foto de até 5MB.");
+      return;
+    }
+
+    setMessage(`⏳ Enviando ${type === 'logo' ? 'logo' : 'banner'}...`);
+
+    try {
+      // 1. Criamos um FormData (o formato exigido pela sua API)
+      const formData = new FormData();
+      
+      // 2. Anexamos o arquivo real e o tipo. 
+      // (Algumas APIs usam 'file', outras 'image'. Usei 'image' para bater com seu JSON original)
+      formData.append("file", file);
+      formData.append("type", type);
 
       const res = await fetch(`/api/admin/${slug}/branding/upload`, {
         method: 'POST',
-        body: JSON.stringify({ image: base64Image, type }),
+        // IMPORTANTE: Não coloque 'Content-Type' aqui. 
+        // O navegador define o "multipart/form-data" automaticamente quando usamos FormData.
+        body: formData,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (type === 'logo') setLogoUrl(data.url);
-        else setHeroImageUrl(data.url);
-        setMessage(`${type === 'logo' ? 'Logo' : 'Banner'} atualizado com sucesso!`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Erro do servidor: ${res.status}`);
       }
-    };
+
+      const data = await res.json();
+      
+      // Atualiza a URL na tela
+      if (type === 'logo') setLogoUrl(data.url);
+      else setHeroImageUrl(data.url);
+      
+      setMessage(`✅ ${type === 'logo' ? 'Logo' : 'Banner'} na nuvem! Lembre-se de clicar em Salvar.`);
+      setTimeout(() => setMessage(""), 5000);
+
+    } catch (error: any) {
+      console.error("Erro no upload:", error);
+      alert(`Falha no upload: ${error.message}`);
+      setMessage("");
+    }
   };
 
   async function handleSave() {
@@ -176,7 +203,17 @@ export default function BrandingClient({ slug }: { slug: string }) {
             <div className="h-48 w-full bg-cover bg-center" style={{ backgroundImage: heroImageUrl ? `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.6)), url('${heroImageUrl}')` : `linear-gradient(135deg, ${primaryColor}, #111827)` }} />
             <div className="relative -mt-10 px-6 pb-6">
               <div className="flex items-end gap-4">
-                {logoUrl ? <img src={logoUrl} className="h-20 w-20 rounded-2xl border-4 border-white object-cover shadow-md dark:border-zinc-900" /> : <div className="h-20 w-20 rounded-2xl border-4 border-white bg-zinc-200 dark:border-zinc-900 dark:bg-zinc-800" />}
+                {/* COMO VAI FICAR */}
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    className="h-24 w-auto min-w-[6rem] max-w-[250px] rounded-[1.5rem] border-4 border-white dark:border-zinc-950 bg-white object-contain p-2 shadow-2xl transition-all"
+                  />
+                ) : (
+                  <div className="h-24 w-24 rounded-[1.5rem] border-4 border-white dark:border-zinc-950 bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center shadow-2xl">
+                    <Store className="text-zinc-400 h-10 w-10" />
+                  </div>
+                )}
                 <div className="pb-1">
                   <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{name || "Seu Salão"}</h3>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">{minAdvanceHours}h de antecedência mínima</p>

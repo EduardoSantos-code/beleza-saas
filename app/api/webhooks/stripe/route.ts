@@ -122,6 +122,7 @@ export async function POST(req: Request) {
         const session = event.data.object as Stripe.Checkout.Session;
 
         const tenantId = session.metadata?.tenantId || null;
+        const slug = session.metadata?.tenantSlug || null;
         const subscriptionId =
           typeof session.subscription === "string"
             ? session.subscription
@@ -136,6 +137,17 @@ export async function POST(req: Request) {
           await prisma.tenant.update({
             where: { id: tenantId },
             data: {
+              stripeCustomerId: customerId || undefined,
+              stripeSubscriptionId: subscriptionId || undefined,
+            },
+          });
+        }
+
+        if (slug) {
+          await prisma.tenant.update({
+            where: { slug },
+            data: {
+              subscriptionStatus: 'ACTIVE',
               stripeCustomerId: customerId || undefined,
               stripeSubscriptionId: subscriptionId || undefined,
             },

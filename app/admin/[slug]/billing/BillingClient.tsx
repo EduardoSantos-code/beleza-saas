@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Check } from "lucide-react";
 
 type TenantBilling = {
   id: string;
@@ -183,8 +184,8 @@ export default function BillingClient({ slug }: { slug: string }) {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
-            SaaS
+          <p className="text-sm font-medium tracking-wide text-brand-600 dark:text-brand-400">
+            TratoMarcado
           </p>
           <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
             Assinatura
@@ -284,8 +285,8 @@ export default function BillingClient({ slug }: { slug: string }) {
                   {startingCheckout
                     ? "Abrindo checkout..."
                     : data.tenant.stripeSubscriptionId
-                    ? "Nova assinatura"
-                    : "Assinar agora"}
+                      ? "Nova assinatura"
+                      : "Assinar agora"}
                 </button>
 
                 {data.tenant.stripeCustomerId && (
@@ -304,30 +305,56 @@ export default function BillingClient({ slug }: { slug: string }) {
             </div>
           </section>
 
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-              Plano mensal
-            </h2>
+          <section>
+            <div className="max-w-3xl">
+              {/* TÍTULO DA SEÇÃO - ADAPTÁVEL */}
+              <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-4">
+                Plano de Assinatura
+              </h3>
 
-            <div className="mt-4 rounded-2xl border border-brand-200 bg-brand-50 p-5 dark:border-emerald-500/50 dark:bg-emerald-500/10">
-              <p className="text-sm font-medium uppercase tracking-wide text-brand-500 dark:text-brand-400">
-                Plano Pro
-              </p>
-              <p className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
-                Definido no Stripe
-              </p>
-              <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-                O valor e a recorrência são controlados pelo Price ID configurado
-                em <code className="rounded bg-white px-1 dark:bg-zinc-950 dark:text-zinc-300">STRIPE_PRICE_ID_MONTHLY</code>.
-              </p>
+              {/* CARD PRINCIPAL - TROCA DE FUNDO E BORDA */}
+              <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm dark:shadow-none">
+                {/* CABEÇALHO DO PLANO */}
+                <div className="mb-6">
+                  <span className="text-emerald-600 dark:text-emerald-500 font-bold text-xs uppercase tracking-widest">
+                    Plano Selecionado
+                  </span>
+                  <h2 className="text-3xl font-extrabold text-zinc-900 dark:text-white mt-2">
+                    Trato Pro
+                  </h2>
+                  {/* BOX DE DESCRIÇÃO ADAPTÁVEL */}
+                  <div className="mt-4 p-4 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50 rounded-xl">
+                    <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">
+                      Sua barbearia no automático com agendamentos ilimitados e notificações via WhatsApp. Tudo o que você precisa para crescer.
+                    </p>
+                  </div>
+                </div>
 
-              <ul className="mt-5 space-y-2 text-sm text-zinc-700 dark:text-zinc-300">
-                <li>✓ Agendamento online</li>
-                <li>✓ Painel interno</li>
-                <li>✓ WhatsApp</li>
-                <li>✓ Horários e bloqueios</li>
-                <li>✓ Branding do salão</li>
-              </ul>
+                {/* PREÇO VÍSIVEL */}
+                <div className="flex items-baseline gap-1 mb-8">
+                  <span className="text-4xl font-bold text-zinc-900 dark:text-white">R$ 39</span>
+                  <span className="text-zinc-500 dark:text-zinc-500 font-medium">/mês</span>
+                </div>
+
+                {/* LISTA DE BENEFÍCIOS COM ÍCONES */}
+                <ul className="space-y-4 mb-8">
+                  {[
+                    "Agendamento online ilimitado",
+                    "Notificações automáticas via WhatsApp",
+                    "Gestão de horários e bloqueios",
+                    "Personalização com sua Logo e Banner",
+                    "Suporte prioritário"
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-3 text-zinc-700 dark:text-zinc-300 text-sm font-medium">
+                      <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-500 flex-shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-600">
+                Teste grátis por 7 dias disponível para novos usuários.
+              </p>
             </div>
           </section>
         </>

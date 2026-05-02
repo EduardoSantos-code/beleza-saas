@@ -99,37 +99,41 @@ export async function POST(
       include: { professional: true, service: true, tenant: true, client: true }
     });
 
-    // 6. WhatsApp Notification
-    try {
-      const dateLabel = formatInTimeZone(startUtc, TZ, "dd/MM/yyyy");
-      const timeLabel = formatInTimeZone(startUtc, TZ, "HH:mm");
+    // 6. WhatsApp Notification (Only if subscription is ACTIVE)
+    if (tenant?.subscriptionStatus === "ACTIVE") {
+      try {
+        const dateLabel = formatInTimeZone(startUtc, TZ, "dd/MM/yyyy");
+        const timeLabel = formatInTimeZone(startUtc, TZ, "HH:mm");
 
-      // NOTIFICAR BARBEIRO
-      if (appointment.professional?.phoneE164) {
-        const msgBarbeiro = `🚨 *Novo Cliente na área!*\n\n` +
-          `Fala, *${appointment.professional.name}*, você tem um novo agendamento:\n\n` +
-          `👤 *Cliente:* ${appointment.client?.name}\n` +
-          `💈 *Serviço:* ${appointment.service?.name}\n` +
-          `📅 *Data:* ${dateLabel}\n` +
-          `🕒 *Hora:* ${timeLabel}\n\n` +
-          `Dá uma olhada na sua agenda completa no painel do TratoMarcado.`;
+        // NOTIFICAR BARBEIRO
+        if (appointment.professional?.phoneE164) {
+          const msgBarbeiro = `🚨 *Novo Cliente na área!*\n\n` +
+            `Fala, *${appointment.professional.name}*, você tem um novo agendamento:\n\n` +
+            `👤 *Cliente:* ${appointment.client?.name}\n` +
+            `💈 *Serviço:* ${appointment.service?.name}\n` +
+            `📅 *Data:* ${dateLabel}\n` +
+            `🕒 *Hora:* ${timeLabel}\n\n` +
+            `Dá uma olhada na sua agenda completa no painel do TratoMarcado.`;
 
-        await sendZap(appointment.professional.phoneE164, msgBarbeiro);
+          await sendEvolutionMessage(appointment.professional.phoneE164, msgBarbeiro);
+        }
+
+        // NOTIFICAR CLIENTE
+        if (appointment.client?.phoneE164) {
+          const msgCliente = `Fala, ${appointment.client.name}! ✂️\n\n` +
+            `Seu trato tá oficialmente marcado na *${appointment.tenant?.name}*.\n\n` +
+            `📅 *Data:* ${dateLabel}\n` +
+            `🕒 *Hora:* ${timeLabel}\n` +
+            `💈 *Barbeiro:* ${appointment.professional?.name}\n\n` +
+            `Dica: Se precisar desmarcar, avise a gente com antecedência. Nos vemos em breve! 👊`;
+
+          await sendEvolutionMessage(appointment.client.phoneE164, msgCliente);
+        }
+      } catch (e) {
+        console.error("Erro ao avisar o barbeiro:", e);
       }
-
-      // NOTIFICAR CLIENTE
-      if (appointment.client?.phoneE164) {
-        const msgCliente = `Fala, ${appointment.client.name}! ✂️\n\n` +
-          `Seu trato tá oficialmente marcado na *${appointment.tenant?.name}*.\n\n` +
-          `📅 *Data:* ${dateLabel}\n` +
-          `🕒 *Hora:* ${timeLabel}\n` +
-          `💈 *Barbeiro:* ${appointment.professional?.name}\n\n` +
-          `Dica: Se precisar desmarcar, avise a gente com antecedência. Nos vemos em breve! 👊`;
-
-        await sendZap(appointment.client.phoneE164, msgCliente);
-      }
-    } catch (e) {
-      console.error("Erro ao avisar o barbeiro:", e);
+    } else {
+      console.log("Notificação não enviada: Assinatura inativa.");
     }
 
     return NextResponse.json(appointment);

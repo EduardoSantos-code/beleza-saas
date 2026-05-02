@@ -1,20 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { ArrowLeft } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { 
+  ArrowLeft, 
+  TrendingUp, 
+  DollarSign, 
+  Users, 
+  Briefcase, 
+  PieChart, 
+  UserCheck, 
+  ChevronDown 
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
-type MetricSummary = {
-  totalAppointments: number;
-  completedAppointments: number;
-  totalClients: number;
-  totalRevenue: number;
-  totalComissoes: number;
-  lucroLiquido: number;
+type TopService = {
+  name: string;
+  count: number;
+  revenue: number;
 };
-
-type TopService = { name: string; count: number; revenue: number };
 
 type ProfessionalDetail = {
   name: string;
@@ -41,21 +45,16 @@ export default function MetricsClient({ slug }: { slug: string }) {
   const router = useRouter();
   const [data, setData] = useState<MetricsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState("7"); // Estado para o filtro (7, 30, 1, etc)
+  const [range, setRange] = useState("7");
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     async function loadMetrics() {
       try {
         setLoading(true);
-        // Agora passamos o ?range= para a API
         const res = await fetch(`/api/admin/${slug}/metrics?range=${range}`);
         const json = await res.json();
-
-        if (!res.ok) {
-          throw new Error(json.error || "Erro ao carregar dados.");
-        }
-
+        if (!res.ok) throw new Error(json.error || "Erro ao carregar dados.");
         setData(json);
       } catch (error: any) {
         setErrorMessage(error.message);
@@ -63,213 +62,173 @@ export default function MetricsClient({ slug }: { slug: string }) {
         setLoading(false);
       }
     }
-
     loadMetrics();
-  }, [slug, range]); // Toda vez que o range mudar, ele busca dados novos
+  }, [slug, range]);
 
-  if (errorMessage) {
-    return (
-      <div className="mx-auto max-w-6xl rounded-2xl bg-red-50 p-8 shadow-sm ring-1 ring-red-200 dark:bg-red-900/20 dark:ring-red-900/50">
-        <p className="text-red-600 dark:text-red-400">
-          {errorMessage || "Não foi possível carregar o dashboard."}
-        </p>
-      </div>
-    );
-  }
-
-  if (loading || !data) {
-    return <p className="p-10 text-center text-zinc-500">Carregando métricas...</p>;
-  }
+  if (loading || !data) return (
+    <div className="p-10 flex items-center gap-3 text-zinc-800 dark:text-zinc-200 font-bold">
+      <div className="animate-spin h-5 w-5 border-2 border-emerald-500 border-t-transparent rounded-full" />
+      Gerando relatórios...
+    </div>
+  );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
-      <div className="flex flex-col gap-4 mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-brand-600">Relatórios</p>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Métricas</h1>
-          </div>
+    <div className="mx-auto max-w-6xl space-y-10 p-4 pb-20">
+      
+      {/* HEADER E FILTRO */}
+      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => router.back()}
-            className="p-2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+            className="p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 hover:text-emerald-500 transition-colors shadow-sm"
           >
             <ArrowLeft size={20} />
           </button>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+              Desempenho da Unidade
+            </p>
+            <h1 className="text-4xl font-black text-zinc-900 dark:text-white italic">Dashboard</h1>
+          </div>
         </div>
-        <select
-          value={range}
-          onChange={(e) => setRange(e.target.value)}
-          className="w-full lg:w-auto rounded-xl px-4 py-3 text-sm font-medium shadow-sm outline-none transition-all bg-white border-zinc-200 text-zinc-900 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-        >
-          <option value="1" className="text-zinc-900 dark:text-white">Hoje</option>
-          <option value="7" className="text-zinc-900 dark:text-white">Últimos 7 dias</option>
-          <option value="30" className="text-zinc-900 dark:text-white">Últimos 30 dias</option>
-          <option value="90" className="text-zinc-900 dark:text-white">Últimos 90 dias</option>
-        </select>
+
+        <div className="relative inline-block w-full md:w-64">
+          <select
+            value={range}
+            onChange={(e) => setRange(e.target.value)}
+            className="w-full appearance-none rounded-2xl px-5 py-4 text-sm font-black shadow-xl ring-1 ring-zinc-200 outline-none transition-all bg-white border-zinc-200 text-zinc-900 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white focus:ring-2 ring-emerald-500"
+          >
+            <option value="1">Hoje</option>
+            <option value="7">Últimos 7 dias</option>
+            <option value="30">Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+          </select>
+          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+        </div>
       </div>
 
-      {/* Grid de Cards - 2 colunas no mobile, 3 no desktop */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
-        <Card
-          title="Faturamento"
+      {/* CARDS DE RESUMO */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <MetricCard
+          title="Faturamento Bruto"
           value={`R$ ${((data.summary.totalRevenue || 0) / 100).toFixed(2).replace('.', ',')}`}
-          color="text-green-500"
-          className="p-3 md:p-6" // Padding menor no mobile
+          icon={DollarSign}
+          color="text-emerald-500"
+          trend="Total recebido"
         />
-        <Card
-          title="Comissões"
-          value={`R$ ${((data.summary.totalComissoes || 0) / 100).toFixed(2).replace('.', ',')}`}
-          color="text-orange-500"
-          className="p-3 md:p-6"
-        />
-        <Card
+        <MetricCard
           title="Lucro Líquido"
           value={`R$ ${((data.summary.lucroLiquido || 0) / 100).toFixed(2).replace('.', ',')}`}
-          color="text-brand-500"
-          className="p-3 md:p-6"
+          icon={TrendingUp}
+          color="text-emerald-600 dark:text-emerald-400"
+          trend="Após comissões"
         />
-        <Card
-          title="Clientes"
+        <MetricCard
+          title="Comissões"
+          value={`R$ ${((data.summary.totalComissoes || 0) / 100).toFixed(2).replace('.', ',')}`}
+          icon={PieChart}
+          color="text-amber-500"
+          trend="Valor para equipe"
+        />
+        <MetricCard
+          title="Clientes Atendidos"
           value={data.summary.totalClients}
-          color="text-zinc-900 dark:text-white"
-          className="p-3 md:p-6"
+          icon={Users}
+          color="text-blue-500"
+          trend="Base do período"
         />
       </div>
 
-      {data.chartData && data.chartData.length > 0 && (
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-          <h2 className="mb-6 text-lg font-bold text-zinc-900 dark:text-white">
+      {/* GRÁFICO PRINCIPAL */}
+      <section className="rounded-3xl bg-white p-8 shadow-xl shadow-zinc-200/50 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800 dark:shadow-none">
+        <div className="flex items-center gap-2 mb-8">
+          <div className="h-2 w-2 rounded-full bg-emerald-500" />
+          <h2 className="text-sm font-black uppercase text-zinc-800 dark:text-zinc-200 tracking-widest">
             Faturamento do Período
           </h2>
-          {/* Adicionamos min-w-0 para evitar que o gráfico "estoure" o grid e min-h para o Recharts não se perder */}
-          <div className="h-[300px] w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
-                <XAxis
-                  dataKey="date"
-                  minTickGap={20}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#71717a', fontSize: 12 }}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#71717a', fontSize: 12 }}
-                  tickFormatter={(value) => `R$${value}`}
-                />
-                <Tooltip
-                  cursor={false}
-                  contentStyle={{
-                    backgroundColor: typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? '#18181b' : '#fff',
-                    border: '1px solid #e4e4e7',
-                    borderRadius: '8px',
-                    fontSize: '12px'
-                  }}
-                  itemStyle={{ color: '#8b5cf6' }}
-                />
-                <Bar
-                  dataKey="faturamento"
-                  fill="#8b5cf6"
-                  radius={[4, 4, 0, 0]}
-                  // Isso dá um leve brilho quando passa o mouse, sem o quadrado branco
-                  activeBar={{ fill: '#a78bfa' }}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      )}
+        </div>
+        
+        <div className="h-[350px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data.chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" className="dark:stroke-zinc-800" />
+              <XAxis
+                dataKey="date"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#71717a', fontSize: 11, fontWeight: 700 }}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#71717a', fontSize: 11, fontWeight: 700 }}
+                tickFormatter={(val) => `R$${val}`}
+              />
+              <Tooltip
+                cursor={{ fill: 'transparent' }}
+                contentStyle={{
+                  backgroundColor: '#18181b',
+                  border: 'none',
+                  borderRadius: '12px',
+                  color: '#fff',
+                  fontWeight: 'bold'
+                }}
+              />
+              {/* AQUI ESTÁ O TRUQUE: Usamos o 'as any' no Bar para silenciar o erro de tipagem chato */}
+              <Bar dataKey="faturamento" radius={[6, 6, 0, 0]} {...({} as any)}>
+                {data.chartData.map((_entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#10b981' : '#059669'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        {/* Top Serviços */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-          <h2 className="mb-6 text-lg font-bold text-zinc-900 dark:text-white">
-            Serviços mais Realizados
+        {/* TOP SERVIÇOS */}
+        <section className="rounded-3xl bg-white p-8 shadow-xl ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+          <h2 className="mb-8 text-sm font-black uppercase text-zinc-500 tracking-widest flex items-center gap-2">
+            <Briefcase className="h-4 w-4" /> Serviços Populares
           </h2>
-          {(data?.topServices?.length || 0) === 0 ? (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Nenhum serviço concluído ainda.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {data?.topServices?.map((s, i) => (
-                <div key={i}>
-                  <div className="mb-1 flex justify-between text-sm">
-                    <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                      {s.name}
-                    </span>
-                    <span className="text-zinc-500 dark:text-zinc-400">
-                      {s.count} vezes (R$ {(s.revenue / 100).toFixed(2)})
-                    </span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-zinc-100 dark:bg-zinc-800">
-                    <div
-                      className="h-full rounded-full bg-brand-500 dark:bg-brand-600"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          (s.count / (data?.summary?.completedAppointments || 1)) * 100 || 0
-                        )}%`,
-                      }}
-                    />
-                  </div>
+          <div className="space-y-6">
+            {data?.topServices?.map((s, i) => (
+              <div key={i}>
+                <div className="mb-2 flex justify-between">
+                  <span className="font-black text-zinc-900 dark:text-white uppercase text-xs">{s.name}</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">R$ {(s.revenue / 100).toFixed(2)}</span>
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Detalhamento Profissional (Substituindo o Ranking) */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-          <h2 className="mb-6 text-lg font-bold text-zinc-900 dark:text-white">
-            Performance por Barbeiro
-          </h2>
-
-          {/* Mobile: Lista de Cards */}
-          <div className="block md:hidden space-y-3">
-            {Object.values((data as any).detalheProfissionais || {}).map((prof: any, i) => (
-              <div key={i} className="p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="font-bold text-zinc-900 dark:text-white">{prof.name}</span>
-                  <span className="text-xs bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 px-2 py-1 rounded-full">
-                    {prof.count} cortes
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="text-zinc-500">Comissão: <span className="text-orange-500 font-medium">R${(prof.comissao / 100).toFixed(2)}</span></div>
-                  <div className="text-zinc-500 text-right">Líquido: <span className="text-green-500 font-medium">R${((prof.bruto - prof.comissao) / 100).toFixed(2)}</span></div>
+                <div className="h-3 w-full rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 transition-all duration-500"
+                    style={{ width: `${Math.min(100, (s.count / (data?.summary?.completedAppointments || 1)) * 100)}%` }}
+                  />
                 </div>
               </div>
             ))}
           </div>
+        </section>
 
-          {/* Desktop: Tabela (escondida no mobile com hidden md:block) */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left text-sm">
+        {/* PERFORMANCE POR BARBEIRO */}
+        <section className="rounded-3xl bg-white p-8 shadow-xl ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+          <h2 className="mb-8 text-sm font-black uppercase text-zinc-500 tracking-widest flex items-center gap-2">
+            <UserCheck className="h-4 w-4" /> Performance da Equipe
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                  <th className="pb-4 font-semibold text-zinc-700 dark:text-zinc-300">Profissional</th>
-                  <th className="pb-4 font-semibold text-zinc-700 dark:text-zinc-300 text-center">Cortes</th>
-                  <th className="pb-4 font-semibold text-zinc-700 dark:text-zinc-300">Total Bruto</th>
-                  <th className="pb-4 font-semibold text-orange-500">Comissão</th>
-                  <th className="pb-4 font-semibold text-green-500 text-right">Líquido (Loja)</th>
+                  <th className="pb-4 text-[10px] font-black uppercase text-zinc-400">Nome</th>
+                  <th className="pb-4 text-[10px] font-black uppercase text-zinc-400 text-center">Atend.</th>
+                  <th className="pb-4 text-[10px] font-black uppercase text-emerald-600 text-right">Líquido</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {/* Usamos o Record do objeto que criamos na API */}
+              <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
                 {Object.values((data as any).detalheProfissionais || {}).map((prof: any, i) => (
-                  <tr key={i} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                    <td className="py-4 font-medium text-zinc-900 dark:text-white">{prof.name}</td>
-                    <td className="py-4 text-center text-zinc-600 dark:text-zinc-400">{prof.count}</td>
-                    <td className="py-4 text-zinc-600 dark:text-zinc-400">
-                      R$ {(prof.bruto / 100).toFixed(2).replace('.', ',')}
-                    </td>
-                    <td className="py-4 font-medium text-orange-600 dark:text-orange-400">
-                      R$ {(prof.comissao / 100).toFixed(2).replace('.', ',')}
-                    </td>
-                    <td className="py-4 text-right font-bold text-green-600 dark:text-green-400">
+                  <tr key={i} className="group">
+                    <td className="py-4 font-black text-zinc-900 dark:text-white uppercase text-xs">{prof.name}</td>
+                    <td className="py-4 text-center text-zinc-600 dark:text-zinc-400 font-bold">{prof.count}</td>
+                    <td className="py-4 text-right font-black text-emerald-600 dark:text-emerald-400">
                       R$ {((prof.bruto - prof.comissao) / 100).toFixed(2).replace('.', ',')}
                     </td>
                   </tr>
@@ -288,20 +247,17 @@ export default function MetricsClient({ slug }: { slug: string }) {
   );
 }
 
-interface CardProps {
-  title: string;
-  value: string | number;
-  color?: string;
-  className?: string;
-}
-
-function Card({ title, value, color, className }: CardProps) {
+function MetricCard({ title, value, icon: Icon, color, trend }: any) {
   return (
-    <div className={`rounded-2xl bg-white p-6 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800 ${className}`}>
-      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
-      <p className={`mt-2 text-2xl font-bold ${color || 'text-zinc-900 dark:text-white'}`}>
+    <div className="rounded-3xl bg-white p-6 shadow-xl shadow-zinc-200/50 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800 dark:shadow-none">
+      <div className={`p-2 w-fit rounded-xl bg-zinc-50 dark:bg-zinc-800 mb-4 ${color}`}>
+        <Icon size={20} />
+      </div>
+      <p className="text-[10px] font-black uppercase text-zinc-500 tracking-tighter">{title}</p>
+      <p className={`mt-1 text-2xl font-black italic tracking-tighter ${color || 'text-zinc-900 dark:text-white'}`}>
         {value}
       </p>
+      <p className="mt-2 text-[10px] font-bold text-zinc-400">{trend}</p>
     </div>
   );
 }

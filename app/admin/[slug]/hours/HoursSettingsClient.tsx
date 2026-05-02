@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { 
+  Clock, 
+  Calendar, 
+  Save, 
+  ArrowLeft, 
+  CheckCircle2, 
+  XCircle,
+  Coffee,
+  Store
+} from "lucide-react";
 
 const WEEKDAY_LABELS: Record<string, string> = {
   SUNDAY: "Domingo",
@@ -28,10 +38,7 @@ type ProfessionalRow = {
 };
 
 type ResponseData = {
-  tenant: {
-    id: string;
-    name: string;
-  };
+  tenant: { id: string; name: string; };
   tenantHours: HourRow[];
   professionals: ProfessionalRow[];
 };
@@ -50,134 +57,94 @@ function timeToMin(value: string) {
   return hh * 60 + mm;
 }
 
-function updateHourRow(
-  rows: HourRow[],
-  weekday: string,
-  patch: Partial<HourRow>
-): HourRow[] {
-  return rows.map((row) =>
-    row.weekday === weekday ? { ...row, ...patch } : row
-  );
+function updateHourRow(rows: HourRow[], weekday: string, patch: Partial<HourRow>): HourRow[] {
+  return rows.map((row) => row.weekday === weekday ? { ...row, ...patch } : row);
 }
 
-function HourTable({
-  title,
-  rows,
-  onChange,
-}: {
-  title: string;
-  rows: HourRow[];
-  onChange: (weekday: string, patch: Partial<HourRow>) => void;
-}) {
+function HourTable({ title, rows, onChange, icon: Icon }: { title: string; rows: HourRow[]; onChange: (weekday: string, patch: Partial<HourRow>) => void; icon: any }) {
   return (
-    <section className="rounded-2xl bg-white shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-      <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">{title}</h2>
+    <section className="rounded-3xl bg-white shadow-xl shadow-zinc-200/50 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800 dark:shadow-none overflow-hidden">
+      <div className="border-b border-zinc-100 px-8 py-5 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 flex items-center gap-3">
+        <Icon className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
+        <h2 className="text-sm font-black uppercase tracking-widest text-zinc-800 dark:text-zinc-100">{title}</h2>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-zinc-50/50 dark:bg-zinc-800/50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
-                Dia
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
-                Aberto
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
-                Início
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
-                Fim
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
-                Intervalo início
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
-                Intervalo fim
-              </th>
+        <table className="min-w-full border-collapse">
+          <thead>
+            <tr className="border-b border-zinc-100 dark:border-zinc-800">
+              <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-tighter text-zinc-400">Dia</th>
+              <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-tighter text-zinc-400">Aberto?</th>
+              <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-tighter text-zinc-400">Início</th>
+              <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-tighter text-zinc-400">Fim</th>
+              <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-tighter text-zinc-400 flex items-center gap-1"><Coffee className="h-3 w-3"/> Intervalo</th>
             </tr>
           </thead>
-
-          <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
             {rows.map((row) => (
-              <tr key={row.weekday}>
-                <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-300">
-                  {WEEKDAY_LABELS[row.weekday]}
+              <tr key={row.weekday} className={`${row.isOpen ? 'bg-transparent' : 'bg-zinc-50/30 dark:bg-zinc-800/10 opacity-60'}`}>
+                <td className="px-6 py-4">
+                  <span className={`text-sm font-black ${row.isOpen ? 'text-zinc-900 dark:text-white' : 'text-zinc-400'}`}>
+                    {WEEKDAY_LABELS[row.weekday]}
+                  </span>
                 </td>
 
-                <td className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={row.isOpen}
-                    onChange={(e) =>
-                      onChange(row.weekday, {
-                        isOpen: e.target.checked,
-                        startMin: e.target.checked ? row.startMin ?? 540 : null,
-                        endMin: e.target.checked ? row.endMin ?? 1080 : null,
-                        breakStartMin: e.target.checked ? row.breakStartMin : null,
-                        breakEndMin: e.target.checked ? row.breakEndMin : null,
-                      })
-                    }
-                    className="h-4 w-4 rounded border-zinc-300 text-brand-600 dark:border-zinc-700 dark:bg-zinc-800"
-                  />
+                <td className="px-6 py-4">
+                  <button
+                    type="button"
+                    onClick={() => onChange(row.weekday, { 
+                      isOpen: !row.isOpen,
+                      startMin: !row.isOpen ? row.startMin ?? 540 : null,
+                      endMin: !row.isOpen ? row.endMin ?? 1080 : null,
+                    })}
+                    className="transition-transform active:scale-90"
+                  >
+                    {row.isOpen ? (
+                      <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                    ) : (
+                      <XCircle className="h-6 w-6 text-zinc-300 dark:text-zinc-700" />
+                    )}
+                  </button>
                 </td>
 
-                <td className="px-4 py-3">
+                <td className="px-6 py-4">
                   <input
                     type="time"
                     value={minToTime(row.startMin)}
                     disabled={!row.isOpen}
-                    onChange={(e) =>
-                      onChange(row.weekday, {
-                        startMin: timeToMin(e.target.value),
-                      })
-                    }
-                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 [color-scheme:light_dark]"
+                    onChange={(e) => onChange(row.weekday, { startMin: timeToMin(e.target.value) })}
+                    className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 ring-emerald-500 outline-none disabled:opacity-30"
                   />
                 </td>
 
-                <td className="px-4 py-3">
+                <td className="px-6 py-4">
                   <input
                     type="time"
                     value={minToTime(row.endMin)}
                     disabled={!row.isOpen}
-                    onChange={(e) =>
-                      onChange(row.weekday, {
-                        endMin: timeToMin(e.target.value),
-                      })
-                    }
-                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 [color-scheme:light_dark]"
+                    onChange={(e) => onChange(row.weekday, { endMin: timeToMin(e.target.value) })}
+                    className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 ring-emerald-500 outline-none disabled:opacity-30"
                   />
                 </td>
 
-                <td className="px-4 py-3">
-                  <input
-                    type="time"
-                    value={minToTime(row.breakStartMin)}
-                    disabled={!row.isOpen}
-                    onChange={(e) =>
-                      onChange(row.weekday, {
-                        breakStartMin: timeToMin(e.target.value),
-                      })
-                    }
-                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 [color-scheme:light_dark]"
-                  />
-                </td>
-
-                <td className="px-4 py-3">
-                  <input
-                    type="time"
-                    value={minToTime(row.breakEndMin)}
-                    disabled={!row.isOpen}
-                    onChange={(e) =>
-                      onChange(row.weekday, {
-                        breakEndMin: timeToMin(e.target.value),
-                      })
-                    }
-                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 [color-scheme:light_dark]"
-                  />
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={minToTime(row.breakStartMin)}
+                      disabled={!row.isOpen}
+                      onChange={(e) => onChange(row.weekday, { breakStartMin: timeToMin(e.target.value) })}
+                      className="w-24 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 outline-none disabled:opacity-20"
+                    />
+                    <span className="text-zinc-400">às</span>
+                    <input
+                      type="time"
+                      value={minToTime(row.breakEndMin)}
+                      disabled={!row.isOpen}
+                      onChange={(e) => onChange(row.weekday, { breakEndMin: timeToMin(e.target.value) })}
+                      className="w-24 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 outline-none disabled:opacity-20"
+                    />
+                  </div>
                 </td>
               </tr>
             ))}
@@ -198,174 +165,116 @@ export default function HoursSettingsClient({ slug }: { slug: string }) {
   async function loadData() {
     try {
       setLoading(true);
-      setErrorMessage("");
-
-      const res = await fetch(`/api/admin/${slug}/hours`, {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      const text = await res.text();
-      const json = JSON.parse(text);
-
-      if (!res.ok) {
-        throw new Error(json?.error || "Erro ao carregar horários");
-      }
-
+      const res = await fetch(`/api/admin/${slug}/hours`, { method: "GET", cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Erro ao carregar horários");
       setData(json);
     } catch (err: any) {
-      console.error(err);
-      setErrorMessage(err.message || "Erro ao carregar horários");
+      setErrorMessage(err.message);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    loadData();
-  }, [slug]);
+  useEffect(() => { loadData(); }, [slug]);
 
   async function handleSave() {
     if (!data) return;
-
     try {
       setSaving(true);
       setErrorMessage("");
       setSuccessMessage("");
-
       const res = await fetch(`/api/admin/${slug}/hours`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenantHours: data.tenantHours,
-          professionalHours: data.professionals.map((p) => ({
-            professionalId: p.id,
-            hours: p.hours,
-          })),
+          professionalHours: data.professionals.map((p) => ({ professionalId: p.id, hours: p.hours })),
         }),
       });
-
-      const text = await res.text();
-      const json = JSON.parse(text);
-
-      if (!res.ok) {
-        throw new Error(json?.error || "Erro ao salvar horários");
-      }
-
-      setSuccessMessage("Horários salvos com sucesso.");
+      if (!res.ok) throw new Error("Erro ao salvar");
+      setSuccessMessage("Horários atualizados com sucesso!");
     } catch (err: any) {
-      console.error(err);
-      setErrorMessage(err.message || "Erro ao salvar horários");
+      setErrorMessage(err.message);
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) {
-    return (
-      <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-        <p className="text-zinc-600 dark:text-zinc-400">Carregando...</p>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
-        <p className="text-red-600 dark:text-red-400">
-          {errorMessage || "Não foi possível carregar a página."}
-        </p>
-      </div>
-    );
-  }
+  if (loading) return <div className="p-10 font-bold text-zinc-500 animate-pulse italic">Carregando horários...</div>;
+  if (!data) return <div className="p-10 text-red-500 font-bold">{errorMessage}</div>;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div className="mx-auto max-w-6xl space-y-10 p-4 pb-20">
+      {/* HEADER */}
+      <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
-            Configurações
-          </p>
-          <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
-            Horários de atendimento
-          </h1>
-          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-            Defina o expediente do salão e dos profissionais.
-          </p>
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-widest text-xs">
+            <Calendar className="h-4 w-4" />
+            Agenda
+          </div>
+          <h1 className="mt-2 text-4xl font-black text-zinc-900 dark:text-white italic">Expediente</h1>
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400 font-medium">Sincronize o horário do salão com a equipe.</p>
         </div>
 
         <div className="flex gap-3">
-          <button
-            onClick={() => window.location.href = `/admin/${slug}`}
-            className="rounded-xl border border-zinc-300 bg-white px-6 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          <a
+            href={`/admin/${slug}`}
+            className="flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-bold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 transition-all shadow-sm"
           >
-            Voltar para agenda
-          </button>
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </a>
 
           <button
-            type="button"
             onClick={handleSave}
             disabled={saving}
-            className="rounded-xl bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60 transition"
+            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 font-black text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20 disabled:opacity-50 transition-all uppercase tracking-widest text-sm"
           >
-            {saving ? "Salvando..." : "Salvar horários"}
+            <Save className="h-4 w-4" />
+            {saving ? "Salvando..." : "Salvar Tudo"}
           </button>
         </div>
       </div>
 
-      {errorMessage && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
-          {errorMessage}
+      {(errorMessage || successMessage) && (
+        <div className={`p-4 rounded-2xl border font-bold text-sm ${errorMessage ? 'bg-red-50 border-red-100 text-red-600' : 'bg-emerald-50 border-emerald-100 text-emerald-700'}`}>
+          {errorMessage || successMessage}
         </div>
       )}
 
-      {successMessage && (
-        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-400">
-          {successMessage}
-        </div>
-      )}
-
+      {/* TABELA DO SALÃO */}
       <HourTable
-        title={`Horário do salão — ${data.tenant.name}`}
+        title={`Expediente Geral — ${data.tenant.name}`}
+        icon={Store}
         rows={data.tenantHours}
         onChange={(weekday, patch) => {
-          setData((current) =>
-            current
-              ? {
-                  ...current,
-                  tenantHours: updateHourRow(current.tenantHours, weekday, patch),
-                }
-              : current
-          );
+          setData(curr => curr ? { ...curr, tenantHours: updateHourRow(curr.tenantHours, weekday, patch) } : curr);
         }}
       />
 
-      {data.professionals.map((professional) => (
-        <HourTable
-          key={professional.id}
-          title={`Horário da profissional — ${professional.name}`}
-          rows={professional.hours}
-          onChange={(weekday, patch) => {
-            setData((current) =>
-              current
-                ? {
-                    ...current,
-                    professionals: current.professionals.map((p) =>
-                      p.id === professional.id
-                        ? {
-                            ...p,
-                            hours: updateHourRow(p.hours, weekday, patch),
-                          }
-                        : p
-                    ),
-                  }
-                : current
-            );
-          }}
-        />
-      ))}
+      {/* TABELAS DOS PROFISSIONAIS */}
+      <div className="space-y-12 pt-6 border-t border-zinc-100 dark:border-zinc-800">
+        <div className="px-1">
+          <h2 className="text-xl font-black text-zinc-800 dark:text-zinc-200">Horários Individuais</h2>
+          <p className="text-sm text-zinc-500">Ajuste os turnos específicos de cada profissional.</p>
+        </div>
+        
+        {data.professionals.map((professional) => (
+          <HourTable
+            key={professional.id}
+            title={`Turno de ${professional.name}`}
+            icon={Clock}
+            rows={professional.hours}
+            onChange={(weekday, patch) => {
+              setData(curr => curr ? {
+                ...curr,
+                professionals: curr.professionals.map(p => p.id === professional.id ? { ...p, hours: updateHourRow(p.hours, weekday, patch) } : p)
+              } : curr);
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
