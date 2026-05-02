@@ -76,6 +76,7 @@ model Tenant {
   publicPhone   String?
   address       String?
   instagram     String?
+  googleMapsLink  String?
 
   subscriptionStatus            TenantSubscriptionStatus @default(NONE)
   trialEndsAt                   DateTime?

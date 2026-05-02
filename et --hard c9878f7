@@ -1,0 +1,82 @@
+[33mc9878f7[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m fix: metrics and button on dashbord
+[33m46861f4[m fix: correção de fuso horário, erro 500 e integração final do WhatsApp
+[33m6d4afcd[m feat: implementa notificações via Evolution API, sistema de lembretes cron e refino do modo claro
+[33mbab7568[m feat: implementa notificações via Evolution API, sistema de lembretes cron e refino do modo claro
+[33m760e45f[m feat: implementa notificações via Evolution API, sistema de lembretes cron e refino do modo claro
+[33ma62cf23[m style: refina modo claro e move controles de tema para o header
+[33mfc54f35[m fix: ajusta tipagem do Card e melhora layout mobile
+[33md8f964b[m feat: implementa dashboard de métricas, refatora banco para price e ajustes mobile
+[33medbbe44[m fix: correçao botao sair mobile
+[33m144631d[m fix: correçao botao sair mobile
+[33m33e544a[m fix: correçao botao sair mobile
+[33me15d0b2[m fix: correçao botao sair mobile
+[33me51a156[m fix: add replyToMessageId to whatsapp options and evolution payload
+[33md2bc4c6[m fix: map evolution api response to meta format for compatibility
+[33m42990cb[m fix: change whatsapp function to accept single object argument
+[33m02d1ef2[m fix: rename whatsapp export to match imports
+[33mb159977[m fix: fuso horário, status de agendamento e layout do recibo
+[33m5eabe78[m fix: atualização pagina de recibo
+[33m7af8a73[m fix: atualização de painel
+[33mc538db9[m fix: blinda fuso horario no painel de admin
+[33m4dec187[m fix: atualia
+[33m2d31fb6[m fix: atualia
+[33mf0d867a[m fix: atualia
+[33m6401512[m fix: atualia funcoes da date-fns-tz para v3
+[33mb507709[m fix: atualia funcoes da date-fns-tz para v3
+[33m0d0b8f5[m fix: atualia funcoes da date-fns-tz para v3 e resolve erro de import
+[33ma97931e[m fix: atualiza funcoes da date-fns-tz para v3 e resolve erro de import
+[33m0e6bd37[m chore: instala date-fns para fix definitivo de fuso horario
+[33m90394c2[m chore: instala date-fns para fix definitivo de fuso horario
+[33mef0a8e0[m fix: blinda fuso horario no painel de admin
+[33mded9b8a[m fix: blinda fuso horario no painel de admin
+[33m35c9a57[m fix: corrige rota do link de novo agendamento para incluir o prefixo /s/
+[33mdd6635d[m fix: restaura design original e blinda fuso horario no recibo
+[33m0648474[m fix: unifica recibo e resolve erro de slug
+[33m4c70993[m feat: cria pagina de recibo com fuso horario de brasilia blindado
+[33m38cc159[m fix: correção painel
+[33m51d7852[m fix: restaura painel admin e habilita gestao completa de profissionais
+[33m54f1fcb[m fix: restaura painel admin e habilita gestao completa de profissionais
+[33mb8eb167[m correção agendamentos
+[33m479aef4[m fix: adiciona optional chaining para evitar crash na renderização da agenda
+[33m0e64609[m correção banco de dados prisma
+[33m257bc83[m criação de numeros para profissionais
+[33m5cbb137[m feat: conecta formulario publico de agendamento a nova API de disparo de whatsapp duplo
+[33me314a21[m feat: cria API de agendamento com disparo duplo de WhatsApp via central TratoMarcado
+[33mc24023b[m feat: cria API de agendamento com disparo duplo de WhatsApp via central TratoMarcado
+[33m56b7941[m feat: adiciona protecao de usuario e senha no painel master
+[33m75af021[m feat: cria painel master para gerenciar todos os saloes do TratoMarcado
+[33mea42e94[m chore: atualiza nome na guia do navegador para TratoMarcado
+[33ma58a669[m fix: atualiza nome do app
+[33mbd6af66[m fix: corrige alinhamento e altura do input de data no iphone safari
+[33mcb13714[m feat: implementa layout global com sidebar responsiva e modo escuro em todo o painel admin do TratoMarcado
+[33me190d39[m style: transforma cards de metricas em grid 2x2 no mobile
+[33m04b8277[m feat: adiciona layout de sidebar estilo youtube e suporte a modo escuro em todo o admin
+[33mced0261[m style: fixa modo claro e melhora proporcao do grid no painel de branding
+[33m461336a[m fix: corrige salvamento do campo minAdvanceHours no branding
+[33mf50dc8b[m feat: permite que salao configure horas de antecedencia minima para agendar two
+[33m61b0b3b[m feat: permite que salao configure horas de antecedencia minima para agendar
+[33m32ff480[m feat: substitui confirm nativo por modal do tailwind no logout
+[33m3ee6dd4[m feat: adiciona confirmacao antes do logout
+[33mbe26637[m style: destaca botao de sair com cor vermelha e largura total no mobile
+[33me9613ba[m style: transforma menu em dropdown responsivo com animacao suave
+[33m7adb1f0[m feat: adiciona botao magico para importar servicos de barbearia no onboarding
+[33mfd80c8e[m fix: corrige erro de sintaxe na rota de agendamentos para o onboarding
+[33m6964120[m style: melhora responsividade e espacamento do banner no celular
+[33m1d7fd09[m fix: adiciona aspas simples no url do banner css
+[33m736f43d[m feat: bloqueia alteracao de status para agendamentos cancelados ou concluidos
+[33mf0e6bb5[m fix: ajusta caminho de importacao do ThemeToggle
+[33m64c0ef7[m feat: aplica suporte a dark mode na tela publica de agendamento
+[33m873e293[m feat: adiciona trava de 2 horas de antecedencia para agendamentos online
+[33mfa12923[m fix: corrige chaves e redirecionamento no handleSubmit do agendamento
+[33m44e15bd[m fix: padroniza rota de atualizacao de agendamento com slug
+[33m0571fde[m feat: adiciona menu hamburger responsivo no painel admin
+[33m6465317[m style: transforma menu de botoes em carrossel horizontal no mobile
+[33mac510c6[m fix: add tailwind v3 config file
+[33mfbe1ecb[m security: update next.js to patch vulnerability
+[33m22fedc0[m fix: resolve TS error in webhook and ignore eslint on build
+[33m62b82da[m fix: downgrade tailwind config to v3 for stability
+[33m7aecad0[m fix: add missing @tailwindcss/postcss
+[33m417f04e[m fix: remove geist font and use inter from google fonts
+[33m7d88185[m fix: force legacy peer deps on vercel
+[33m5f5c56b[m fix: resolve npm peer dependencies
+[33maf73e94[m primeira versao

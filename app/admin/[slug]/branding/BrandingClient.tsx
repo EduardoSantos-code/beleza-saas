@@ -12,6 +12,7 @@ export default function BrandingClient({ slug }: { slug: string }) {
   const [instagram, setInstagram] = useState("");
   const [address, setAddress] = useState("");
   const [minAdvanceHours, setMinAdvanceHours] = useState(2);
+  const [googleMapsLink, setGoogleMapsLink] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -32,6 +33,7 @@ export default function BrandingClient({ slug }: { slug: string }) {
           setInstagram(data.instagram || "");
           setAddress(data.address || "");
           setMinAdvanceHours(data.minAdvanceHours ?? 2);
+          setGoogleMapsLink(data.googleMapsLink || "");
         }
       } catch (err) {
         console.error("Erro ao carregar:", err);
@@ -41,6 +43,29 @@ export default function BrandingClient({ slug }: { slug: string }) {
     }
     loadBranding();
   }, [slug]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = async () => {
+      const base64Image = reader.result;
+
+      const res = await fetch(`/api/admin/${slug}/branding/upload`, {
+        method: 'POST',
+        body: JSON.stringify({ image: base64Image, type }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (type === 'logo') setLogoUrl(data.url);
+        else setHeroImageUrl(data.url);
+        setMessage(`${type === 'logo' ? 'Logo' : 'Banner'} atualizado com sucesso!`);
+      }
+    };
+  };
 
   async function handleSave() {
     try {
@@ -53,6 +78,7 @@ export default function BrandingClient({ slug }: { slug: string }) {
         body: JSON.stringify({
           name, primaryColor, logoUrl, heroImageUrl, publicDescription,
           publicPhone, instagram, address, minAdvanceHours: Number(minAdvanceHours),
+          googleMapsLink,
         }),
       });
 
@@ -122,13 +148,20 @@ export default function BrandingClient({ slug }: { slug: string }) {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">URL da Logo</label>
-              <input type="text" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+              <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Link para Avaliação no Google Maps</label>
+              <input type="text" value={googleMapsLink} onChange={(e) => setGoogleMapsLink(e.target.value)} placeholder="https://g.page/r/seu-link/review" className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">URL do Banner</label>
-              <input type="text" value={heroImageUrl} onChange={(e) => setHeroImageUrl(e.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+              <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Logo do Salão</label>
+              <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'logo')} className="w-full text-sm text-zinc-500 file:mr-4 file:rounded-xl file:border-0 file:bg-violet-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-violet-700 hover:file:bg-violet-100 dark:file:bg-zinc-800 dark:file:text-zinc-300" />
+              <input type="text" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="Ou cole a URL da logo" className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Banner Principal</label>
+              <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'banner')} className="w-full text-sm text-zinc-500 file:mr-4 file:rounded-xl file:border-0 file:bg-violet-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-violet-700 hover:file:bg-violet-100 dark:file:bg-zinc-800 dark:file:text-zinc-300" />
+              <input type="text" value={heroImageUrl} onChange={(e) => setHeroImageUrl(e.target.value)} placeholder="Ou cole a URL do banner" className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
             </div>
 
             <button onClick={handleSave} disabled={saving} className="w-full rounded-xl bg-violet-600 py-3 font-bold text-white transition hover:bg-violet-700 disabled:opacity-50">

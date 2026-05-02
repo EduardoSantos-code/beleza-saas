@@ -146,6 +146,12 @@ export async function PATCH(
 ) {
   try {
     const { appointmentId } = await req.json();
+    console.log("🚨 TENTATIVA DE CANCELAMENTO PARA ID:", appointmentId);
+
+    if (!appointmentId) {
+      return NextResponse.json({ error: "ID do agendamento não enviado" }, { status: 400 });
+    }
+
     const TZ = "America/Sao_Paulo";
 
     const cancelledApp = await prisma.appointment.update({

@@ -4,12 +4,15 @@ import { useEffect, useState, useCallback } from "react";
 import { formatBR } from "@/lib/date";
 import { CheckCircle2, Calendar, Clock, Scissors, Printer, XCircle, RefreshCcw, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { formatInTimeZone } from 'date-fns-tz';
+import { ptBR } from 'date-fns/locale'
 
 export default function ManageAppointmentClient({ slug, id }: { slug: string; id: string }) {
   const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const TZ = 'America/Sao_Paulo';
   const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -34,7 +37,11 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
     if (!confirm("Deseja realmente cancelar este agendamento?")) return;
     setIsCancelling(true);
     try {
-      const res = await fetch(`/api/public/${slug}/appointments/${id}`, { method: "PATCH" });
+      const res = await fetch(`/api/public/${slug}/book`, {
+        method: "PATCH",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId: id })
+      });
       if (res.ok) {
         await loadAppointment(); // Atualiza a tela após cancelar
         alert("Agendamento cancelado.");
@@ -95,14 +102,14 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
                 <Calendar className="w-5 h-5 text-zinc-500" />
                 <div>
                   <p className="text-[10px] text-zinc-500 font-bold uppercase">Data</p>
-                  <p className="font-bold" suppressHydrationWarning>{formatBR(data.startAt, "dd 'de' MMMM")}</p>
+                  <p className="font-bold" suppressHydrationWarning>{formatInTimeZone(new Date(data.startAt), TZ, "dd 'de' MMMM", { locale: ptBR })}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <Clock className="w-5 h-5 text-zinc-500" />
                 <div>
                   <p className="text-[10px] text-zinc-500 font-bold uppercase">Horário</p>
-                  <p className="font-bold" suppressHydrationWarning>{formatBR(data.startAt, "HH:mm")}</p>
+                  <p className="font-bold" suppressHydrationWarning>{formatInTimeZone(new Date(data.startAt), TZ, "HH:mm")}</p>
                 </div>
               </div>
               <div className="flex items-center gap-4">

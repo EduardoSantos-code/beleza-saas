@@ -26,8 +26,8 @@ export default function AdminLayout({
     { name: "Profissionais", href: `/admin/${slug}/professionals`, icon: "💈" },
     { name: "Horários", href: `/admin/${slug}/hours`, icon: "⏰" },
     { name: "Bloqueios", href: `/admin/${slug}/blocks`, icon: "🔒" },
-    { name: "WhatsApp", href: `/admin/${slug}/whatsapp`, icon: "💬" },
-    { name: "Inbox", href: `/admin/${slug}/inbox`, icon: "📥" },
+   // { name: "WhatsApp", href: `/admin/${slug}/whatsapp`, icon: "💬" },
+    //{ name: "Inbox", href: `/admin/${slug}/inbox`, icon: "📥" },
     { name: "Branding", href: `/admin/${slug}/branding`, icon: "🎨" },
   ];
 
