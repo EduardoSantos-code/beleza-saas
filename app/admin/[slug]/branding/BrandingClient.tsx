@@ -115,12 +115,12 @@ export default function BrandingClient({ slug }: { slug: string }) {
           <div className="space-y-4">
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Nome Público</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Descrição</label>
-              <textarea value={publicDescription} onChange={(e) => setPublicDescription(e.target.value)} rows={3} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+              <textarea value={publicDescription} onChange={(e) => setPublicDescription(e.target.value)} rows={3} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -128,43 +128,43 @@ export default function BrandingClient({ slug }: { slug: string }) {
                 <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Cor Principal</label>
                 <div className="flex gap-2">
                   <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-10 w-12 cursor-pointer rounded border-none bg-transparent p-0" />
-                  <input type="text" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+                  <input type="text" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
                 </div>
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Antecedência (Horas)</label>
-                <input type="number" min="0" value={minAdvanceHours} onChange={(e) => setMinAdvanceHours(Number(e.target.value))} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+                <input type="number" min="0" value={minAdvanceHours} onChange={(e) => setMinAdvanceHours(Number(e.target.value))} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
               </div>
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">WhatsApp (E.164)</label>
-              <input type="text" value={publicPhone} onChange={(e) => setPublicPhone(e.target.value)} placeholder="+55..." className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+              <input type="text" value={publicPhone} onChange={(e) => setPublicPhone(e.target.value)} placeholder="+55..." className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Instagram</label>
-              <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@seuinsta" className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+              <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@seuinsta" className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Link para Avaliação no Google Maps</label>
-              <input type="text" value={googleMapsLink} onChange={(e) => setGoogleMapsLink(e.target.value)} placeholder="https://g.page/r/seu-link/review" className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+              <input type="text" value={googleMapsLink} onChange={(e) => setGoogleMapsLink(e.target.value)} placeholder="https://g.page/r/seu-link/review" className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Logo do Salão</label>
-              <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'logo')} className="w-full text-sm text-zinc-500 file:mr-4 file:rounded-xl file:border-0 file:bg-violet-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-violet-700 hover:file:bg-violet-100 dark:file:bg-zinc-800 dark:file:text-zinc-300" />
-              <input type="text" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="Ou cole a URL da logo" className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+              <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'logo')} className="w-full text-sm text-zinc-500 file:mr-4 file:rounded-xl file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100 dark:file:bg-zinc-800 dark:file:text-zinc-300" />
+              <input type="text" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="Ou cole a URL da logo" className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Banner Principal</label>
-              <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'banner')} className="w-full text-sm text-zinc-500 file:mr-4 file:rounded-xl file:border-0 file:bg-violet-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-violet-700 hover:file:bg-violet-100 dark:file:bg-zinc-800 dark:file:text-zinc-300" />
-              <input type="text" value={heroImageUrl} onChange={(e) => setHeroImageUrl(e.target.value)} placeholder="Ou cole a URL do banner" className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
+              <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'banner')} className="w-full text-sm text-zinc-500 file:mr-4 file:rounded-xl file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100 dark:file:bg-zinc-800 dark:file:text-zinc-300" />
+              <input type="text" value={heroImageUrl} onChange={(e) => setHeroImageUrl(e.target.value)} placeholder="Ou cole a URL do banner" className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
             </div>
 
-            <button onClick={handleSave} disabled={saving} className="w-full rounded-xl bg-violet-600 py-3 font-bold text-white transition hover:bg-violet-700 disabled:opacity-50">
+            <button onClick={handleSave} disabled={saving} className="w-full rounded-xl bg-brand-600 py-3 font-bold text-white transition hover:bg-brand-700 disabled:opacity-50">
               {saving ? "Salvando..." : "Salvar Alterações"}
             </button>
           </div>

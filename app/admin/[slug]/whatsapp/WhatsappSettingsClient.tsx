@@ -154,7 +154,7 @@ export default function WhatsappSettingsClient({ slug }: { slug: string }) {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">
+          <p className="text-sm font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
             Integrações
           </p>
           <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
@@ -201,7 +201,7 @@ export default function WhatsappSettingsClient({ slug }: { slug: string }) {
               value={phoneNumberId}
               onChange={(e) => setPhoneNumberId(e.target.value)}
               placeholder="Ex.: 123456789012345"
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
               required
             />
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -218,7 +218,7 @@ export default function WhatsappSettingsClient({ slug }: { slug: string }) {
               onChange={(e) => setAccessToken(e.target.value)}
               placeholder="Token de acesso da Meta"
               rows={4}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
               required
             />
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -235,7 +235,7 @@ export default function WhatsappSettingsClient({ slug }: { slug: string }) {
               value={verifyToken}
               onChange={(e) => setVerifyToken(e.target.value)}
               placeholder="Crie um token qualquer, ex.: studio-bella-webhook"
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
               required
             />
           </div>
@@ -243,7 +243,7 @@ export default function WhatsappSettingsClient({ slug }: { slug: string }) {
           <button
             type="submit"
             disabled={saving}
-            className="rounded-xl bg-violet-600 px-5 py-3 font-medium text-white hover:bg-violet-700 disabled:opacity-60 transition"
+            className="rounded-xl bg-brand-600 px-5 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-60 transition"
           >
             {saving ? "Salvando..." : "Salvar configuração"}
           </button>
@@ -261,7 +261,7 @@ export default function WhatsappSettingsClient({ slug }: { slug: string }) {
             value={testNumber}
             onChange={(e) => setTestNumber(e.target.value)}
             placeholder="+5511999999999"
-            className="flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+            className="flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
           />
 
           <button

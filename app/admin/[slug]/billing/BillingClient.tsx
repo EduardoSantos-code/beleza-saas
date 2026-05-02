@@ -183,7 +183,7 @@ export default function BillingClient({ slug }: { slug: string }) {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">
+          <p className="text-sm font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
             SaaS
           </p>
           <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
@@ -279,7 +279,7 @@ export default function BillingClient({ slug }: { slug: string }) {
                   type="button"
                   onClick={handleCheckout}
                   disabled={startingCheckout}
-                  className="rounded-xl bg-violet-600 px-5 py-3 font-medium text-white hover:bg-violet-700 disabled:opacity-60 transition"
+                  className="rounded-xl bg-brand-600 px-5 py-3 font-medium text-white hover:bg-brand-500 disabled:opacity-60 transition"
                 >
                   {startingCheckout
                     ? "Abrindo checkout..."
@@ -309,8 +309,8 @@ export default function BillingClient({ slug }: { slug: string }) {
               Plano mensal
             </h2>
 
-            <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-5 dark:border-violet-900/50 dark:bg-violet-900/10">
-              <p className="text-sm font-medium uppercase tracking-wide text-violet-700 dark:text-violet-400">
+            <div className="mt-4 rounded-2xl border border-brand-200 bg-brand-50 p-5 dark:border-emerald-500/50 dark:bg-emerald-500/10">
+              <p className="text-sm font-medium uppercase tracking-wide text-brand-500 dark:text-brand-400">
                 Plano Pro
               </p>
               <p className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">

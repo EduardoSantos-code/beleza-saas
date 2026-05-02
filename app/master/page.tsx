@@ -21,7 +21,7 @@ export default async function MasterPanel() {
     <main className="min-h-screen bg-zinc-950 px-4 py-8 text-white">
       <div className="mx-auto max-w-5xl space-y-8">
         <div>
-          <p className="text-sm font-bold uppercase tracking-widest text-violet-500">Super Admin</p>
+          <p className="text-sm font-bold uppercase tracking-widest text-brand-500">Super Admin</p>
           <h1 className="mt-2 text-4xl font-black tracking-tight">TratoMarcado</h1>
           <p className="mt-2 text-zinc-400">Visão geral de todos os salões cadastrados no sistema.</p>
         </div>
@@ -54,7 +54,7 @@ export default async function MasterPanel() {
                   <Link 
                     href={`/admin/${tenant.slug}`}
                     target="_blank"
-                    className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-violet-700"
+                    className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-700"
                   >
                     Acessar Painel
                   </Link>

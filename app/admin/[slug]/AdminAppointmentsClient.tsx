@@ -101,7 +101,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
     <div className="mx-auto max-w-6xl p-4">
       <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-sm font-bold uppercase tracking-widest text-violet-500">Painel Interno</p>
+          <p className="text-sm font-bold uppercase tracking-widest text-brand-500">Painel Interno</p>
           <h2 className="text-4xl font-extrabold text-zinc-900 dark:text-white tracking-tighter">
             {data?.tenant.name}
           </h2>
@@ -114,7 +114,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
             onChange={(e) => setDate(e.target.value)}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
           />
-          <button className="flex items-center gap-3 px-5 py-2.5 rounded-xl font-bold transition-all border   /* Modo Claro */   bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50   /* Modo Escuro */   dark:bg-zinc-900 dark:border-zinc-800 dark:text-white dark:hover:bg-zinc-800" >   <span>{date.split('-').reverse().join('/')}</span>   <Calendar size={18} className="text-violet-600" /> </button>
+          <button className="flex items-center gap-3 px-5 py-2.5 rounded-xl font-bold transition-all border   /* Modo Claro */   bg-white border-zinc-200 text-zinc-900 hover:bg-zinc-50   /* Modo Escuro */   dark:bg-zinc-900 dark:border-zinc-800 dark:text-white dark:hover:bg-zinc-800" >   <span>{date.split('-').reverse().join('/')}</span>   <Calendar size={18} className="text-brand-600" /> </button>
         </div>
       </div>
 
@@ -125,7 +125,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
             onClick={() => setActiveProfId(null)}
             className={`shrink-0 px-6 py-2 rounded-full font-bold transition-all ${
               activeProfId === null
-                ? "bg-violet-600 text-white"
+                ? "bg-brand-600 text-white"
                 : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
             }`}
           >
@@ -137,7 +137,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
               onClick={() => setActiveProfId(prof.id)}
               className={`shrink-0 px-6 py-2 rounded-full font-bold transition-all ${
                 activeProfId === prof.id
-                  ? "bg-violet-600 text-white"
+                  ? "bg-brand-600 text-white"
                   : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
               }`}
             >
@@ -182,7 +182,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
                 
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
-                    <p className="text-[14px] font-bold text-violet-500 uppercase tracking-tight bg-violet-500/10 px-2 py-1 rounded-md">
+                    <p className="text-[14px] font-bold text-brand-500 uppercase tracking-tight bg-brand-500/10 px-2 py-1 rounded-md">
                       {formatBR(app.startAt, "HH:mm")}
                     </p>
                     <p className="font-bold text-zinc-900 dark:text-white text-lg leading-tight">{app.client.name}</p>

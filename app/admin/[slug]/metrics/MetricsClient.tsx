@@ -86,7 +86,7 @@ export default function MetricsClient({ slug }: { slug: string }) {
       <div className="flex flex-col gap-4 mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-violet-600">Relatórios</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-brand-600">Relatórios</p>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Métricas</h1>
           </div>
           <button
@@ -99,7 +99,7 @@ export default function MetricsClient({ slug }: { slug: string }) {
         <select
           value={range}
           onChange={(e) => setRange(e.target.value)}
-          className="w-full lg:w-auto rounded-xl px-4 py-3 text-sm font-medium shadow-sm outline-none transition-all bg-white border-zinc-200 text-zinc-900 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
+          className="w-full lg:w-auto rounded-xl px-4 py-3 text-sm font-medium shadow-sm outline-none transition-all bg-white border-zinc-200 text-zinc-900 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
         >
           <option value="1" className="text-zinc-900 dark:text-white">Hoje</option>
           <option value="7" className="text-zinc-900 dark:text-white">Últimos 7 dias</option>
@@ -125,7 +125,7 @@ export default function MetricsClient({ slug }: { slug: string }) {
         <Card
           title="Lucro Líquido"
           value={`R$ ${((data.summary.lucroLiquido || 0) / 100).toFixed(2).replace('.', ',')}`}
-          color="text-violet-500"
+          color="text-brand-500"
           className="p-3 md:p-6"
         />
         <Card
@@ -206,7 +206,7 @@ export default function MetricsClient({ slug }: { slug: string }) {
                   </div>
                   <div className="h-2 w-full rounded-full bg-zinc-100 dark:bg-zinc-800">
                     <div
-                      className="h-full rounded-full bg-violet-500 dark:bg-violet-600"
+                      className="h-full rounded-full bg-brand-500 dark:bg-brand-600"
                       style={{
                         width: `${Math.min(
                           100,
@@ -233,7 +233,7 @@ export default function MetricsClient({ slug }: { slug: string }) {
               <div key={i} className="p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
                 <div className="flex justify-between items-start mb-2">
                   <span className="font-bold text-zinc-900 dark:text-white">{prof.name}</span>
-                  <span className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 px-2 py-1 rounded-full">
+                  <span className="text-xs bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400 px-2 py-1 rounded-full">
                     {prof.count} cortes
                   </span>
                 </div>

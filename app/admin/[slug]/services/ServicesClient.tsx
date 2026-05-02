@@ -230,7 +230,7 @@ export default function ServicesClient({ slug }: { slug: string }) {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">
+          <p className="text-sm font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
             Cadastros
           </p>
           <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">Serviços</h1>
@@ -272,7 +272,7 @@ export default function ServicesClient({ slug }: { slug: string }) {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Ex.: Corte feminino"
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
               required
             />
           </div>
@@ -285,7 +285,7 @@ export default function ServicesClient({ slug }: { slug: string }) {
               type="number"
               value={newDurationMin}
               onChange={(e) => setNewDurationMin(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
               min={5}
               required
             />
@@ -299,7 +299,7 @@ export default function ServicesClient({ slug }: { slug: string }) {
               type="text"
               value={newPrice}
               onChange={(e) => setNewPrice(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
               required
             />
           </div>
@@ -308,7 +308,7 @@ export default function ServicesClient({ slug }: { slug: string }) {
             <button
               type="submit"
               disabled={savingCreate}
-              className="rounded-xl bg-violet-600 px-5 py-3 font-medium text-white hover:bg-violet-700 disabled:opacity-60 transition"
+              className="rounded-xl bg-brand-600 px-5 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-60 transition"
             >
               {savingCreate ? "Salvando..." : "Criar serviço"}
             </button>
@@ -354,7 +354,7 @@ export default function ServicesClient({ slug }: { slug: string }) {
                           },
                         }))
                       }
-                      className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                      className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                     />
                   </div>
 
@@ -374,7 +374,7 @@ export default function ServicesClient({ slug }: { slug: string }) {
                           },
                         }))
                       }
-                      className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                      className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                     />
                   </div>
 
@@ -394,7 +394,7 @@ export default function ServicesClient({ slug }: { slug: string }) {
                           },
                         }))
                       }
-                      className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                      className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                     />
                   </div>
 
@@ -412,7 +412,7 @@ export default function ServicesClient({ slug }: { slug: string }) {
                             },
                           }))
                         }
-                        className="h-5 w-5 rounded border-zinc-300 text-violet-600 dark:border-zinc-700 dark:bg-zinc-800"
+                        className="h-5 w-5 rounded border-zinc-300 text-brand-600 dark:border-zinc-700 dark:bg-zinc-800"
                       />
                       Ativo
                     </label>

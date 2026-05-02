@@ -127,7 +127,7 @@ export default function OnboardingFlow({ slug, hasServices, hasProfessionals, on
         
         {step === "WELCOME" && (
           <div className="text-center">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-violet-100 text-3xl dark:bg-violet-900/30">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-3xl dark:bg-brand-900/30">
               👋
             </div>
             <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Bem-vindo(a)!</h2>
@@ -136,7 +136,7 @@ export default function OnboardingFlow({ slug, hasServices, hasProfessionals, on
             </p>
             <button
               onClick={startFlow}
-              className="mt-8 w-full rounded-xl bg-violet-600 px-5 py-3 font-medium text-white hover:bg-violet-700 transition"
+              className="mt-8 w-full rounded-xl bg-brand-600 px-5 py-3 font-medium text-white hover:bg-brand-700 transition"
             >
               Vamos começar
             </button>
@@ -168,16 +168,16 @@ export default function OnboardingFlow({ slug, hasServices, hasProfessionals, on
             <form onSubmit={handleCreateService} className="space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Nome do Serviço</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" required />
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Preço (R$)</label>
-                  <input type="text" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" required />
+                  <input type="text" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" required />
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Duração (min)</label>
-                  <input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" required />
+                  <input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" required />
                 </div>
               </div>
               {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -198,10 +198,10 @@ export default function OnboardingFlow({ slug, hasServices, hasProfessionals, on
             <form onSubmit={handleCreateProfessional} className="mt-6 space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Nome do Profissional</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: João Silva" className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" required />
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: João Silva" className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" required />
               </div>
               {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-              <button disabled={loading} type="submit" className="mt-4 w-full rounded-xl bg-violet-600 px-5 py-3 font-medium text-white hover:bg-violet-700 disabled:opacity-50 transition">
+              <button disabled={loading} type="submit" className="mt-4 w-full rounded-xl bg-brand-600 px-5 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-50 transition">
                 {loading ? "Finalizando..." : "Concluir configuração"}
               </button>
             </form>

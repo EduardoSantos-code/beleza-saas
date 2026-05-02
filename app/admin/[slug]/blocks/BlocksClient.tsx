@@ -160,7 +160,7 @@ export default function BlocksClient({ slug }: { slug: string }) {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">
+          <p className="text-sm font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
             Configurações
           </p>
           <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
@@ -204,7 +204,7 @@ export default function BlocksClient({ slug }: { slug: string }) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Ex.: Folga, feriado, manutenção, reunião"
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
               required
             />
           </div>
@@ -218,7 +218,7 @@ export default function BlocksClient({ slug }: { slug: string }) {
               value={date}
               onClick={(e) => e.currentTarget.showPicker()}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full appearance-none text-left min-h-[50px] [&::-webkit-datetime-edit]:flex [&::-webkit-datetime-edit]:justify-start rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white [color-scheme:light_dark]"
+              className="w-full appearance-none text-left min-h-[50px] [&::-webkit-datetime-edit]:flex [&::-webkit-datetime-edit]:justify-start rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white [color-scheme:light_dark]"
               required
             />
           </div>
@@ -230,7 +230,7 @@ export default function BlocksClient({ slug }: { slug: string }) {
             <select
               value={professionalId}
               onChange={(e) => setProfessionalId(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
             >
               <option value="">Salão inteiro</option>
               {data?.professionals.map((professional) => (
@@ -247,7 +247,7 @@ export default function BlocksClient({ slug }: { slug: string }) {
                 type="checkbox"
                 checked={allDay}
                 onChange={(e) => setAllDay(e.target.checked)}
-                className="h-5 w-5 rounded border-zinc-300 text-violet-600 dark:border-zinc-700 dark:bg-zinc-800"
+                className="h-5 w-5 rounded border-zinc-300 text-brand-600 dark:border-zinc-700 dark:bg-zinc-800"
               />
               Dia inteiro
             </label>
@@ -263,7 +263,7 @@ export default function BlocksClient({ slug }: { slug: string }) {
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white [color-scheme:light_dark]"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white [color-scheme:light_dark]"
                   required
                 />
               </div>
@@ -276,7 +276,7 @@ export default function BlocksClient({ slug }: { slug: string }) {
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-violet-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white [color-scheme:light_dark]"
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white [color-scheme:light_dark]"
                   required
                 />
               </div>
@@ -287,7 +287,7 @@ export default function BlocksClient({ slug }: { slug: string }) {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-violet-600 px-5 py-3 font-medium text-white hover:bg-violet-700 disabled:opacity-60 transition"
+              className="rounded-xl bg-brand-600 px-5 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-60 transition"
             >
               {saving ? "Salvando..." : "Criar bloqueio"}
             </button>

@@ -56,7 +56,7 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
   if (!mounted || loading) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
-        <div className="w-10 h-10 border-4 border-violet-600 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-10 h-10 border-4 border-brand-600 border-t-transparent rounded-full animate-spin"></div>
         <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest">Carregando...</p>
       </div>
     );
@@ -69,7 +69,7 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
           <p className="text-4xl mb-4">⏳</p>
           <h2 className="text-white font-bold text-xl mb-2">Quase lá...</h2>
           <p className="text-zinc-500 text-sm mb-6">Não conseguimos localizar seu agendamento. Verifique o link ou atualize a página.</p>
-          <button onClick={() => window.location.reload()} className="bg-violet-600 text-white px-8 py-3 rounded-2xl font-bold text-sm">Atualizar</button>
+          <button onClick={() => window.location.reload()} className="bg-brand-600 text-white px-8 py-3 rounded-2xl font-bold text-sm">Atualizar</button>
         </div>
       </div>
     );
@@ -93,7 +93,7 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
         <div className={`bg-zinc-900 border border-zinc-800 rounded-[2.5rem] overflow-hidden shadow-2xl ${isCanceled ? 'opacity-50' : ''}`}>
           <div className="p-8 space-y-6">
             <div className="pb-6 border-b border-zinc-800">
-              <p className="text-[10px] font-bold text-violet-500 uppercase tracking-widest mb-1">Local</p>
+              <p className="text-[10px] font-bold text-brand-500 uppercase tracking-widest mb-1">Local</p>
               <h2 className="text-2xl font-black">{data.tenant?.name}</h2>
             </div>
 

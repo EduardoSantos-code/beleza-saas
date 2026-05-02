@@ -87,8 +87,8 @@ export default function AdminLayout({
             onClick={() => setIsSidebarOpen(false)}
             className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
               isActive
-                ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
-                : "text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800/50"
+                ? "bg-emerald-200 text-zinc-700 dark:bg-emerald-600/30 dark:text-zinc-300"
+                : "text-zinc-700 hover:bg-emerald-200 dark:text-zinc-300 dark:hover:bg-emerald-500/50"
             }`}
           >
             <span className="text-lg">{link.icon}</span>
@@ -115,7 +115,7 @@ export default function AdminLayout({
             <span className="text-sm font-semibold text-zinc-900 dark:text-white">Eduardo</span>
             <span className="text-xs text-zinc-500">Administrador</span>
           </div>
-          <div className="h-9 w-9 rounded-full bg-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-white dark:ring-zinc-900">
+          <div className="h-9 w-9 rounded-full bg-brand-600 flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-white dark:ring-zinc-900">
             E
           </div>
         </div>

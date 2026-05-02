@@ -195,7 +195,7 @@ export default function InboxClient({ slug }: { slug: string }) {
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">
+          <p className="text-sm font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
             Atendimento
           </p>
           <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
@@ -254,7 +254,7 @@ export default function InboxClient({ slug }: { slug: string }) {
                       className={[
                         "block w-full px-5 py-4 text-left transition",
                         active 
-                          ? "bg-violet-50 dark:bg-violet-900/20" 
+                          ? "bg-brand-50 dark:bg-brand-900/20" 
                           : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50",
                       ].join(" ")}
                     >
@@ -339,7 +339,7 @@ export default function InboxClient({ slug }: { slug: string }) {
                       className={[
                         "max-w-[80%] rounded-2xl px-4 py-3 shadow-sm",
                         message.direction === "outbound"
-                          ? "bg-violet-600 text-white dark:bg-violet-700"
+                          ? "bg-brand-600 text-white dark:bg-brand-700"
                           : "bg-white text-zinc-900 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-700",
                       ].join(" ")}
                     >
@@ -350,7 +350,7 @@ export default function InboxClient({ slug }: { slug: string }) {
                         className={[
                           "mt-2 text-xs",
                           message.direction === "outbound"
-                            ? "text-violet-200 dark:text-violet-300"
+                            ? "text-brand-200 dark:text-brand-300"
                             : "text-zinc-400 dark:text-zinc-500",
                         ].join(" ")}
                       >
@@ -381,14 +381,14 @@ export default function InboxClient({ slug }: { slug: string }) {
                     : "Selecione uma conversa para responder"
                 }
                 disabled={!selectedClientId || sending}
-                className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-violet-500 disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:disabled:bg-zinc-800 transition"
+                className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-brand-500 disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:disabled:bg-zinc-800 transition"
               />
 
               <div className="flex justify-end">
                 <button
                   type="submit"
                   disabled={!selectedClientId || !replyText.trim() || sending}
-                  className="rounded-xl bg-violet-600 px-5 py-3 font-medium text-white hover:bg-violet-700 disabled:opacity-60 transition"
+                  className="rounded-xl bg-brand-600 px-5 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-60 transition"
                 >
                   {sending ? "Enviando..." : "Enviar mensagem"}
                 </button>

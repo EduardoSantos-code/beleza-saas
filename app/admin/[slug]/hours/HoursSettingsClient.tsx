@@ -120,7 +120,7 @@ function HourTable({
                         breakEndMin: e.target.checked ? row.breakEndMin : null,
                       })
                     }
-                    className="h-4 w-4 rounded border-zinc-300 text-violet-600 dark:border-zinc-700 dark:bg-zinc-800"
+                    className="h-4 w-4 rounded border-zinc-300 text-brand-600 dark:border-zinc-700 dark:bg-zinc-800"
                   />
                 </td>
 
@@ -134,7 +134,7 @@ function HourTable({
                         startMin: timeToMin(e.target.value),
                       })
                     }
-                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 [color-scheme:light_dark]"
+                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 [color-scheme:light_dark]"
                   />
                 </td>
 
@@ -148,7 +148,7 @@ function HourTable({
                         endMin: timeToMin(e.target.value),
                       })
                     }
-                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 [color-scheme:light_dark]"
+                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 [color-scheme:light_dark]"
                   />
                 </td>
 
@@ -162,7 +162,7 @@ function HourTable({
                         breakStartMin: timeToMin(e.target.value),
                       })
                     }
-                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 [color-scheme:light_dark]"
+                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 [color-scheme:light_dark]"
                   />
                 </td>
 
@@ -176,7 +176,7 @@ function HourTable({
                         breakEndMin: timeToMin(e.target.value),
                       })
                     }
-                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 [color-scheme:light_dark]"
+                    className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none bg-white border-zinc-300 text-zinc-900 placeholder:text-zinc-400 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white disabled:bg-zinc-100 disabled:text-zinc-400 disabled:cursor-not-allowed focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 [color-scheme:light_dark]"
                   />
                 </td>
               </tr>
@@ -285,7 +285,7 @@ export default function HoursSettingsClient({ slug }: { slug: string }) {
     <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">
+          <p className="text-sm font-medium uppercase tracking-wide text-brand-600 dark:text-brand-400">
             Configurações
           </p>
           <h1 className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">
@@ -308,7 +308,7 @@ export default function HoursSettingsClient({ slug }: { slug: string }) {
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="rounded-xl bg-violet-600 px-4 py-3 text-sm font-medium text-white hover:bg-violet-700 disabled:opacity-60 transition"
+            className="rounded-xl bg-brand-600 px-4 py-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60 transition"
           >
             {saving ? "Salvando..." : "Salvar horários"}
           </button>

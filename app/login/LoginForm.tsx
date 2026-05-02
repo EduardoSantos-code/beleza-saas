@@ -44,7 +44,7 @@ export default function LoginForm({ nextPath }: { nextPath: string }) {
   return (
     <main className="min-h-screen bg-zinc-50 px-4 py-10">
       <div className="mx-auto max-w-md rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
-        <p className="text-sm font-medium uppercase tracking-wide text-violet-600">
+        <p className="text-sm font-medium uppercase tracking-wide text-brand-500">
           Acesso interno
         </p>
         <h1 className="mt-2 text-3xl font-bold text-zinc-900">Entrar</h1>
@@ -61,7 +61,7 @@ export default function LoginForm({ nextPath }: { nextPath: string }) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-violet-500"
+              className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-brand-500"
               required
             />
           </div>
@@ -74,7 +74,7 @@ export default function LoginForm({ nextPath }: { nextPath: string }) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-violet-500"
+              className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-brand-500"
               required
             />
           </div>
@@ -88,7 +88,7 @@ export default function LoginForm({ nextPath }: { nextPath: string }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-violet-600 px-4 py-3 font-medium text-white hover:bg-violet-700 disabled:opacity-60"
+            className="w-full rounded-xl bg-brand-500 px-4 py-3 font-medium text-white hover:brand-600 disabled:opacity-60"
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>
