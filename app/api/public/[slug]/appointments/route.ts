@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { formatInTimeZone } from "date-fns-tz";
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
@@ -65,8 +66,42 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
         endAt: endUtc,
         notes,
         status: "CONFIRMED",
-      }
+      },
+      include: { professional: true, service: true, tenant: true, client: true }
     });
+
+    // WhatsApp Notification
+    const currentStatus = appointment.tenant?.subscriptionStatus;
+
+    if (currentStatus && currentStatus !== "CANCELED") {
+      const dateLabel = formatInTimeZone(appointment.startAt, TZ, "dd/MM/yyyy");
+      const timeLabel = formatInTimeZone(appointment.startAt, TZ, "HH:mm");
+
+      // NOTIFICAR BARBEIRO
+      if (appointment.professional?.phoneE164) {
+        const msgBarbeiro = `🚨 *Novo Cliente na área!*\n\n` +
+          `Fala, *${appointment.professional.name}*, você tem um novo agendamento:\n\n` +
+          `👤 *Cliente:* ${appointment.client?.name}\n` +
+          `💈 *Serviço:* ${appointment.service?.name}\n` +
+          `📅 *Data:* ${dateLabel}\n` +
+          `🕒 *Hora:* ${timeLabel}\n\n` +
+          `Dá uma olhada na sua agenda completa no painel do TratoMarcado.`;
+
+        await sendWhatsAppMessage(appointment.professional.phoneE164, msgBarbeiro);
+      }
+
+      // NOTIFICAR CLIENTE
+      if (appointment.client?.phoneE164) {
+        const msgCliente = `Fala, ${appointment.client.name}! ✂️\n\n` +
+          `Seu trato tá oficialmente marcado na *${appointment.tenant?.name}*.\n\n` +
+          `📅 *Data:* ${dateLabel}\n` +
+          `🕒 *Hora:* ${timeLabel}\n` +
+          `💈 *Barbeiro:* ${appointment.professional?.name}\n\n` +
+          `Dica: Se precisar desmarcar, avise a gente com antecedência. Nos vemos em breve! 👊`;
+
+        await sendWhatsAppMessage(appointment.client.phoneE164, msgCliente);
+      }
+    }
 
     return NextResponse.json(appointment);
   } catch (error: any) {

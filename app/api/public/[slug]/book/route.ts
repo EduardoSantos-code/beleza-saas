@@ -85,9 +85,9 @@ export async function POST(
     
     console.log(`[WhatsApp] Verificando status para ${slug}: ${currentStatus}`);
 
-    if (currentStatus === "ACTIVE" || currentStatus === "TRIALING") {
-      const dateLabel = formatInTimeZone(startUtc, TZ, "dd/MM/yyyy");
-      const timeLabel = formatInTimeZone(startUtc, TZ, "HH:mm");
+    if (currentStatus && currentStatus !== "CANCELED") {
+      const dateLabel = formatInTimeZone(appointment.startAt, TZ, "dd/MM/yyyy");
+      const timeLabel = formatInTimeZone(appointment.startAt, TZ, "HH:mm");
 
       // NOTIFICAR BARBEIRO
       if (appointment.professional?.phoneE164) {
