@@ -79,13 +79,19 @@ export async function POST(
       include: { professional: true, service: true, tenant: true, client: true }
     });
 
-    // Notificação WhatsApp (Apenas se assinatura ativa)
-    if (tenant?.subscriptionStatus === "ACTIVE") {
+    // 6. WhatsApp Notification
+    // Usamos o status que veio direto do agendamento criado para evitar erro de cache
+    const currentStatus = appointment.tenant?.subscriptionStatus;
+    
+    console.log(`[WhatsApp] Verificando status para ${slug}: ${currentStatus}`);
+
+    if (currentStatus === "ACTIVE" || currentStatus === "TRIALING") {
       const dateLabel = formatInTimeZone(startUtc, TZ, "dd/MM/yyyy");
       const timeLabel = formatInTimeZone(startUtc, TZ, "HH:mm");
 
       // NOTIFICAR BARBEIRO
       if (appointment.professional?.phoneE164) {
+        console.log(`[WhatsApp] Enviando para Barbeiro: ${appointment.professional.phoneE164}`);
         const msgBarbeiro = `🚨 *Novo Cliente na área!*\n\n` +
           `Fala, *${appointment.professional.name}*, você tem um novo agendamento:\n\n` +
           `👤 *Cliente:* ${appointment.client?.name}\n` +
@@ -99,6 +105,7 @@ export async function POST(
 
       // NOTIFICAR CLIENTE
       if (appointment.client?.phoneE164) {
+        console.log(`[WhatsApp] Enviando para Cliente: ${appointment.client.phoneE164}`);
         const msgCliente = `Fala, ${appointment.client.name}! ✂️\n\n` +
           `Seu trato tá oficialmente marcado na *${appointment.tenant?.name}*.\n\n` +
           `📅 *Data:* ${dateLabel}\n` +
@@ -108,7 +115,9 @@ export async function POST(
 
         await sendWhatsAppMessage(appointment.client.phoneE164, msgCliente);
       }
-    } 
+    } else {
+      console.log(`[WhatsApp] Bloqueado: Status ${currentStatus} não permite envio.`);
+    }
 
     return NextResponse.json(appointment);
 
