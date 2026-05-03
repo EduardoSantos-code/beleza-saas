@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
-import { sendZap } from "@/lib/whatsapp";
+// Importamos a nossa função robusta
+import { sendWhatsAppMessage } from "@/lib/whatsapp";
 
 interface BookBody {
   serviceId: string;
@@ -11,27 +12,6 @@ interface BookBody {
   clientPhoneE164: string;
   notes?: string;
 }
-
-const sendEvolutionMessage = async (to: string, text: string) => {
-  try {
-    const url = `${process.env.EVOLUTION_API_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE}`;
-    const apiKey = process.env.EVOLUTION_API_KEY;
-
-    if (!process.env.EVOLUTION_API_URL || !apiKey) return;
-
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "apikey": apiKey },
-      body: JSON.stringify({
-        number: to,
-        text: text,
-        delay: 1000,
-      }),
-    });
-  } catch (error) {
-    console.error("Erro ao enviar WhatsApp:", error);
-  }
-};
 
 export async function POST(
   req: Request,
@@ -99,42 +79,36 @@ export async function POST(
       include: { professional: true, service: true, tenant: true, client: true }
     });
 
-    // 6. WhatsApp Notification (Only if subscription is ACTIVE)
+    // Notificação WhatsApp (Apenas se assinatura ativa)
     if (tenant?.subscriptionStatus === "ACTIVE") {
-      try {
-        const dateLabel = formatInTimeZone(startUtc, TZ, "dd/MM/yyyy");
-        const timeLabel = formatInTimeZone(startUtc, TZ, "HH:mm");
+      const dateLabel = formatInTimeZone(startUtc, TZ, "dd/MM/yyyy");
+      const timeLabel = formatInTimeZone(startUtc, TZ, "HH:mm");
 
-        // NOTIFICAR BARBEIRO
-        if (appointment.professional?.phoneE164) {
-          const msgBarbeiro = `🚨 *Novo Cliente na área!*\n\n` +
-            `Fala, *${appointment.professional.name}*, você tem um novo agendamento:\n\n` +
-            `👤 *Cliente:* ${appointment.client?.name}\n` +
-            `💈 *Serviço:* ${appointment.service?.name}\n` +
-            `📅 *Data:* ${dateLabel}\n` +
-            `🕒 *Hora:* ${timeLabel}\n\n` +
-            `Dá uma olhada na sua agenda completa no painel do TratoMarcado.`;
+      // NOTIFICAR BARBEIRO
+      if (appointment.professional?.phoneE164) {
+        const msgBarbeiro = `🚨 *Novo Cliente na área!*\n\n` +
+          `Fala, *${appointment.professional.name}*, você tem um novo agendamento:\n\n` +
+          `👤 *Cliente:* ${appointment.client?.name}\n` +
+          `💈 *Serviço:* ${appointment.service?.name}\n` +
+          `📅 *Data:* ${dateLabel}\n` +
+          `🕒 *Hora:* ${timeLabel}\n\n` +
+          `Dá uma olhada na sua agenda completa no painel do TratoMarcado.`;
 
-          await sendEvolutionMessage(appointment.professional.phoneE164, msgBarbeiro);
-        }
-
-        // NOTIFICAR CLIENTE
-        if (appointment.client?.phoneE164) {
-          const msgCliente = `Fala, ${appointment.client.name}! ✂️\n\n` +
-            `Seu trato tá oficialmente marcado na *${appointment.tenant?.name}*.\n\n` +
-            `📅 *Data:* ${dateLabel}\n` +
-            `🕒 *Hora:* ${timeLabel}\n` +
-            `💈 *Barbeiro:* ${appointment.professional?.name}\n\n` +
-            `Dica: Se precisar desmarcar, avise a gente com antecedência. Nos vemos em breve! 👊`;
-
-          await sendEvolutionMessage(appointment.client.phoneE164, msgCliente);
-        }
-      } catch (e) {
-        console.error("Erro ao avisar o barbeiro:", e);
+        await sendWhatsAppMessage(appointment.professional.phoneE164, msgBarbeiro);
       }
-    } else {
-      console.log("Notificação não enviada: Assinatura inativa.");
-    }
+
+      // NOTIFICAR CLIENTE
+      if (appointment.client?.phoneE164) {
+        const msgCliente = `Fala, ${appointment.client.name}! ✂️\n\n` +
+          `Seu trato tá oficialmente marcado na *${appointment.tenant?.name}*.\n\n` +
+          `📅 *Data:* ${dateLabel}\n` +
+          `🕒 *Hora:* ${timeLabel}\n` +
+          `💈 *Barbeiro:* ${appointment.professional?.name}\n\n` +
+          `Dica: Se precisar desmarcar, avise a gente com antecedência. Nos vemos em breve! 👊`;
+
+        await sendWhatsAppMessage(appointment.client.phoneE164, msgCliente);
+      }
+    } 
 
     return NextResponse.json(appointment);
 
@@ -150,7 +124,6 @@ export async function PATCH(
 ) {
   try {
     const { appointmentId } = await req.json();
-    console.log("🚨 TENTATIVA DE CANCELAMENTO PARA ID:", appointmentId);
 
     if (!appointmentId) {
       return NextResponse.json({ error: "ID do agendamento não enviado" }, { status: 400 });
@@ -169,25 +142,21 @@ export async function PATCH(
       },
     });
 
-    // WhatsApp Notification for Cancellation
-    try {
-      const dateLabel = formatInTimeZone(cancelledApp.startAt, TZ, "dd/MM/yyyy");
-      const timeLabel = formatInTimeZone(cancelledApp.startAt, TZ, "HH:mm");
+    // Notificação WhatsApp para Cancelamento
+    const dateLabel = formatInTimeZone(cancelledApp.startAt, TZ, "dd/MM/yyyy");
+    const timeLabel = formatInTimeZone(cancelledApp.startAt, TZ, "HH:mm");
 
-      // 1. NOTIFICAR BARBEIRO (Cancelamento)
-      if (cancelledApp.professional?.phoneE164) {
-        const msgBarbeiro = `❌ *Horário Liberado!*\n\nO cliente *${cancelledApp.client?.name}* cancelou o horário das ${timeLabel} no dia ${dateLabel}. Esse horário já voltou para a sua agenda e está disponível para novos agendamentos. 🔄`;
-        await sendEvolutionMessage(cancelledApp.professional?.phoneE164, msgBarbeiro);
-      }
+    // 1. NOTIFICAR BARBEIRO (Cancelamento)
+    if (cancelledApp.professional?.phoneE164) {
+      const msgBarbeiro = `❌ *Horário Liberado!*\n\nO cliente *${cancelledApp.client?.name}* cancelou o horário das ${timeLabel} no dia ${dateLabel}. Esse horário já voltou para a sua agenda e está disponível para novos agendamentos. 🔄`;
+      await sendWhatsAppMessage(cancelledApp.professional.phoneE164, msgBarbeiro);
+    }
 
-      // 2. NOTIFICAR CLIENTE (Confirmação de Cancelamento)
-      if (cancelledApp.client?.phoneE164) {
-        const msgCliente = `❌ *Cancelamento Confirmado*\n\n` +
-          `Olá ${cancelledApp.client?.name}, seu agendamento na *${cancelledApp.tenant?.name}* para o dia ${dateLabel} às ${timeLabel} foi cancelado.`;
-        await sendEvolutionMessage(cancelledApp.client?.phoneE164, msgCliente);
-      }
-    } catch (e) {
-      console.error("Erro zap cancelamento:", e);
+    // 2. NOTIFICAR CLIENTE (Confirmação de Cancelamento)
+    if (cancelledApp.client?.phoneE164) {
+      const msgCliente = `❌ *Cancelamento Confirmado*\n\n` +
+        `Olá ${cancelledApp.client?.name}, seu agendamento na *${cancelledApp.tenant?.name}* para o dia ${dateLabel} às ${timeLabel} foi cancelado.`;
+      await sendWhatsAppMessage(cancelledApp.client.phoneE164, msgCliente);
     }
 
     return NextResponse.json(cancelledApp);

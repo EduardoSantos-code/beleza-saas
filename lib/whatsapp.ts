@@ -1,13 +1,13 @@
 // lib/whatsapp.ts
 
-const EVOLUTION_URL = process.env.EVOLUTION_URL; 
+const EVOLUTION_URL = process.env.NEXT_PUBLIC_EVOLUTION_URL || process.env.EVOLUTION_API_URL; 
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY; 
-const INSTANCE_NAME = "TratoMarcado_Master"; 
+const INSTANCE_NAME = process.env.EVOLUTION_INSTANCE || "teste"; 
 
 interface SendMessageOptions {
   to: string;
   text: string;
-  replyToMessageId?: string; // AGORA O TYPESCRIPT CONHECE ESSA PROPRIEDADE
+  replyToMessageId?: string;
   phoneNumberId?: string;
   accessToken?: string;
 }
@@ -20,20 +20,22 @@ export async function sendWhatsAppMessage(
   let message: string;
   let replyToId: string | undefined;
 
-  // 1. Extraímos os dados independente do formato que venha
+  // 1. Extraímos os dados mantendo sua lógica original
   if (typeof firstArg === "string") {
     to = firstArg;
     message = secondArg || "";
   } else {
     to = firstArg.to;
     message = firstArg.text;
-    replyToId = firstArg.replyToMessageId; // CAPTURAMOS O ID DA RESPOSTA
+    replyToId = firstArg.replyToMessageId;
   }
 
+  // Limpeza e formatação do número (Garante o 55 para o Brasil)
   const cleanNumber = to.replace(/\D/g, "");
+  const formattedNumber = cleanNumber.startsWith("55") ? cleanNumber : `55${cleanNumber}`;
 
   if (!EVOLUTION_URL || !EVOLUTION_API_KEY) {
-    console.error("❌ Configuração Evolution ausente");
+    console.error("❌ Configuração Evolution ausente no .env");
     return { success: false, data: null, messages: [] };
   }
 
@@ -45,18 +47,18 @@ export async function sendWhatsAppMessage(
         "apikey": EVOLUTION_API_KEY,
       },
       body: JSON.stringify({
-        number: cleanNumber,
+        number: formattedNumber,
+        text: message, // Simplificado para v2 mas mantendo sua lógica
         options: { 
           delay: 1200, 
           presence: "composing",
-          // 2. SE TIVER UM ID DE RESPOSTA, CONFIGURAMOS O 'QUOTED' PARA A EVOLUTION
+          // Mantendo sua lógica de resposta (quoted)
           ...(replyToId && { 
             quoted: { 
               key: { id: replyToId } 
             } 
           })
         },
-        textMessage: { text: message }
       }),
     });
 
@@ -78,26 +80,6 @@ export async function sendWhatsAppMessage(
 export const sendWhatsAppText = sendWhatsAppMessage;
 
 export async function sendZap(to: string, text: string) {
-  try {
-    const url = `${process.env.EVOLUTION_API_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE}`;
-    const apiKey = process.env.EVOLUTION_API_KEY;
-
-    if (!url || !apiKey || !to) return;
-
-    // Limpa o número (remove espaços, traços e garante o 55)
-    const cleanNumber = to.replace(/\D/g, "");
-    const formattedNumber = cleanNumber.startsWith("55") ? cleanNumber : `55${cleanNumber}`;
-
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "apikey": apiKey },
-      body: JSON.stringify({
-        number: formattedNumber,
-        text: text,
-        delay: 1000,
-      }),
-    });
-  } catch (error) {
-    console.error("Erro Evolution API:", error);
-  }
+  // Agora a sendZap utiliza a lógica robusta da função principal
+  return sendWhatsAppMessage(to, text);
 }
