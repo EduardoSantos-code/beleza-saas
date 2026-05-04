@@ -1,6 +1,4 @@
 "use client";
-import { Metadata } from "next";
-import { prisma } from "@/lib/prisma";
 import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { formatBR } from "@/lib/date";
@@ -49,34 +47,6 @@ type Slot = {
   label: string;
 };
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const tenant = await prisma.tenant.findUnique({
-    where: { slug: params.slug },
-    select: { name: true, logoUrl: true }
-  });
-
-  const title = tenant?.name || "Agendamento";
-  // Se o barbeiro não tiver logo, usamos a do TratoMarcado como reserva
-  const iconUrl = tenant?.logoUrl || "/favicon.png";
-
-  return {
-    title: title,
-    description: `Agende seu horário na ${title}`,
-    
-    // --- Configuração para iPhone (iOS) ---
-    appleWebApp: {
-      capable: true,
-      title: title,
-      statusBarStyle: "black-translucent",
-    },
-
-    // --- Ícones para Ambos ---
-    icons: {
-      icon: iconUrl, // Android/Chrome
-      apple: iconUrl, // iPhone (apple-touch-icon)
-    },
-  };
-}
 
 export default function BookingPageClient({ slug }: { slug: string }) {
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
