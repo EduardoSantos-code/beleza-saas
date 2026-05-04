@@ -318,18 +318,17 @@ export default function BookingPageClient({ slug }: { slug: string }) {
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
-                <div className="grid md:grid-cols-2 gap-6 w-full">
-                {/* 2. Com quem? - Adicionado min-w-0 aqui */}
-                <div className="min-w-0 w-full">
+                {/* 2. Com quem? */}
+                <div className="min-w-0">
                   <label className="mb-2 block text-xs font-black uppercase tracking-widest text-zinc-500">
                     2. Com quem?
                   </label>
-                  <div className="relative w-full">
+                  <div className="relative">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
                     <select
                       value={professionalId}
                       onChange={(e) => setProfessionalId(e.target.value)}
-                      className="w-full min-w-0 appearance-none rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-10 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all cursor-pointer"
+                      className="block w-full appearance-none rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-10 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all cursor-pointer"
                     >
                       {catalog?.professionals.map((prof) => (
                         <option key={prof.id} value={prof.id}>{prof.name}</option>
@@ -339,24 +338,26 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   </div>
                 </div>
 
-                {/* 3. Qual dia? - Adicionado min-w-0 aqui */}
-                <div className="min-w-0 w-full">
+                {/* 3. Qual dia? */}
+                <div className="min-w-0">
                   <label className="mb-2 block text-xs font-black uppercase tracking-widest text-zinc-500">
                     3. Qual dia?
                   </label>
-                  <div className="relative group w-full">
-                    <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 z-0 pointer-events-none" />
+                  <div className="relative">
+                    {/* O SEGREDO AQUI: z-20 para o ícone ficar POR CIMA do fundo escuro do input */}
+                    <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none z-20" />
+                    
                     <input
                       type="date"
                       value={date}
-                      onClick={(e) => e.currentTarget.showPicker()}
+                      onClick={(e) => {
+                        try { e.currentTarget.showPicker(); } catch(err) {}
+                      }}
                       onChange={(e) => setDate(e.target.value)}
-                      // Adicionado: min-w-0 e appearance-none para consertar o iPhone
-                      className="w-full min-w-0 appearance-none rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-4 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 cursor-pointer [color-scheme:light_dark] relative z-10"
+                      className="block w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-4 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 cursor-pointer [color-scheme:light_dark] relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                     />
                   </div>
                 </div>
-              </div>
               </div>
             </div>
 
