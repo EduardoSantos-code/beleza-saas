@@ -317,18 +317,19 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-6 w-full">
+                
                 {/* 2. Com quem? */}
-                <div className="min-w-0">
+                <div className="min-w-0 w-full">
                   <label className="mb-2 block text-xs font-black uppercase tracking-widest text-zinc-500">
                     2. Com quem?
                   </label>
-                  <div className="relative">
+                  <div className="relative w-full">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
                     <select
                       value={professionalId}
                       onChange={(e) => setProfessionalId(e.target.value)}
-                      className="block w-full appearance-none rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-10 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all cursor-pointer"
+                      className="w-full min-w-0 appearance-none rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-10 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all cursor-pointer"
                     >
                       {catalog?.professionals.map((prof) => (
                         <option key={prof.id} value={prof.id}>{prof.name}</option>
@@ -339,25 +340,27 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                 </div>
 
                 {/* 3. Qual dia? */}
-                <div className="min-w-0">
+                <div className="min-w-0 w-full">
                   <label className="mb-2 block text-xs font-black uppercase tracking-widest text-zinc-500">
                     3. Qual dia?
                   </label>
-                  <div className="relative">
-                    {/* O SEGREDO AQUI: z-20 para o ícone ficar POR CIMA do fundo escuro do input */}
-                    <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none z-20" />
+                  {/* CAIXA DE FORA: Agora é ela quem tem a cor, a borda e o anel de foco */}
+                  <div className="relative w-full rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 overflow-hidden focus-within:ring-2 focus-within:ring-zinc-900 dark:focus-within:ring-white transition-all">
                     
+                    {/* ÍCONE: Fica de fundo, protegido */}
+                    <CalendarIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none z-0" />
+                    
+                    {/* INPUT: Fica totalmente transparente, segurando as regras anti-quebra do iPhone */}
                     <input
                       type="date"
                       value={date}
-                      onClick={(e) => {
-                        try { e.currentTarget.showPicker(); } catch(err) {}
-                      }}
+                      onClick={(e) => { try { e.currentTarget.showPicker(); } catch(err) {} }}
                       onChange={(e) => setDate(e.target.value)}
-                      className="block w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-4 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 cursor-pointer [color-scheme:light_dark] relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                      className="block w-full min-w-0 appearance-none bg-transparent pl-12 pr-4 py-4 text-sm font-bold text-zinc-900 dark:text-zinc-100 outline-none cursor-pointer [color-scheme:light_dark] relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                     />
                   </div>
                 </div>
+
               </div>
             </div>
 
