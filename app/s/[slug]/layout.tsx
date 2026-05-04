@@ -1,35 +1,46 @@
+// app/s/[slug]/layout.tsx
 import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 
-// Essa função gera o título e o ícone do iPhone dinamicamente
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+// No Next.js 15, o params é uma Promise!
+export async function generateMetadata({ 
+  params 
+}: { 
+  params: Promise<{ slug: string }> 
+}): Promise<Metadata> {
+  
+  const { slug } = await params; // <--- O SEGREDO ESTÁ AQUI
+
   const tenant = await prisma.tenant.findUnique({
-    where: { slug: params.slug },
-    select: { name: true, logoUrl: true, primaryColor: true }
+    where: { slug: slug }, // Agora o slug não será mais undefined
+    select: { name: true, logoUrl: true }
   });
 
   const title = tenant?.name || "Agendamento Online";
-  const logo = tenant?.logoUrl || "/favicon.png"; // Fallback para sua logo se ele não tiver
+  const logo = tenant?.logoUrl || "/favicon.png";
 
   return {
     title: title,
-    description: `Reserve seu horário na ${title}`,
-    
-    // Configurações para o "App" do iPhone
     appleWebApp: {
       capable: true,
       title: title,
       statusBarStyle: "black-translucent",
     },
-
-    // Ícones Dinâmicos
     icons: {
-      icon: logo,      // Para Android/Chrome
-      apple: logo,     // Para iPhone (Tela de Início)
+      icon: logo,
+      apple: logo,
     },
   };
 }
 
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+export default async function PublicLayout({ 
+  children,
+  params
+}: { 
+  children: React.ReactNode;
+  params: Promise<{ slug: string }>;
+}) {
+  // Mesmo que não use o slug no HTML, é bom dar o await aqui se for usar no futuro
+  await params; 
   return <>{children}</>;
 }
