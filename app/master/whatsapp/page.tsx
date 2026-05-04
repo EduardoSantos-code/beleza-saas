@@ -4,7 +4,7 @@ import { Smartphone, Wifi, WifiOff, AlertCircle } from "lucide-react";
 async function getWhatsAppStatus() {
   const evolutionUrl = process.env.NEXT_PUBLIC_EVOLUTION_URL || process.env.EVOLUTION_API_URL;
   const apiKey = process.env.EVOLUTION_API_KEY;
-  const instanceName = process.env.EVOLUTION_INSTANCE || "TratoMarcado_Master";
+  const instanceName = process.env.EVOLUTION_INSTANCE || "TratoMarcado";
 
   if (!evolutionUrl || !apiKey) {
     return { status: "CONFIG_ERROR" };

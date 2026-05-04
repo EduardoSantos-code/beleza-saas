@@ -2,7 +2,7 @@
 
 const EVOLUTION_URL = process.env.NEXT_PUBLIC_EVOLUTION_URL || process.env.EVOLUTION_API_URL; 
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY; 
-const INSTANCE_NAME = process.env.EVOLUTION_INSTANCE || "teste"; 
+const INSTANCE_NAME = process.env.EVOLUTION_INSTANCE || "TratoMarcado"; 
 
 interface SendMessageOptions {
   to: string;
