@@ -1,4 +1,5 @@
 "use client";
+import { prisma } from "@/lib/prisma";
 import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { formatBR } from "@/lib/date";
