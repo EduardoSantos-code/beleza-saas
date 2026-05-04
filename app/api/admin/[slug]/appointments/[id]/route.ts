@@ -63,9 +63,17 @@ export async function PATCH(
         await sendEvolutionMessage(updatedApp.client.phoneE164, msgCliente);
       }
     } else if (actionStatus === "COMPLETED") {
-      // Agradece Cliente (Apenas se finalizou com sucesso)
+      // ✅ Se clicou em Finalizar (Mimo pro cliente!)
       if (updatedApp.client?.phoneE164) {
-        const msgObrigado = `✂️ *Trato Feito!*\n\nFala *${updatedApp.client?.name}*, valeu por colar na *${updatedApp.tenant?.name}* hoje! 🔥\n\nEsperamos que tenha curtido o resultado. Até a próxima!`;
+        let msgObrigado = `✂️ *Trato Feito!*\n\nFala *${updatedApp.client?.name}*, valeu por colar na *${updatedApp.tenant?.name}* hoje! 🔥\n\nEsperamos que tenha curtido o resultado. Até a próxima!`;
+        
+        if (updatedApp.tenant?.googleMapsLink) {
+          msgObrigado = `Fala, ${updatedApp.client.name}! ✂️\n\n` +
+            `Seu atendimento na *${updatedApp.tenant.name}* foi finalizado. Gostou do resultado?\n\n` +
+            `Se puder, deixe uma avaliação pra gente no Google, isso ajuda muito o nosso trabalho: \n` +
+            `${updatedApp.tenant.googleMapsLink}`;
+        }
+
         await sendEvolutionMessage(updatedApp.client.phoneE164, msgObrigado);
       }
     }

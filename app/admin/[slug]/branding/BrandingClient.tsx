@@ -45,7 +45,7 @@ export default function BrandingClient({ slug }: { slug: string }) {
     loadBranding();
   }, [slug]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner') => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'hero') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -55,7 +55,7 @@ export default function BrandingClient({ slug }: { slug: string }) {
       return;
     }
 
-    setMessage(`⏳ Enviando ${type === 'logo' ? 'logo' : 'banner'}...`);
+    setMessage(`⏳ Enviando ${type === 'logo' ? 'logo' : 'hero'}...`);
 
     try {
       // 1. Criamos um FormData (o formato exigido pela sua API)
@@ -84,7 +84,7 @@ export default function BrandingClient({ slug }: { slug: string }) {
       if (type === 'logo') setLogoUrl(data.url);
       else setHeroImageUrl(data.url);
       
-      setMessage(`✅ ${type === 'logo' ? 'Logo' : 'Banner'} na nuvem! Lembre-se de clicar em Salvar.`);
+      setMessage(`✅ ${type === 'logo' ? 'Logo' : 'hero'} na nuvem! Lembre-se de clicar em Salvar.`);
       setTimeout(() => setMessage(""), 5000);
 
     } catch (error: any) {
@@ -187,7 +187,7 @@ export default function BrandingClient({ slug }: { slug: string }) {
 
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Banner Principal</label>
-              <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'banner')} className="w-full text-sm text-zinc-500 file:mr-4 file:rounded-xl file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100 dark:file:bg-zinc-800 dark:file:text-zinc-300" />
+              <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, 'hero')} className="w-full text-sm text-zinc-500 file:mr-4 file:rounded-xl file:border-0 file:bg-brand-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-brand-700 hover:file:bg-brand-100 dark:file:bg-zinc-800 dark:file:text-zinc-300" />
               <input type="text" value={heroImageUrl} onChange={(e) => setHeroImageUrl(e.target.value)} placeholder="Ou cole a URL do banner" className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
             </div>
 
@@ -207,7 +207,7 @@ export default function BrandingClient({ slug }: { slug: string }) {
                 {logoUrl ? (
                   <img
                     src={logoUrl}
-                    className="h-24 w-auto min-w-[6rem] max-w-[250px] rounded-[1.5rem] border-4 border-white dark:border-zinc-950 bg-white object-contain p-2 shadow-2xl transition-all"
+                  className="h-24 md:h-32 w-auto min-w-[6rem] max-w-[250px] shrink-0 rounded-[1.5rem] bg-white object-contain shadow-2xl ring-4 ring-white/20"
                   />
                 ) : (
                   <div className="h-24 w-24 rounded-[1.5rem] border-4 border-white dark:border-zinc-950 bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center shadow-2xl">
