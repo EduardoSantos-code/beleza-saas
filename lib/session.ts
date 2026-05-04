@@ -13,10 +13,16 @@ export type SessionPayload = JWTPayload & {
   userId: string;
   email: string;
   name: string;
+  role?: string;
 };
 
 export async function encrypt(payload: SessionPayload) {
-  return new SignJWT(payload)
+  return new SignJWT({
+    userId: payload.userId,
+    email: payload.email,
+    name: payload.name,
+    role: payload.role,
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")

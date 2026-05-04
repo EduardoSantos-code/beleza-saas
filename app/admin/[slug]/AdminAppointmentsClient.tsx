@@ -12,7 +12,8 @@ import {
   XCircle,
   CalendarDays,
   User,
-  ChevronDown
+  ChevronDown,
+  Megaphone
 } from "lucide-react";
 
 type Appointment = {
@@ -23,18 +24,19 @@ type Appointment = {
   notes?: string | null;
   client: { name: string; phone: string };
   service: { name: string; price: number; duration: number };
-  professional: { id: string; name: string };
+  professional: { id: string; name: string; userId?: string };
 };
 
-type Professional = { id: string; name: string };
+type Professional = { id: string; name: string; userId?: string };
 
 type ResponseData = {
   tenant: { id: string; name: string };
   appointments: Appointment[];
   professionals: Professional[];
+  announcement?: { content: string } | null;
 };
 
-export default function AdminAppointmentsClient({ slug }: { slug: string }) {
+export default function AdminAppointmentsClient({ slug, isMaster }: { slug: string; isMaster?: boolean }) {
   const [data, setData] = useState<ResponseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeProfId, setActiveProfId] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
   async function loadAppointments() {
     try {
       setLoading(true);
+      // Aqui a API vai trazer os agendamentos e o aviso global
       const res = await fetch(`/api/admin/${slug}/appointments?date=${date}`, {
         cache: 'no-store'
       });
@@ -112,6 +115,25 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-4 pb-20">
       
+      {/* 1. AVISO GLOBAL (O QUE VOCÊ CRIA NO MASTER) */}
+      {data?.announcement && (
+        <div className="bg-emerald-600 text-white py-4 px-6 rounded-3xl flex items-center gap-4 shadow-xl shadow-emerald-500/20 border border-emerald-400/30 animate-in fade-in slide-in-from-top duration-500">
+          <div className="bg-white/20 p-2 rounded-xl">
+            <Megaphone className="h-6 w-6 animate-bounce" />
+          </div>
+          <p className="font-bold text-sm uppercase tracking-wide">
+            {data.announcement.content}
+          </p>
+        </div>
+      )}
+
+      {/* 2. BANNER DE MODO MASTER */}
+      {isMaster && (
+        <div className="bg-amber-600/10 border border-amber-600/20 text-amber-600 p-3 rounded-2xl text-center text-[10px] font-black uppercase tracking-[0.2em] mb-4">
+          Modo Visualização Master • Unidade: {slug}
+        </div>
+      )}
+
       {/* HEADER & DATE PICKER */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -295,6 +317,7 @@ export default function AdminAppointmentsClient({ slug }: { slug: string }) {
             </p>
           </div>
         )}
+        <p className="text-center text-zinc-500 text-[10px] uppercase font-black tracking-widest opacity-20">TratoMarcado Engine v2</p>
       </section>
     </div>
   );

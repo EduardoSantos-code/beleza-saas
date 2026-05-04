@@ -104,6 +104,7 @@ model User {
   name         String
   email        String       @unique
   passwordHash String
+  role         String   @default("USER")
   createdAt    DateTime     @default(now())
   memberships  Membership[]
 }
@@ -310,4 +311,12 @@ model WhatsAppOutboundMessage {
   @@index([tenantId, createdAt])
   @@index([clientId, createdAt])
   @@index([toPhoneE164, createdAt])
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  content   String   // O texto do aviso
+  type      String   @default("INFO") // INFO, WARNING ou DANGER
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
 }

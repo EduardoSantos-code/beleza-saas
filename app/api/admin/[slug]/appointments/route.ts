@@ -1,72 +1,68 @@
 import { prisma } from "@/lib/prisma";
-import { getCurrentMembershipBySlug } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request, { params }: { params: Promise<{ slug: string }> }) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params;
+
+  // 1. Pegamos a data que vem na URL (?date=2026-05-03)
+  const { searchParams } = new URL(request.url);
+  const date = searchParams.get("date");
+
   try {
-    const { slug } = await params;
-    const membership = await getCurrentMembershipBySlug(slug);
-    
-    if (!membership) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(req.url);
-    const date = searchParams.get("date");
-    
-    if (!date) {
-      return NextResponse.json({ error: "Data não informada" }, { status: 400 });
-    }
-
-    const [appointments, professionals, servicesCount, professionalsCount] = await Promise.all([
-      prisma.appointment.findMany({
-        where: {
-          tenantId: membership.tenantId,
-          businessDate: date,
-          // O PONTO 3 (FILTRO) ENTRARÁ AQUI DEPOIS, VAMOS FOCAR NO 1 E 2 AGORA
-        },
-        include: { 
-          client: true, 
-          service: true, 
-          professional: true 
-        },
-        // CORREÇÃO DO PONTO 2: Ordenando pelo minuto do dia (do menor para o maior)
-        orderBy: { 
-          startMinutes: "asc" 
-        },
-      }),
-      prisma.professional.findMany({
-        where: { tenantId: membership.tenantId, active: true },
-        select: { id: true, name: true }
-      }),
-      prisma.service.count({ where: { tenantId: membership.tenantId } }),
-      prisma.professional.count({ where: { tenantId: membership.tenantId } }),
-    ]);
-
-    return NextResponse.json({
-      tenant: { id: membership.tenant.id, name: membership.tenant.name },
-      hasServices: servicesCount > 0,
-      hasProfessionals: professionalsCount > 0,
-      professionals,
-      appointments: appointments.map((a) => ({
-        id: a.id,
-        startAt: a.startAt.toISOString(),
-        status: a.status,
-        // DADOS EXTRAS PARA O PONTO 1:
-        client: { 
-          name: a.client.name,
-          phone: a.client.phoneE164 // Enviando o WhatsApp
-        },
-        service: { 
-          name: a.service.name,
-          duration: a.service.durationMin, // Enviando a duração
-          price: a.service.price // Enviando o preço
-        },
-        professional: { id: a.professional.id, name: a.professional.name },
-      })),
+    // 2. Buscamos o salão (Tenant)
+    const tenant = await prisma.tenant.findUnique({
+      where: { slug },
+      select: { id: true, name: true }
     });
+
+    if (!tenant) {
+      return NextResponse.json({ error: "Salão não encontrado" }, { status: 404 });
+    }
+
+    // 3. BUSCA DO AVISO GLOBAL (A novidade está aqui!)
+    const announcement = await prisma.announcement.findFirst({
+      where: { isActive: true },
+      orderBy: { createdAt: 'desc' },
+      select: { content: true } // Só precisamos do texto
+    });
+
+    // 4. Buscamos os agendamentos e profissionais (como você já fazia)
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        tenantId: tenant.id,
+        businessDate: date || undefined,
+        professional: {
+          active: true,
+        },
+      },
+      include: {
+        client: true,
+        service: true,
+        professional: true,
+      },
+      orderBy: { startAt: "asc" },
+    });
+
+    const professionals = await prisma.professional.findMany({
+      where: {
+        tenantId: tenant.id,
+        active: true,
+      },
+    });
+
+    // 5. RETORNO COMPLETO: Agora enviamos o aviso junto!
+    return NextResponse.json({
+      tenant,
+      appointments,
+      professionals,
+      announcement // O frontend vai ler isso aqui e mostrar o banner verde
+    });
+
   } catch (error) {
-    console.error("ERRO API ADMIN:", error);
+    console.error(error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }

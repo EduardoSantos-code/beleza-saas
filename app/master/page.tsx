@@ -1,75 +1,65 @@
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
+import { Users, CalendarCheck, TrendingUp, AlertTriangle } from "lucide-react";
 
-// Força a página a sempre buscar dados novos do banco (não fazer cache)
-export const dynamic = "force-dynamic";
+// Função para procurar as métricas no Prisma
+async function getMasterMetrics() {
+  const [totalTenants, activeTenants, trialingTenants, totalAppointments] = await Promise.all([
+    prisma.tenant.count(),
+    prisma.tenant.count({ where: { subscriptionStatus: "ACTIVE" } }),
+    prisma.tenant.count({ where: { subscriptionStatus: "TRIALING" } }),
+    prisma.appointment.count(),
+  ]);
 
-export default async function MasterPanel() {
-  // Busca todos os salões cadastrados no banco
-  const tenants = await prisma.tenant.findMany({
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      subscriptionStatus: true,
-      createdAt: true,
-    },
-  });
+  return { totalTenants, activeTenants, trialingTenants, totalAppointments };
+}
+
+export default async function MasterDashboard() {
+  const metrics = await getMasterMetrics();
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-4 py-8 text-white">
-      <div className="mx-auto max-w-5xl space-y-8">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-widest text-brand-500">Super Admin</p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight">TratoMarcado</h1>
-          <p className="mt-2 text-zinc-400">Visão geral de todos os salões cadastrados no sistema.</p>
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-3xl font-bold text-white">Visão Geral da Plataforma</h2>
+        <p className="text-zinc-400 mt-1">Acompanhe a saúde do TratoMarcado em tempo real.</p>
+      </div>
+
+      {/* Cartões de Métricas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl">
+          <div className="flex items-center justify-between">
+            <h3 className="text-zinc-400 font-medium">Total de Salões</h3>
+            <Users className="text-emerald-500" size={20} />
+          </div>
+          <p className="text-3xl font-bold text-white mt-4">{metrics.totalTenants}</p>
         </div>
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl">
-          <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
-            <h2 className="text-lg font-bold">Salões Ativos ({tenants.length})</h2>
+        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl">
+          <div className="flex items-center justify-between">
+            <h3 className="text-zinc-400 font-medium">Salões Ativos</h3>
+            <TrendingUp className="text-blue-500" size={20} />
           </div>
+          <p className="text-3xl font-bold text-white mt-4">{metrics.activeTenants}</p>
+        </div>
 
-          <div className="mt-4 divide-y divide-zinc-800">
-            {tenants.map((tenant) => (
-              <div key={tenant.id} className="flex flex-col gap-4 py-5 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-zinc-100">{tenant.name}</h3>
-                  <p className="font-mono text-sm text-zinc-500">/{tenant.slug}</p>
-                  <p className="mt-1 text-xs text-zinc-600">
-                    Criado em {tenant.createdAt.toLocaleDateString("pt-BR")}
-                  </p>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-                    tenant.subscriptionStatus === "ACTIVE" 
-                      ? "bg-green-500/10 text-green-400 ring-1 ring-inset ring-green-500/20" 
-                      : "bg-zinc-800 text-zinc-400 ring-1 ring-inset ring-zinc-700"
-                  }`}>
-                    {tenant.subscriptionStatus}
-                  </span>
-
-                  <Link 
-                    href={`/admin/${tenant.slug}`}
-                    target="_blank"
-                    className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-brand-700"
-                  >
-                    Acessar Painel
-                  </Link>
-                </div>
-              </div>
-            ))}
-            
-            {tenants.length === 0 && (
-              <div className="py-8 text-center text-zinc-500">
-                Nenhum salão cadastrado ainda.
-              </div>
-            )}
+        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl">
+          <div className="flex items-center justify-between">
+            <h3 className="text-zinc-400 font-medium">Em Período de Teste</h3>
+            <AlertTriangle className="text-amber-500" size={20} />
           </div>
+          <p className="text-3xl font-bold text-white mt-4">{metrics.trialingTenants}</p>
+        </div>
+
+        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl">
+          <div className="flex items-center justify-between">
+            <h3 className="text-zinc-400 font-medium">Agendamentos Globais</h3>
+            <CalendarCheck className="text-purple-500" size={20} />
+          </div>
+          <p className="text-3xl font-bold text-white mt-4">{metrics.totalAppointments}</p>
         </div>
       </div>
-    </main>
+
+      {/* Pode colocar o código da lista que enviou na imagem aqui em baixo, 
+          ou movê-lo para a rota /master/saloes/page.tsx */}
+    </div>
   );
 }

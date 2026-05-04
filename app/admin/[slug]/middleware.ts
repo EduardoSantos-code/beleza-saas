@@ -11,6 +11,7 @@ const encodedKey = new TextEncoder().encode(secret);
 
 type SessionPayload = JWTPayload & {
   userId: string;
+  role: string;
 };
 
 async function readSession(request: NextRequest) {
@@ -34,24 +35,29 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const isAdminRoute = pathname.startsWith("/admin");
-  const isLoginRoute = pathname.startsWith("/login");
+  const isMasterRoute = pathname.startsWith("/master");
 
-  if (isAdminRoute && !session?.userId) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set(
-      "next",
-      `${request.nextUrl.pathname}${request.nextUrl.search}`
-    );
-    return NextResponse.redirect(loginUrl);
+  // Se você for MASTER, você pode entrar em QUALQUER lugar
+  if (session?.role === "MASTER") {
+    return NextResponse.next();
   }
 
-  if (isLoginRoute && session?.userId) {
-    return NextResponse.redirect(new URL("/", request.url));
+  // Se tentar entrar no Master sem ser Master, volta pro login
+  if (isMasterRoute && session?.role !== "MASTER") {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Regra padrão: se não estiver logado, vai pro login
+  if (isAdminRoute && !session?.userId) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/login"],
+  // Agora protegemos o admin, o login e o seu painel master
+  matcher: ["/admin/:path*", "/master/:path*", "/login"],
 };
