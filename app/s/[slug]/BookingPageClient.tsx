@@ -1,5 +1,6 @@
 "use client";
-
+import { Metadata } from "next";
+import { prisma } from "@/lib/prisma";
 import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { formatBR } from "@/lib/date";
@@ -47,6 +48,35 @@ type Slot = {
   iso: string;
   label: string;
 };
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug: params.slug },
+    select: { name: true, logoUrl: true }
+  });
+
+  const title = tenant?.name || "Agendamento";
+  // Se o barbeiro não tiver logo, usamos a do TratoMarcado como reserva
+  const iconUrl = tenant?.logoUrl || "/favicon.png";
+
+  return {
+    title: title,
+    description: `Agende seu horário na ${title}`,
+    
+    // --- Configuração para iPhone (iOS) ---
+    appleWebApp: {
+      capable: true,
+      title: title,
+      statusBarStyle: "black-translucent",
+    },
+
+    // --- Ícones para Ambos ---
+    icons: {
+      icon: iconUrl, // Android/Chrome
+      apple: iconUrl, // iPhone (apple-touch-icon)
+    },
+  };
+}
 
 export default function BookingPageClient({ slug }: { slug: string }) {
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
@@ -358,6 +388,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                       onChange={(e) => setDate(e.target.value)}
                       className="block w-full min-w-0 appearance-none bg-transparent pl-12 pr-4 py-4 text-sm font-bold text-zinc-900 dark:text-zinc-100 outline-none cursor-pointer [color-scheme:light_dark] relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                     />
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
                   </div>
                 </div>
 

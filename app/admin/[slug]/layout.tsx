@@ -1,10 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Metadata } from "next";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
 import LogoutButton from "./LogoutButton";
+
+export const metadata: Metadata = {
+  title: "Admin | TratoMarcado",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/favicon.png",
+  },
+};
 
 export default function AdminLayout({
   children,
