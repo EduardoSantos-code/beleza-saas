@@ -17,7 +17,8 @@ import {
   Plus, 
   UserPlus,
   X,
-  ArrowRight
+  ArrowRight,
+  Sliders // Ícone novo para o filtro de intervalo
 } from "lucide-react";
 
 type Appointment = {
@@ -42,17 +43,38 @@ type ResponseData = {
   announcement?: { content: string } | null;
 };
 
+// --- FUNÇÃO PARA GERAR A GRADE DE HORÁRIOS ---
+const generateTimeSlots = (startHour: number, endHour: number, intervalMinutes: number) => {
+  const slots = [];
+  let current = new Date();
+  current.setHours(startHour, 0, 0, 0);
+
+  const end = new Date();
+  end.setHours(endHour, 0, 0, 0);
+
+  while (current <= end) {
+    slots.push(current.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false }));
+    current.setMinutes(current.getMinutes() + intervalMinutes);
+  }
+  return slots;
+};
+
 export default function AdminAppointmentsClient({ slug, isMaster }: { slug: string; isMaster?: boolean }) {
   const [data, setData] = useState<ResponseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeProfId, setActiveProfId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  // --- NOVO ESTADO: Configuração da Grade ---
+  const [intervalMin, setIntervalMin] = useState<number>(30);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [manualForm, setManualForm] = useState({
     clientName: "",
+    clientPhone: "",
     serviceId: "", 
     professionalId: "",
+    date: "",
     time: ""
   });
 
@@ -95,18 +117,22 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
       const res = await fetch(`/api/admin/${slug}/appointments/manual`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...manualForm,
-          date: date 
-        })
+        body: JSON.stringify(manualForm) 
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Erro na API ao criar agendamento");
+        throw new Error(errorData.error || "Erro na API");
       }
 
-      setManualForm({ clientName: "", serviceId: "", professionalId: "", time: "" });
+      setManualForm({ 
+        clientName: "", 
+        clientPhone: "", 
+        serviceId: "", 
+        professionalId: "", 
+        date: "", 
+        time: "" 
+      });
       setIsModalOpen(false);
       await loadAppointments(); 
 
@@ -125,29 +151,58 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
     return [...apps].sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
   }, [data, activeProfId]);
 
+  // --- TIMELINE INTELIGENTE (Filtra passado e sobreposições) ---
   const timelineData = useMemo(() => {
+    const allPossibleSlots = generateTimeSlots(8, 20, intervalMin); 
     const apps = professionalAppointments.filter(a => a.status !== "CANCELED" && a.status !== "COMPLETED");
-    if (apps.length === 0) return [];
 
-    const timeline: any[] = [];
-    for (let i = 0; i < apps.length; i++) {
-        timeline.push(apps[i]);
-        const currentApp = apps[i];
-        const nextApp = apps[i + 1];
+    // 1. Verificamos se a data selecionada no painel é hoje
+    const todayStr = formatBR(new Date(), "yyyy-MM-dd");
+    const isToday = date === todayStr;
 
-        if (nextApp) {
-            const currentEnd = new Date(currentApp.endAt).getTime();
-            const nextStart = new Date(nextApp.startAt).getTime();
-            const diffMinutes = (nextStart - currentEnd) / 1000 / 60;
+    // 2. Pegamos a hora e minuto atual para comparar
+    const now = new Date();
+    const currentTotalMinutes = (now.getHours() * 60) + now.getMinutes();
 
-            if (diffMinutes >= 30) {
-                const emptySlotTime = formatBR(currentApp.endAt, "HH:mm");
-                timeline.push({ id: `empty-${i}`, isFree: true, time: emptySlotTime });
-            }
+    return allPossibleSlots.map((slotTime, index) => {
+      const [slotH, slotM] = slotTime.split(':').map(Number);
+      const slotTotalMinutes = (slotH * 60) + slotM;
+
+      // 🚩 REGRA DE OURO: Se for hoje e o horário já passou, esconde o slot livre
+      if (isToday && slotTotalMinutes < currentTotalMinutes) {
+        // Se não houver agendamento nesse horário passado, retornamos null (some da tela)
+        const hasApp = apps.find(a => formatBR(a.startAt, "HH:mm") === slotTime);
+        if (!hasApp) return null;
+      }
+
+      // Monta os horários exatos para comparar
+      const slotStart = new Date(`${date}T${slotTime}:00-03:00`).getTime();
+      const slotEnd = slotStart + (intervalMin * 60000);
+
+      // Procura se esse slot conflita com algum agendamento existente
+      const conflictingApp = apps.find(a => {
+        const appStart = new Date(a.startAt).getTime();
+        const appEnd = new Date(a.endAt).getTime();
+        return appStart < slotEnd && appEnd > slotStart; // Checa sobreposição de horários
+      });
+
+      if (conflictingApp) {
+        // Se o slot bater exatamente com o início, desenha o card do cliente
+        if (formatBR(conflictingApp.startAt, "HH:mm") === slotTime) {
+          return { ...conflictingApp, isFree: false };
         }
-    }
-    return timeline;
-  }, [professionalAppointments]);
+        // Se o slot estiver "no meio" do tempo de um corte, ele some (retorna null)
+        return null; 
+      }
+
+      // Se passou por tudo e não tem conflito, é um horário livre
+      return {
+        id: `free-${slotTime}-${index}`,
+        isFree: true,
+        time: slotTime
+      };
+    }).filter(Boolean); // O filter(Boolean) remove os "nulls" gerados acima da lista final
+  }, [professionalAppointments, date, intervalMin]);
 
   const stats = useMemo(() => {
     const apps = professionalAppointments;
@@ -173,7 +228,6 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-4 pb-20 relative antialiased">
       
-      {/* Detalhe de Fundo */}
       <div className={`fixed top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-emerald-500/5 blur-[120px] pointer-events-none transition-opacity duration-300 ${isModalOpen ? 'opacity-100' : 'opacity-0'}`} />
 
       {/* 1. AVISO GLOBAL */}
@@ -198,11 +252,35 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
             <button 
                 onClick={() => setIsModalOpen(true)}
-                className="w-full sm:w-auto flex items-center gap-2.5 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-black uppercase tracking-widest text-xs px-6 py-4 rounded-2xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-black uppercase tracking-widest text-xs px-6 py-4 rounded-2xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
             >
                 <Plus size={18} /> Novo Agendamento
             </button>
 
+            {/* SELETOR DE INTERVALO (GRADE) */}
+            <div className="relative group w-full sm:w-auto">
+              <select 
+                value={intervalMin} 
+                onChange={(e) => setIntervalMin(Number(e.target.value))} 
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              >
+                <option value={15}>Grade: 15 min</option>
+                <option value={20}>Grade: 20 min</option>
+                <option value={30}>Grade: 30 min</option>
+                <option value={40}>Grade: 40 min</option>
+                <option value={45}>Grade: 45 min</option>
+                <option value={60}>Grade: 60 min</option>
+              </select>
+              <button className="w-full flex justify-between lg:justify-start items-center gap-4 px-6 py-4 rounded-2xl font-black transition-all bg-white border border-zinc-200 text-zinc-900 group-hover:border-emerald-500 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white dark:group-hover:border-emerald-500 shadow-xl shadow-zinc-200/50 dark:shadow-none uppercase tracking-widest text-sm"> 
+                <div className="flex items-center gap-3">
+                  <Sliders size={20} className="text-emerald-500" /> 
+                  <span>{intervalMin} MIN</span>
+                </div>
+                <ChevronDown size={16} className="text-zinc-400" />
+              </button>
+            </div>
+
+            {/* SELETOR DE DATA */}
             <div className="relative group w-full sm:w-auto">
               <input type="date" value={date} onClick={(e) => e.currentTarget.showPicker()} onChange={(e) => setDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
               <button className="w-full flex justify-between lg:justify-start items-center gap-4 px-6 py-4 rounded-2xl font-black transition-all bg-white border border-zinc-200 text-zinc-900 group-hover:border-emerald-500 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white dark:group-hover:border-emerald-500 shadow-xl shadow-zinc-200/50 dark:shadow-none uppercase tracking-widest text-sm"> 
@@ -237,32 +315,34 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
 
         {timelineData.length > 0 ? (
           <div className="grid gap-4">
-            {timelineData.map((item, index) => item.isFree ? (
+            {timelineData.map((item: any) => item.isFree ? (
+                // --- SLOT LIVRE ---
                 <div 
                   key={item.id} 
-                  className="group relative rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 p-5 flex flex-col md:flex-row items-center justify-between gap-4 bg-zinc-50/50 dark:bg-zinc-900/30 hover:bg-white dark:hover:bg-zinc-900 hover:border-emerald-500/50 transition-all duration-300 animate-in fade-in zoom-in-95"
+                  className="group flex items-center justify-between p-4 bg-zinc-50/50 dark:bg-zinc-900/20 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl hover:bg-white dark:hover:bg-zinc-900 hover:border-emerald-500/50 transition-all duration-300"
                 >
-                    <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-white dark:bg-zinc-950 flex items-center justify-center shadow-sm border border-zinc-100 dark:border-zinc-800 group-hover:text-emerald-500 transition-colors">
-                            <UserPlus size={18} className="text-zinc-400 group-hover:text-emerald-500" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 dark:text-zinc-500">Horário Disponível</p>
-                            <p className="text-sm font-black text-zinc-600 dark:text-zinc-300 uppercase italic">{item.time} Livre</p>
-                        </div>
-                    </div>
-
-                    <button 
-                        onClick={() => { 
-                          setManualForm({ clientName: "", serviceId: "", professionalId: "", time: item.time }); 
-                          setIsModalOpen(true); 
-                        }}
-                        className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 hover:bg-emerald-500 hover:text-zinc-950 hover:border-emerald-500 dark:hover:bg-emerald-500 dark:hover:text-zinc-950 transition-all shadow-sm active:scale-95"
-                    >
-                       <Plus size={14} /> Agendar agora
-                    </button>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-black text-zinc-400 dark:text-zinc-500 w-12">{item.time}</span>
+                    <div className="h-4 w-[2px] bg-zinc-200 dark:bg-zinc-800" />
+                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">Disponível</span>
+                  </div>
+                  
+                  <button 
+                    onClick={() => { 
+                      setManualForm({ 
+                        ...manualForm,
+                        time: item.time,
+                        date: date 
+                      }); 
+                      setIsModalOpen(true); 
+                    }}
+                    className="opacity-100 md:opacity-0 md:group-hover:opacity-100 flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all shadow-sm active:scale-95"
+                  >
+                    <Plus size={14} /> Reservar
+                  </button>
                 </div>
             ) : (
+              // --- CARD DE AGENDAMENTO ---
               <div key={item.id} className="group flex flex-col lg:flex-row bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/40 dark:shadow-none overflow-hidden transition-all hover:border-emerald-500/50">
                 <div className="bg-zinc-50 dark:bg-zinc-950 p-6 flex lg:flex-col items-center justify-between border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 lg:w-48 text-center">
                     <div>
@@ -312,7 +392,7 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
         )}
       </section>
       
-      {/* MODAL */}
+      {/* MODAL DE AGENDAMENTO MANUAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl border border-zinc-200 dark:border-zinc-800 relative">
@@ -329,35 +409,30 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
                 </h3>
                 <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-8">Marque um horário diretamente do balcão.</p>
 
-                <form onSubmit={handleManualSubmit} className="space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Nome do Cliente (Balcão)</label>
-                        <div className="relative group">
-                            <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
-                            <input type="text" value={manualForm.clientName} onChange={(e) => setManualForm({...manualForm, clientName: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-12 pr-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 transition-colors" placeholder="Ex: João da Silva" required />
+                <form onSubmit={handleManualSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Cliente</label>
+                            <div className="relative group">
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
+                                <input type="text" value={manualForm.clientName} onChange={(e) => setManualForm({...manualForm, clientName: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-12 pr-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="Nome do cliente" required />
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Profissional</label>
-                        <div className="relative group">
-                            <Scissors className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
-                            <select value={manualForm.professionalId} onChange={(e) => setManualForm({...manualForm, professionalId: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-12 pr-10 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 appearance-none" required>
-                                <option value="">Quem vai atender?</option>
-                                {data?.professionals?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">WhatsApp</label>
+                            <div className="relative group">
+                                <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
+                                <input type="tel" value={manualForm.clientPhone} onChange={(e) => setManualForm({...manualForm, clientPhone: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-12 pr-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="(00) 00000-0000" />
+                            </div>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Serviço</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Data do Agendamento</label>
                             <div className="relative group">
-                                <Scissors className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
-                                <select value={manualForm.serviceId} onChange={(e) => setManualForm({...manualForm, serviceId: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-12 pr-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 appearance-none" required>
-                                    <option value="">Selecione...</option>
-                                    {data?.services?.map(s => <option key={s.id} value={s.id}>{s.name} - R${(s.price/100).toFixed(2).replace('.', ',')}</option>)}
-                                </select>
+                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
+                                <input type="date" value={manualForm.date} onChange={(e) => setManualForm({...manualForm, date: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-12 pr-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" required />
                             </div>
                         </div>
                         <div className="space-y-2">
@@ -369,8 +444,25 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
                         </div>
                     </div>
 
-                    <button type="submit" disabled={loading} className="group relative w-full h-14 bg-emerald-500 hover:bg-emerald-400 disabled:bg-zinc-800 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] text-zinc-950 transition-all shadow-xl shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2">
-                        {loading ? <span className="animate-pulse">Criando...</span> : <>Confirmar no Sistema <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" /></>}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Barbeiro</label>
+                            <select value={manualForm.professionalId} onChange={(e) => setManualForm({...manualForm, professionalId: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl px-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 appearance-none" required>
+                                <option value="">Selecionar...</option>
+                                {data?.professionals?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Serviço</label>
+                            <select value={manualForm.serviceId} onChange={(e) => setManualForm({...manualForm, serviceId: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl px-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 appearance-none" required>
+                                <option value="">Selecionar...</option>
+                                {data?.services?.map(s => <option key={s.id} value={s.id}>{s.name} - R${(s.price/100).toFixed(2).replace('.', ',')}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" disabled={loading} className="w-full h-14 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all shadow-xl shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2 mt-4">
+                        {loading ? <span className="animate-pulse">Salvando...</span> : <>Confirmar no Sistema <ArrowRight size={16} /></>}
                     </button>
                 </form>
             </div>

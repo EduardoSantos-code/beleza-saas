@@ -68,7 +68,7 @@ export default function AdminLayout({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <span className="font-bold text-zinc-900 dark:text-white">Painel Admin</span>
+          <span className="font-bold text-zinc-900 dark:text-white">Painel De Controle</span>
         </div>
         <ThemeToggle />
       </div>
