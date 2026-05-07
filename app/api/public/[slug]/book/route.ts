@@ -105,13 +105,17 @@ export async function POST(
 
       // NOTIFICAR CLIENTE
       if (appointment.client?.phoneE164) {
-        console.log(`[WhatsApp] Enviando para Cliente: ${appointment.client.phoneE164}`);
-        const msgCliente = `Fala, ${appointment.client.name}! ✂️\n\n` +
+        // Geramos o link do recibo/gestão
+        // Certifique-se de que a base da URL (tratomarcado.com) está correta para o seu domínio
+        const manageLink = `https://tratomarcado.tech/s/${slug}/a/${appointment.id}`;
+
+        const msgCliente = `Fala, *${appointment.client.name}*! ✂️\n\n` +
           `Seu trato tá oficialmente marcado na *${appointment.tenant?.name}*.\n\n` +
           `📅 *Data:* ${dateLabel}\n` +
           `🕒 *Hora:* ${timeLabel}\n` +
           `💈 *Barbeiro:* ${appointment.professional?.name}\n\n` +
-          `Dica: Se precisar desmarcar, avise a gente com antecedência. Nos vemos em breve! 👊`;
+          `📄 *Recibo e Cancelamento:* ${manageLink}\n\n` +
+          `Dica: Se precisar desmarcar, use o link acima ou nos avise com antecedência. Nos vemos em breve! 👊`;
 
         await sendWhatsAppMessage(appointment.client.phoneE164, msgCliente);
       }

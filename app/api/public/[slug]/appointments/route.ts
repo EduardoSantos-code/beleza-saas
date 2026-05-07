@@ -30,7 +30,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     // 1. A MÁGICA: O front-end já envia a data certinha em UTC. 
     // Basta criar o objeto Date direto, sem quebrar o texto.
     const startUtc = new Date(startAt);
-    
+
     // Se a data for inválida, barramos aqui
     if (isNaN(startUtc.getTime())) {
       return NextResponse.json({ error: "Data de agendamento inválida." }, { status: 400 });
@@ -58,7 +58,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
         serviceId,
         professionalId,
         clientId: clientRecord.id,
-        businessDate: localDateString, 
+        businessDate: localDateString,
         startMinutes,
         endMinutes,
         timeZone: TZ,
@@ -91,13 +91,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       }
 
       // NOTIFICAR CLIENTE
+      // NOTIFICAR CLIENTE
       if (appointment.client?.phoneE164) {
-        const msgCliente = `Fala, ${appointment.client.name}! ✂️\n\n` +
+        // Geramos o link do recibo/gestão
+        // Certifique-se de que a base da URL (tratomarcado.com) está correta para o seu domínio
+        const manageLink = `https://tratomarcado.tech/s/${slug}/a/${appointment.id}`;
+
+        const msgCliente = `Fala, *${appointment.client.name}*! ✂️\n\n` +
           `Seu trato tá oficialmente marcado na *${appointment.tenant?.name}*.\n\n` +
           `📅 *Data:* ${dateLabel}\n` +
           `🕒 *Hora:* ${timeLabel}\n` +
           `💈 *Barbeiro:* ${appointment.professional?.name}\n\n` +
-          `Dica: Se precisar desmarcar, avise a gente com antecedência. Nos vemos em breve! 👊`;
+          `📄 *Recibo e Cancelamento:* ${manageLink}\n\n` +
+          `Dica: Se precisar desmarcar, use o link acima ou nos avise com antecedência. Nos vemos em breve! 👊`;
 
         await sendWhatsAppMessage(appointment.client.phoneE164, msgCliente);
       }
