@@ -145,6 +145,23 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
 
   useEffect(() => { loadAppointments(); }, [slug, date]);
 
+  // Trava o scroll do body quando o modal abre
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } else {
+      document.body.style.overflow = 'unset';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    }
+    // Cleanup: garante que o scroll volte se o componente for desmontado
+    return () => {
+      document.body.style.overflow = 'unset'; document.body.style.position = ''; document.body.style.width = '';
+    };
+  }, [isModalOpen]);
+
   const professionalAppointments = useMemo(() => {
     if (!data?.appointments) return [];
     const apps = activeProfId ? data.appointments.filter(a => a.professional.id === activeProfId) : data.appointments;
@@ -347,41 +364,66 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
                 </div>
             ) : (
               // --- CARD DE AGENDAMENTO ---
+              /* --- CARD DE AGENDAMENTO COMPACTO NO MOBILE --- */
               <div key={item.id} className="group flex flex-col lg:flex-row bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/40 dark:shadow-none overflow-hidden transition-all hover:border-emerald-500/50">
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-6 flex lg:flex-col items-center justify-between border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 lg:w-48 text-center">
+                {/* LADO ESQUERDO: HORÁRIO */}
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-6 flex lg:flex-col items-center justify-between border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 lg:w-48 text-center">
                     <div>
-                        <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-1">Horário</p>
-                        <p className="text-4xl font-black text-zinc-900 dark:text-white italic tracking-tighter">{formatBR(item.startAt, "HH:mm")}</p>
+                        <p className="text-[9px] sm:text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-0.5 sm:mb-1">Horário</p>
+                        <p className="text-2xl sm:text-4xl font-black text-zinc-900 dark:text-white italic tracking-tighter leading-none">
+                          {formatBR(item.startAt, "HH:mm")}
+                        </p>
                     </div>
                   {activeProfId === null && (
-                    <div className="mt-0 lg:mt-4 flex items-center gap-1.5 text-xs font-bold text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-900 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-800">
+                    <div className="mt-0 lg:mt-4 flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-900 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border border-zinc-200 dark:border-zinc-800">
                       <Scissors size={12} /> {item.professional.name.split(' ')[0]}
                     </div>
                   )}
                 </div>
                 
-                <div className="flex-1 p-6">
-                  <h4 className="font-black text-2xl text-zinc-900 dark:text-white uppercase mb-3">{item.client.name}</h4>
-                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                {/* CONTEÚDO CENTRAL: CLIENTE E SERVIÇO */}
+                <div className="flex-1 p-4 sm:p-6">
+                  <div className="flex justify-between items-start mb-2 sm:mb-3">
+                    <h4 className="font-black text-lg sm:text-2xl text-zinc-900 dark:text-white uppercase leading-tight truncate">
+                      {item.client.name}
+                    </h4>
+                    {item.client.phone && (
+                       <a
+                         href={`https://wa.me/${item.client.phone.replace(/\D/g, '')}`}
+                         target="_blank"
+                         className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl lg:hidden"
+                      >
+                        <MessageCircle size={18} />
+                      </a>
+                     )}
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-0 sm:mb-4">
                     {[ 
-                        { Icon: Scissors, text: item.service.name, color: 'text-emerald-500' }, 
-                        { Icon: Clock, text: `${item.service.durationMin || 0} min`, color: 'text-blue-500' }, 
-                        { Icon: DollarSign, text: `R$ ${(item.service.price / 100).toFixed(2).replace('.', ',')}`, color: 'text-emerald-500' } 
+                        { Icon: Scissors, text: item.service.name }, 
+                        { Icon: Clock, text: `${item.service.durationMin || 0} min` }, 
+                        { Icon: DollarSign, text: `R$ ${(item.service.price / 100).toFixed(2).replace('.', ',')}` } 
                     ].map(badge => (
-                        <span key={badge.text} className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-3 py-1.5 rounded-lg">
-                            <badge.Icon size={14} className={badge.color} /> {badge.text}
+                        <span key={badge.text} className="flex items-center gap-1 text-[9px] sm:text-xs font-black uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg">
+                            {badge.text}
                         </span>
                     ))}
                   </div>
-                  {item.client.phone && ( <a href={`https://wa.me/${item.client.phone.replace(/\D/g, '')}`} target="_blank" className="inline-flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 w-fit bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 rounded-xl"><MessageCircle size={16} /> WhatsApp</a> )}
+                  {/* WhatsApp visível apenas em telas grandes (PCs) para economizar espaço no mobile */}
+                  {item.client.phone && (
+                     <a href={`https://wa.me/${item.client.phone.replace(/\D/g, '')}`} target="_blank" className="hidden lg:inline-flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 w-fit bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 rounded-xl">
+                       <MessageCircle size={16} /> WhatsApp
+                     </a>
+                   )}
                 </div>
 
-                <div className="p-6 bg-zinc-50/50 dark:bg-zinc-950/30 border-t lg:border-t-0 lg:border-l border-zinc-100 dark:border-zinc-800 flex flex-row lg:flex-col gap-3 justify-center">
-                  <button disabled={updatingId === item.id} onClick={() => handleStatusChange(item.id, "COMPLETED")} className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl text-sm font-black uppercase shadow-lg shadow-emerald-500/20 disabled:opacity-50">
-                    {updatingId === item.id ? <span className="animate-pulse">...</span> : <><CheckCircle2 size={18} /> Finalizar</>}
+                {/* BOTÕES DE AÇÃO */}
+                <div className="p-4 sm:p-6 bg-zinc-50/50 dark:bg-zinc-950/30 border-t lg:border-t-0 lg:border-l border-zinc-100 dark:border-zinc-800 flex flex-row lg:flex-col gap-2 sm:gap-3 justify-center">
+                  <button disabled={updatingId === item.id} onClick={() => handleStatusChange(item.id, "COMPLETED")} className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 sm:py-4 rounded-2xl text-[10px] sm:text-sm font-black uppercase shadow-lg shadow-emerald-500/20 disabled:opacity-50">
+                    {updatingId === item.id ? <span className="animate-pulse">...</span> : <><CheckCircle2 size={16} className="sm:w-[18px]" /> Finalizar</>}
                   </button>
-                  <button disabled={updatingId === item.id} onClick={() => { if(confirm("Deseja cancelar?")) handleStatusChange(item.id, "CANCELED"); }} className="flex-1 flex items-center justify-center gap-2 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white dark:bg-red-500/10 dark:text-red-500 px-6 py-4 rounded-2xl text-xs font-black uppercase disabled:opacity-50">
-                    <XCircle size={16} /> Cancelar
+                  <button disabled={updatingId === item.id} onClick={() => { if(confirm("Deseja cancelar?")) handleStatusChange(item.id, "CANCELED"); }} className="flex-1 flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-500 text-red-600 hover:text-white dark:bg-red-500/10 dark:text-red-500 px-4 py-3 sm:py-4 rounded-2xl text-[10px] font-black uppercase disabled:opacity-50">
+                    <XCircle size={14} className="sm:w-[16px]" /> Cancelar
                   </button>
                 </div>
               </div>
@@ -399,73 +441,74 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
       {/* MODAL DE AGENDAMENTO MANUAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl border border-zinc-200 dark:border-zinc-800 relative">
-                <button onClick={() => setIsModalOpen(false)} className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
+            {/* Adicionado max-h-[95vh] e overflow-y-auto para não quebrar em telas pequenas */}
+            <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-8 max-h-[95vh] overflow-y-auto shadow-2xl border border-zinc-200 dark:border-zinc-800 relative scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-800">
+                <button onClick={() => setIsModalOpen(false)} className="absolute top-5 right-5 sm:top-6 sm:right-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
                     <X size={24} />
                 </button>
 
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 shadow-[0_0_30px_-5px_rgba(16,185,129,0.5)] mb-4 rotate-3">
-                   <UserPlus className="h-6 w-6 text-zinc-950" />
+                <div className="inline-flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-500 shadow-[0_0_30px_-5px_rgba(16,185,129,0.5)] mb-3 sm:mb-4 rotate-3">
+                   <UserPlus className="h-5 w-5 sm:h-6 sm:w-6 text-zinc-950" />
                 </div>
                 
-                <h3 className="text-2xl font-black italic uppercase tracking-tighter text-zinc-900 dark:text-white mb-1.5">
-                    Novo <span className="text-emerald-500">Agendamento</span> Manual
+                <h3 className="text-xl sm:text-2xl font-black italic uppercase tracking-tighter text-zinc-900 dark:text-white mb-1">
+                    Novo <span className="text-emerald-500">Agendamento</span>
                 </h3>
-                <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-8">Marque um horário diretamente do balcão.</p>
+                <p className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-5 sm:mb-8">Marque um horário diretamente do balcão.</p>
 
-                <form onSubmit={handleManualSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
+                <form onSubmit={handleManualSubmit} className="space-y-3 sm:space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Cliente</label>
                             <div className="relative group">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
-                                <input type="text" value={manualForm.clientName} onChange={(e) => setManualForm({...manualForm, clientName: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-12 pr-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="Nome do cliente" required />
+                                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
+                                <input type="text" value={manualForm.clientName} onChange={(e) => setManualForm({...manualForm, clientName: e.target.value})} className="w-full h-12 sm:h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-11 sm:pl-12 pr-4 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="Nome do cliente" required />
                             </div>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">WhatsApp</label>
                             <div className="relative group">
-                                <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
-                                <input type="tel" value={manualForm.clientPhone} onChange={(e) => setManualForm({...manualForm, clientPhone: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-12 pr-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="(00) 00000-0000" />
+                                <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
+                                <input type="tel" value={manualForm.clientPhone} onChange={(e) => setManualForm({...manualForm, clientPhone: e.target.value})} className="w-full h-12 sm:h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-11 sm:pl-12 pr-4 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="(00) 00000-0000" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Data do Agendamento</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Data</label>
                             <div className="relative group">
-                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
-                                <input type="date" value={manualForm.date} onChange={(e) => setManualForm({...manualForm, date: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-12 pr-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" required />
+                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
+                                <input type="date" value={manualForm.date} onChange={(e) => setManualForm({...manualForm, date: e.target.value})} className="w-full h-12 sm:h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-11 sm:pl-12 pr-4 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" required />
                             </div>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Horário</label>
                             <div className="relative group">
-                                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
-                                <input type="time" value={manualForm.time} onChange={(e) => setManualForm({...manualForm, time: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-12 pr-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" required />
+                                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
+                                <input type="time" value={manualForm.time} onChange={(e) => setManualForm({...manualForm, time: e.target.value})} className="w-full h-12 sm:h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-11 sm:pl-12 pr-4 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" required />
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Barbeiro</label>
-                            <select value={manualForm.professionalId} onChange={(e) => setManualForm({...manualForm, professionalId: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl px-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 appearance-none" required>
+                            <select value={manualForm.professionalId} onChange={(e) => setManualForm({...manualForm, professionalId: e.target.value})} className="w-full h-12 sm:h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl px-4 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 appearance-none" required>
                                 <option value="">Selecionar...</option>
                                 {data?.professionals?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                             <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Serviço</label>
-                            <select value={manualForm.serviceId} onChange={(e) => setManualForm({...manualForm, serviceId: e.target.value})} className="w-full h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl px-4 text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 appearance-none" required>
+                            <select value={manualForm.serviceId} onChange={(e) => setManualForm({...manualForm, serviceId: e.target.value})} className="w-full h-12 sm:h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl px-4 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 appearance-none" required>
                                 <option value="">Selecionar...</option>
                                 {data?.services?.map(s => <option key={s.id} value={s.id}>{s.name} - R${(s.price/100).toFixed(2).replace('.', ',')}</option>)}
                             </select>
                         </div>
                     </div>
 
-                    <button type="submit" disabled={loading} className="w-full h-14 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all shadow-xl shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2 mt-4">
+                    <button type="submit" disabled={loading} className="w-full h-12 sm:h-14 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all shadow-xl shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2 mt-4 sm:mt-6">
                         {loading ? <span className="animate-pulse">Salvando...</span> : <>Confirmar no Sistema <ArrowRight size={16} /></>}
                     </button>
                 </form>
