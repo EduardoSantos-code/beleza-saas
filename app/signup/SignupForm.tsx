@@ -1,6 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { 
+  Store, 
+  User, 
+  Mail, 
+  Lock, 
+  Link as LinkIcon, 
+  ArrowRight, 
+  AlertCircle,
+  Sparkles
+} from "lucide-react";
 
 function slugify(value: string) {
   return value
@@ -28,20 +38,17 @@ export default function SignupForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
     try {
       setLoading(true);
       setErrorMessage("");
 
       const res = await fetch("/api/auth/signup", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenantName,
           slug: slug || suggestedSlug,
-          ownerName, // Enviado como ownerName para ser usado como name do profissional no backend
+          ownerName,
           email,
           password,
         }),
@@ -49,20 +56,12 @@ export default function SignupForm() {
 
       const text = await res.text();
       let json: any = null;
+      try { json = JSON.parse(text); } catch { throw new Error(`Erro: ${text}`); }
 
-      try {
-        json = JSON.parse(text);
-      } catch {
-        throw new Error(`Resposta inválida da API: ${text}`);
-      }
-
-      if (!res.ok) {
-        throw new Error(json?.error || "Erro ao criar conta");
-      }
+      if (!res.ok) throw new Error(json?.error || "Erro ao criar conta");
 
       window.location.href = json.redirectTo || "/";
     } catch (err: any) {
-      console.error(err);
       setErrorMessage(err.message || "Erro inesperado");
     } finally {
       setLoading(false);
@@ -70,112 +69,157 @@ export default function SignupForm() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-4 py-10">
-      <div className="mx-auto max-w-2xl rounded-2xl bg-white p-8 shadow-sm ring-1 ring-zinc-200">
-        <p className="text-sm font-medium uppercase tracking-wide text-brand-600">
-          Começar teste grátis
-        </p>
-        <h1 className="mt-2 text-3xl font-bold text-zinc-900">
-          Criar conta do salão
-        </h1>
-        <p className="mt-2 text-zinc-600">
-          Seu salão será criado com trial de 14 dias e acesso imediato ao painel.
-        </p>
+    <main className="min-h-[100dvh] bg-zinc-950 flex flex-col items-center justify-center p-4 antialiased relative overflow-hidden py-12">
+      
+      {/* Detalhe de Fundo (Glow Emerald) */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-emerald-500/10 blur-[120px] pointer-events-none" />
 
-        <form onSubmit={handleSubmit} className="mt-8 grid gap-5 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-zinc-700">
-              Nome do salão
-            </label>
-            <input
-              type="text"
-              value={tenantName}
-              onChange={(e) => setTenantName(e.target.value)}
-              placeholder="Ex.: Studio Bella"
-              className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-brand-500"
-              required
-            />
-          </div>
+      <div className="w-full max-w-2xl z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        
+        {/* Cabeçalho */}
+        <div className="text-center mb-10 flex flex-col items-center">
+          <img 
+            src="/logo.png" 
+            alt="Logo TratoMarcado"
+            className="h-16 w-auto mb-6 shadow-[0_0_30px_-5px_rgba(16,185,129,0.4)] ring-1 ring-emerald-500/30 rounded-xl rotate-2"
+          />
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500 mb-4">
+            <Sparkles className="h-3 w-3" /> Teste Grátis de 14 dias
+          </span>
+          <h1 className="text-4xl font-black italic tracking-tighter text-white uppercase leading-tight">
+            Crie sua <span className="text-emerald-500">Unidade</span>
+          </h1>
+          <p className="mt-2 text-sm font-medium text-zinc-400">
+            Configure seu salão e comece a agendar hoje mesmo
+          </p>
+        </div>
 
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-zinc-700">
-              Slug da URL
-            </label>
-            <input
-              type="text"
-              value={slug}
-              onChange={(e) => setSlug(slugify(e.target.value))}
-              placeholder={suggestedSlug || "ex.: studio-bella"}
-              className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-brand-500"
-              required
-            />
-            <p className="mt-1 text-xs text-zinc-500">
-              Sua página ficará assim: /s/{slug || suggestedSlug || "seu-slug"}
-            </p>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-zinc-700">
-              Nome do responsável
-            </label>
-            <input
-              type="text"
-              value={ownerName}
-              onChange={(e) => setOwnerName(e.target.value)}
-              placeholder="Seu nome"
-              className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-brand-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-zinc-700">
-              E-mail
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="voce@exemplo.com"
-              className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-brand-500"
-              required
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-zinc-700">
-              Senha
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
-              className="w-full rounded-xl border border-zinc-300 px-4 py-3 outline-none focus:border-brand-500"
-              required
-              minLength={8}
-            />
-          </div>
-
-          {errorMessage && (
-            <div className="md:col-span-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {errorMessage}
+        {/* Card do Formulário */}
+        <div className="rounded-3xl bg-zinc-900 border border-zinc-800 p-6 md:p-10 shadow-2xl">
+          <form onSubmit={handleSubmit} className="grid gap-6 md:grid-cols-2">
+            
+            {/* Nome do Salão */}
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
+                Nome Comercial do Salão
+              </label>
+              <div className="relative group">
+                <Store className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
+                <input
+                  type="text"
+                  value={tenantName}
+                  onChange={(e) => setTenantName(e.target.value)}
+                  className="w-full h-14 bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-zinc-700"
+                  placeholder="Ex: Barber Shop Premium"
+                  required
+                />
+              </div>
             </div>
-          )}
 
-          <div className="md:col-span-2">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-brand-600 px-5 py-3 font-medium text-white hover:bg-brand-700 disabled:opacity-60"
-            >
-              {loading ? "Criando conta..." : "Criar conta e entrar"}
-            </button>
-          </div>
-        </form>
+            {/* Slug/URL */}
+            <div className="md:col-span-2 space-y-2">
+              <div className="flex justify-between items-end px-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Endereço da sua Página</label>
+                <span className="text-[9px] text-emerald-500/60 font-bold tracking-tight">tratomarcado.tech/s/<b>{slug || suggestedSlug || "link"}</b></span>
+              </div>
+              <div className="relative group">
+                <LinkIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
+                <input
+                  type="text"
+                  value={slug}
+                  onChange={(e) => setSlug(slugify(e.target.value))}
+                  className="w-full h-14 bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-zinc-700"
+                  placeholder={suggestedSlug || "seu-link"}
+                  required
+                />
+              </div>
+            </div>
 
-        <p className="mt-6 text-sm text-zinc-500">
-          Já tem conta? <a href="/login" className="text-brand-600 hover:underline">Entrar</a>
+            {/* Nome do Responsável */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Seu Nome</label>
+              <div className="relative group">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
+                <input
+                  type="text"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                  className="w-full h-14 bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                  placeholder="Nome do dono"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* E-mail */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">E-mail de Acesso</label>
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full h-14 bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                  placeholder="seu@email.com"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Senha */}
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Criar Senha Forte</label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full h-14 bg-zinc-950 border border-zinc-800 rounded-2xl pl-12 pr-4 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                  placeholder="Mínimo 8 caracteres"
+                  required
+                  minLength={8}
+                />
+              </div>
+            </div>
+
+            {/* Erro */}
+            {errorMessage && (
+              <div className="md:col-span-2 flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-xs font-bold text-red-500 animate-in fade-in zoom-in-95">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {errorMessage}
+              </div>
+            )}
+
+            {/* Botão Final */}
+            <div className="md:col-span-2 pt-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="group relative w-full h-14 bg-emerald-500 hover:bg-emerald-400 disabled:bg-zinc-800 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] text-zinc-950 transition-all shadow-[0_10px_20px_-10px_rgba(16,185,129,0.5)] active:scale-95"
+              >
+                <div className="relative z-10 flex items-center justify-center gap-2">
+                  {loading ? (
+                    <div className="h-5 w-5 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      Criar minha conta agora
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </div>
+              </button>
+            </div>
+          </form>
+
+          <p className="mt-8 text-center text-xs font-medium text-zinc-500">
+            Já é parceiro? <a href="/login" className="text-emerald-500 hover:text-emerald-400 font-black uppercase tracking-widest text-[10px] ml-1 transition-colors">Entrar no Painel</a>
+          </p>
+        </div>
+
+        <p className="mt-10 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-700">
+          TratoMarcado &copy; 2026 — Plataforma de Agendamento Profissional
         </p>
       </div>
     </main>
