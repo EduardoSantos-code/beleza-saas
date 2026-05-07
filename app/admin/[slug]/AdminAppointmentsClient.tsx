@@ -232,9 +232,13 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
 
       {/* 1. AVISO GLOBAL */}
       {data?.announcement && (
-        <div className="bg-emerald-600 text-white py-4 px-6 rounded-3xl flex items-center gap-4 shadow-xl shadow-emerald-500/20 border border-emerald-400/30">
-          <div className="bg-white/20 p-2 rounded-xl"><Megaphone className="h-6 w-6" /></div>
-          <p className="font-bold text-sm uppercase tracking-wide">{data.announcement.content}</p>
+        <div className="bg-emerald-600 text-white p-5 sm:py-4 sm:px-6 rounded-3xl flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 shadow-xl shadow-emerald-500/20 border border-emerald-400/30">
+          <div className="bg-white/20 p-2.5 sm:p-2 rounded-xl shrink-0">
+            <Megaphone className="h-6 w-6 sm:h-5 sm:w-5" />
+          </div>
+          <p className="font-bold text-xs sm:text-sm uppercase tracking-wide text-center sm:text-left leading-relaxed">
+            {data.announcement.content}
+          </p>
         </div>
       )}
 
