@@ -468,27 +468,27 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
                         </div>
                     </div>
 
-                    {/* WHATSAPP E DATA (2 COLUNAS NO MOBILE) */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1">WhatsApp</label>
-                            <input type="tel" value={manualForm.clientPhone} onChange={(e) => setManualForm({...manualForm, clientPhone: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-4 text-xs font-bold text-zinc-900 dark:text-white border-none" placeholder="(00) 00000-0000" />
+                    {/* WHATSAPP E DATA (AJUSTE DE PADDING E GAP) */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                        <div className="space-y-1 min-w-0">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 block truncate">WhatsApp</label>
+                            <input type="tel" value={manualForm.clientPhone} onChange={(e) => setManualForm({...manualForm, clientPhone: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-2.5 text-[11px] font-bold text-zinc-900 dark:text-white border-none" placeholder="(00) 00000-0000" />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1">Data</label>
-                            <input type="date" value={manualForm.date} onChange={(e) => setManualForm({...manualForm, date: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-3 text-xs font-bold text-zinc-900 dark:text-white border-none" required />
+                        <div className="space-y-1 min-w-0">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 block truncate">Data</label>
+                            <input type="date" value={manualForm.date} onChange={(e) => setManualForm({...manualForm, date: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-2 text-[11px] font-bold text-zinc-900 dark:text-white border-none" required />
                         </div>
                     </div>
 
-                    {/* HORÁRIO E BARBEIRO (2 COLUNAS NO MOBILE) */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1">Horário</label>
-                            <input type="time" value={manualForm.time} onChange={(e) => setManualForm({...manualForm, time: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-4 text-xs font-bold text-zinc-900 dark:text-white border-none" required />
+                    {/* HORÁRIO E BARBEIRO (AJUSTE DE PADDING E GAP) */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                        <div className="space-y-1 min-w-0">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 block truncate">Horário</label>
+                            <input type="time" value={manualForm.time} onChange={(e) => setManualForm({...manualForm, time: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-2 text-[11px] font-bold text-zinc-900 dark:text-white border-none" required />
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1">Barbeiro</label>
-                            <select value={manualForm.professionalId} onChange={(e) => setManualForm({...manualForm, professionalId: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-3 text-xs font-bold text-zinc-900 dark:text-white border-none appearance-none" required>
+                        <div className="space-y-1 min-w-0">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 block truncate">Barbeiro</label>
+                            <select value={manualForm.professionalId} onChange={(e) => setManualForm({...manualForm, professionalId: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-2 text-[11px] font-bold text-zinc-900 dark:text-white border-none appearance-none" required>
                                 <option value="">Quem?</option>
                                 {data?.professionals?.map(p => <option key={p.id} value={p.id}>{p.name.split(' ')[0]}</option>)}
                             </select>
