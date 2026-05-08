@@ -438,78 +438,74 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
         )}
       </section>
       
-      {/* MODAL DE AGENDAMENTO MANUAL */}
+      {/* MODAL DE AGENDAMENTO MANUAL - ULTRA COMPACTO */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm animate-in fade-in duration-300">
-            {/* Adicionado max-h-[95vh] e overflow-y-auto para não quebrar em telas pequenas */}
-            <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-8 max-h-[95vh] overflow-y-auto shadow-2xl border border-zinc-200 dark:border-zinc-800 relative scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-800">
-                <button onClick={() => setIsModalOpen(false)} className="absolute top-5 right-5 sm:top-6 sm:right-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                    <X size={24} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-zinc-950/90 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2rem] p-5 sm:p-8 max-h-[92vh] overflow-y-auto shadow-2xl border border-zinc-200 dark:border-zinc-800 relative">
+                <button onClick={() => setIsModalOpen(false)} className="absolute top-5 right-5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors p-1">
+                    <X size={20} />
                 </button>
 
-                <div className="inline-flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-500 shadow-[0_0_30px_-5px_rgba(16,185,129,0.5)] mb-3 sm:mb-4 rotate-3">
-                   <UserPlus className="h-5 w-5 sm:h-6 sm:w-6 text-zinc-950" />
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 shrink-0 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 rotate-3">
+                    <UserPlus className="h-5 w-5 text-zinc-950" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black italic uppercase tracking-tighter text-zinc-900 dark:text-white leading-none">
+                        Novo <span className="text-emerald-500">Agendamento</span>
+                    </h3>
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">Balcão Direto</p>
+                  </div>
                 </div>
-                
-                <h3 className="text-xl sm:text-2xl font-black italic uppercase tracking-tighter text-zinc-900 dark:text-white mb-1">
-                    Novo <span className="text-emerald-500">Agendamento</span>
-                </h3>
-                <p className="text-xs sm:text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-5 sm:mb-8">Marque um horário diretamente do balcão.</p>
 
-                <form onSubmit={handleManualSubmit} className="space-y-3 sm:space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Cliente</label>
-                            <div className="relative group">
-                                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
-                                <input type="text" value={manualForm.clientName} onChange={(e) => setManualForm({...manualForm, clientName: e.target.value})} className="w-full h-12 sm:h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-11 sm:pl-12 pr-4 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="Nome do cliente" required />
-                            </div>
-                        </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">WhatsApp</label>
-                            <div className="relative group">
-                                <MessageCircle className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
-                                <input type="tel" value={manualForm.clientPhone} onChange={(e) => setManualForm({...manualForm, clientPhone: e.target.value})} className="w-full h-12 sm:h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-11 sm:pl-12 pr-4 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" placeholder="(00) 00000-0000" />
-                            </div>
+                <form onSubmit={handleManualSubmit} className="space-y-3">
+                    {/* CLIENTE (LINHA ÚNICA) */}
+                    <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1">Nome do Cliente</label>
+                        <div className="relative">
+                            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                            <input type="text" value={manualForm.clientName} onChange={(e) => setManualForm({...manualForm, clientName: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl pl-10 pr-4 text-xs font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 border-none" placeholder="Ex: Francisco" required />
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Data</label>
-                            <div className="relative group">
-                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
-                                <input type="date" value={manualForm.date} onChange={(e) => setManualForm({...manualForm, date: e.target.value})} className="w-full h-12 sm:h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-11 sm:pl-12 pr-4 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" required />
-                            </div>
+                    {/* WHATSAPP E DATA (2 COLUNAS NO MOBILE) */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1">WhatsApp</label>
+                            <input type="tel" value={manualForm.clientPhone} onChange={(e) => setManualForm({...manualForm, clientPhone: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-4 text-xs font-bold text-zinc-900 dark:text-white border-none" placeholder="(00) 00000-0000" />
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Horário</label>
-                            <div className="relative group">
-                                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
-                                <input type="time" value={manualForm.time} onChange={(e) => setManualForm({...manualForm, time: e.target.value})} className="w-full h-12 sm:h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl pl-11 sm:pl-12 pr-4 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500" required />
-                            </div>
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1">Data</label>
+                            <input type="date" value={manualForm.date} onChange={(e) => setManualForm({...manualForm, date: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-3 text-xs font-bold text-zinc-900 dark:text-white border-none" required />
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Barbeiro</label>
-                            <select value={manualForm.professionalId} onChange={(e) => setManualForm({...manualForm, professionalId: e.target.value})} className="w-full h-12 sm:h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl px-4 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 appearance-none" required>
-                                <option value="">Selecionar...</option>
-                                {data?.professionals?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                            </select>
+                    {/* HORÁRIO E BARBEIRO (2 COLUNAS NO MOBILE) */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1">Horário</label>
+                            <input type="time" value={manualForm.time} onChange={(e) => setManualForm({...manualForm, time: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-4 text-xs font-bold text-zinc-900 dark:text-white border-none" required />
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Serviço</label>
-                            <select value={manualForm.serviceId} onChange={(e) => setManualForm({...manualForm, serviceId: e.target.value})} className="w-full h-12 sm:h-14 bg-zinc-100 dark:bg-zinc-950 rounded-2xl px-4 text-xs sm:text-sm font-bold text-zinc-900 dark:text-white focus:ring-2 focus:ring-emerald-500 appearance-none" required>
-                                <option value="">Selecionar...</option>
-                                {data?.services?.map(s => <option key={s.id} value={s.id}>{s.name} - R${(s.price/100).toFixed(2).replace('.', ',')}</option>)}
+                        <div className="space-y-1">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1">Barbeiro</label>
+                            <select value={manualForm.professionalId} onChange={(e) => setManualForm({...manualForm, professionalId: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-3 text-xs font-bold text-zinc-900 dark:text-white border-none appearance-none" required>
+                                <option value="">Quem?</option>
+                                {data?.professionals?.map(p => <option key={p.id} value={p.id}>{p.name.split(' ')[0]}</option>)}
                             </select>
                         </div>
                     </div>
 
-                    <button type="submit" disabled={loading} className="w-full h-12 sm:h-14 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all shadow-xl shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2 mt-4 sm:mt-6">
-                        {loading ? <span className="animate-pulse">Salvando...</span> : <>Confirmar no Sistema <ArrowRight size={16} /></>}
+                    {/* SERVIÇO (LINHA ÚNICA) */}
+                    <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1">Serviço</label>
+                        <select value={manualForm.serviceId} onChange={(e) => setManualForm({...manualForm, serviceId: e.target.value})} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-4 text-xs font-bold text-zinc-900 dark:text-white border-none appearance-none" required>
+                            <option value="">Escolha o serviço...</option>
+                            {data?.services?.map(s => <option key={s.id} value={s.id}>{s.name} - R${(s.price/100).toFixed(2)}</option>)}
+                        </select>
+                    </div>
+
+                    <button type="submit" disabled={loading} className="w-full h-12 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg shadow-emerald-500/20 active:scale-95 flex items-center justify-center gap-2 mt-4">
+                        {loading ? <span className="animate-pulse">Salvando...</span> : <>Confirmar Agendamento <ArrowRight size={14} /></>}
                     </button>
                 </form>
             </div>
