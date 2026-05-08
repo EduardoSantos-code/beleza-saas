@@ -166,14 +166,15 @@ export default function BlocksClient({ slug }: { slug: string }) {
             </div>
           </div>
 
+          {/* DATA E PROFISSIONAL */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1.5 min-w-0">
-              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 block truncate">Data</label>
-              <input type="date" value={date} onClick={(e) => e.currentTarget.showPicker()} onChange={(e) => setDate(e.target.value)} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-2.5 text-[11px] font-bold text-zinc-900 dark:text-white border-none" required />
+            <div className="flex flex-col gap-1 min-w-0">
+              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 truncate">Data</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-2 text-[11px] font-bold text-zinc-900 dark:text-white border-none appearance-none" required />
             </div>
-            <div className="space-y-1.5 min-w-0">
-              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 block truncate">Profissional</label>
-              <select value={professionalId} onChange={(e) => setProfessionalId(e.target.value)} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-2.5 text-[11px] font-bold text-zinc-900 dark:text-white border-none appearance-none">
+            <div className="flex flex-col gap-1 min-w-0">
+              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 truncate">Profissional</label>
+              <select value={professionalId} onChange={(e) => setProfessionalId(e.target.value)} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-3 text-[11px] font-bold text-zinc-900 dark:text-white border-none appearance-none">
                 <option value="">Salão Inteiro</option>
                 {data?.professionals.map(p => <option key={p.id} value={p.id}>{p.name.split(' ')[0]}</option>)}
               </select>
@@ -186,14 +187,15 @@ export default function BlocksClient({ slug }: { slug: string }) {
           </div>
 
           {!allDay && (
+            /* HORÁRIOS DE INÍCIO E FIM */
             <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-1">
-              <div className="space-y-1.5 min-w-0">
-                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 block truncate">Início</label>
-                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-4 text-[11px] font-bold text-zinc-900 dark:text-white border-none" required />
+              <div className="flex flex-col gap-1 min-w-0">
+                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 truncate">Início</label>
+                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-3 text-[11px] font-bold text-zinc-900 dark:text-white border-none appearance-none" required />
               </div>
-              <div className="space-y-1.5 min-w-0">
-                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 block truncate">Fim</label>
-                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-4 text-[11px] font-bold text-zinc-900 dark:text-white border-none" required />
+              <div className="flex flex-col gap-1 min-w-0">
+                <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 truncate">Fim</label>
+                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-3 text-[11px] font-bold text-zinc-900 dark:text-white border-none appearance-none" required />
               </div>
             </div>
           )}
