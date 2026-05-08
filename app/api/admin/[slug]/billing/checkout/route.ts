@@ -45,7 +45,7 @@ export async function POST(
         headers,
         body: JSON.stringify({
           name: tenant.name,
-          email: owner?.email || "contato@tratomarcado.com",
+          email: owner?.email || "dudu.santos2097@gmail.com",
           cpfCnpj: tenant.cpfCnpj, // Enviando o CPF na criação
           externalReference: tenant.id,
         }),
