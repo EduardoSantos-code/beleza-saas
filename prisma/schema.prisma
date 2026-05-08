@@ -1,102 +1,44 @@
-datasource db {
-  provider = "postgresql"
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
-enum MembershipRole {
-  OWNER
-  MANAGER
-  STAFF
-}
-
-enum AppointmentStatus {
-  PENDING
-  CONFIRMED
-  CANCELED
-  COMPLETED
-}
-
-enum ReminderStatus {
-  PENDING
-  SENT
-  FAILED
-}
-
-enum Weekday {
-  SUNDAY
-  MONDAY
-  TUESDAY
-  WEDNESDAY
-  THURSDAY
-  FRIDAY
-  SATURDAY
-}
-
-enum WhatsAppInboundMessageType {
-  TEXT
-  IMAGE
-  AUDIO
-  VIDEO
-  DOCUMENT
-  STICKER
-  LOCATION
-  CONTACTS
-  INTERACTIVE
-  BUTTON
-  ORDER
-  REACTION
-  UNKNOWN
-}
-
-enum TenantSubscriptionStatus {
-  NONE
-  TRIALING
-  ACTIVE
-  PAST_DUE
-  CANCELED
-  INCOMPLETE
-  INCOMPLETE_EXPIRED
-  UNPAID
-  PAUSED
+datasource db {
+  provider = "postgresql"
 }
 
 model Tenant {
-  id            String                    @id @default(cuid())
-  name          String
-  slug          String                    @unique
-  timezone      String                    @default("America/Sao_Paulo")
-  createdAt     DateTime                  @default(now())
-  logoUrl       String?
-  heroImageUrl  String?
-  primaryColor  String?                   @default("#7c3aed")
-  publicDescription String?
-  publicPhone   String?
-  address       String?
-  instagram     String?
-  googleMapsLink  String?
-
-  subscriptionStatus            TenantSubscriptionStatus @default(NONE)
-  trialEndsAt                   DateTime?
-  stripeCustomerId              String?
-  stripeSubscriptionId          String?
-  stripePriceId                 String?
+  id                            String                    @id @default(cuid())
+  name                          String
+  slug                          String                    @unique
+  timezone                      String                    @default("America/Sao_Paulo")
+  createdAt                     DateTime                  @default(now())
+  address                       String?
+  heroImageUrl                  String?
+  instagram                     String?
+  logoUrl                       String?
+  primaryColor                  String?                   @default("#7c3aed")
+  publicDescription             String?
+  publicPhone                   String?
+  cpfCnpj         String?
+  asaasCustomerId      String?  @unique
+  asaasSubscriptionId  String?  @unique
+  planStatus           String   @default("TRIAL") // TRIAL, ACTIVE, OVERDUE
+  subscriptionCancelAtPeriodEnd Boolean                   @default(false)
   subscriptionCurrentPeriodEnd  DateTime?
-  subscriptionCancelAtPeriodEnd Boolean                  @default(false)
-
-  memberships      Membership[]
-  professionals    Professional[]
-  services         Service[]
-  clients          Client[]
-  appointments     Appointment[]
-  whatsappConfig   WhatsappConfig?
-  businessHours    TenantBusinessHour[]
-  blocks           ScheduleBlock[]
-  inboundMessages  WhatsAppInboundMessage[]
-  outboundMessages WhatsAppOutboundMessage[]
-  minAdvanceHours  Int                       @default(2)
+  subscriptionStatus            TenantSubscriptionStatus  @default(NONE)
+  trialEndsAt                   DateTime?
+  minAdvanceHours               Int                       @default(2)
+  googleMapsLink                String?
+  appointments                  Appointment[]
+  clients                       Client[]
+  memberships                   Membership[]
+  professionals                 Professional[]
+  blocks                        ScheduleBlock[]
+  services                      Service[]
+  businessHours                 TenantBusinessHour[]
+  inboundMessages               WhatsAppInboundMessage[]
+  outboundMessages              WhatsAppOutboundMessage[]
+  whatsappConfig                WhatsappConfig?
 }
 
 model User {
@@ -104,8 +46,8 @@ model User {
   name         String
   email        String       @unique
   passwordHash String
-  role         String   @default("USER")
   createdAt    DateTime     @default(now())
+  role         String       @default("USER")
   memberships  Membership[]
 }
 
@@ -114,26 +56,25 @@ model Membership {
   userId   String
   tenantId String
   role     MembershipRole @default(STAFF)
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tenantId])
 }
 
 model Professional {
-  id            String                     @id @default(cuid())
-  name          String
-  phoneE164     String?                    
-  commissionRate Int           @default(50)
-  active        Boolean                    @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  tenantId      String
-  tenant        Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  appointments  Appointment[]
-  businessHours ProfessionalBusinessHour[]
-  blocks        ScheduleBlock[]
+  id             String                     @id @default(cuid())
+  tenantId       String
+  name           String
+  active         Boolean                    @default(true)
+  commissionRate Int                        @default(50)
+  createdAt      DateTime                   @default(now())
+  phoneE164      String?
+  updatedAt      DateTime                   @updatedAt
+  appointments   Appointment[]
+  tenant         Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  businessHours  ProfessionalBusinessHour[]
+  blocks         ScheduleBlock[]
 
   @@index([tenantId, active])
 }
@@ -143,10 +84,10 @@ model Service {
   tenantId     String
   name         String
   durationMin  Int
-  price  Int                 @default(0)
   active       Boolean       @default(true)
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  price        Int           @default(0)
   appointments Appointment[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, active])
 }
@@ -158,8 +99,8 @@ model Client {
   phoneE164        String
   email            String?
   createdAt        DateTime                  @default(now())
-  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   appointments     Appointment[]
+  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   inboundMessages  WhatsAppInboundMessage[]
   outboundMessages WhatsAppOutboundMessage[]
 
@@ -173,25 +114,22 @@ model Appointment {
   professionalId String
   serviceId      String
   clientId       String
-  
-  timeZone       String            @default("America/Sao_Paulo")
-  businessDate   String            
-  startMinutes   Int               
-  endMinutes     Int               
-
   startAt        DateTime
   endAt          DateTime
   status         AppointmentStatus @default(PENDING)
   notes          String?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
-
-  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Restrict)
-  service      Service      @relation(fields: [serviceId], references: [id], onDelete: Restrict)
-  client       Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  reminder     Reminder?
-  reminderSent Boolean      @default(false)
+  businessDate   String
+  endMinutes     Int
+  startMinutes   Int
+  timeZone       String            @default("America/Sao_Paulo")
+  reminderSent   Boolean           @default(false)
+  client         Client            @relation(fields: [clientId], references: [id])
+  professional   Professional      @relation(fields: [professionalId], references: [id])
+  service        Service           @relation(fields: [serviceId], references: [id])
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reminder       Reminder?
 
   @@index([tenantId, professionalId, startAt])
   @@index([tenantId, status])
@@ -207,8 +145,7 @@ model Reminder {
   error         String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-
-  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  appointment   Appointment    @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
 
   @@index([status, sendAt])
 }
@@ -268,8 +205,8 @@ model ScheduleBlock {
   allDay         Boolean       @default(false)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  professional   Professional? @relation(fields: [professionalId], references: [id])
   tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  professional   Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, startAt])
   @@index([professionalId, startAt])
@@ -287,8 +224,8 @@ model WhatsAppInboundMessage {
   textBody      String?
   rawJson       Json
   createdAt     DateTime                   @default(now())
+  client        Client?                    @relation(fields: [clientId], references: [id])
   tenant        Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  client        Client?                    @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, createdAt])
   @@index([clientId, createdAt])
@@ -305,8 +242,8 @@ model WhatsAppOutboundMessage {
   textBody      String
   rawJson       Json?
   createdAt     DateTime @default(now())
+  client        Client?  @relation(fields: [clientId], references: [id])
   tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  client        Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, createdAt])
   @@index([clientId, createdAt])
@@ -315,8 +252,65 @@ model WhatsAppOutboundMessage {
 
 model Announcement {
   id        String   @id @default(cuid())
-  content   String   // O texto do aviso
-  type      String   @default("INFO") // INFO, WARNING ou DANGER
+  content   String
+  type      String   @default("INFO")
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+}
+
+enum MembershipRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELED
+  COMPLETED
+}
+
+enum ReminderStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum Weekday {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+enum WhatsAppInboundMessageType {
+  TEXT
+  IMAGE
+  AUDIO
+  VIDEO
+  DOCUMENT
+  STICKER
+  LOCATION
+  CONTACTS
+  INTERACTIVE
+  BUTTON
+  ORDER
+  REACTION
+  UNKNOWN
+}
+
+enum TenantSubscriptionStatus {
+  NONE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  UNPAID
+  PAUSED
 }

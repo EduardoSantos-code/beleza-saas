@@ -1,7 +1,10 @@
+// app/api/admin/[slug]/billing/checkout/route.ts
 import { prisma } from "@/lib/prisma";
 import { getCurrentMembershipBySlug } from "@/lib/auth";
-import { stripe } from "@/lib/stripe";
 import { NextResponse } from "next/server";
+
+const ASAAS_URL = process.env.ASAAS_API_URL || "https://sandbox.asaas.com/api/v3";
+const ASAAS_KEY = process.env.ASAAS_API_KEY;
 
 export async function POST(
   _req: Request,
@@ -9,105 +12,117 @@ export async function POST(
 ) {
   try {
     const { slug } = await params;
-
     const membership = await getCurrentMembershipBySlug(slug);
 
-    if (!membership) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-    }
-
-    const priceId = process.env.STRIPE_PRICE_ID_MONTHLY;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-    if (!priceId) {
-      return NextResponse.json(
-        { error: "STRIPE_PRICE_ID_MONTHLY não definida" },
-        { status: 500 }
-      );
-    }
-
-    if (!appUrl) {
-      return NextResponse.json(
-        { error: "NEXT_PUBLIC_APP_URL não definida" },
-        { status: 500 }
-      );
-    }
+    if (!membership) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    if (!ASAAS_KEY) return NextResponse.json({ error: "ASAAS_API_KEY não configurada" }, { status: 500 });
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: membership.tenantId },
       include: {
-        memberships: {
-          include: {
-            user: true,
-          },
-          where: {
-            role: "OWNER",
-          },
-          take: 1,
-        },
+        memberships: { include: { user: true }, where: { role: "OWNER" }, take: 1 },
       },
     });
 
-    if (!tenant) {
-      return NextResponse.json({ error: "Salão não encontrado" }, { status: 404 });
+    if (!tenant) return NextResponse.json({ error: "Salão não encontrado" }, { status: 404 });
+
+    if (!tenant.cpfCnpj) {
+      return NextResponse.json({ error: "CPF/CNPJ é obrigatório para o checkout" }, { status: 400 });
     }
 
-    let stripeCustomerId = tenant.stripeCustomerId;
+    const owner = tenant.memberships[0]?.user;
+    let asaasCustomerId = tenant.asaasCustomerId;
+    
+    const headers = {
+      "Content-Type": "application/json",
+      "access_token": ASAAS_KEY,
+    };
 
-    if (!stripeCustomerId) {
-      const owner = tenant.memberships[0]?.user;
-
-      const customer = await stripe.customers.create({
-        name: tenant.name,
-        email: owner?.email || undefined,
-        metadata: {
-          tenantId: tenant.id,
-          tenantSlug: tenant.slug,
-        },
+    // 1. CRIAR OU ATUALIZAR CLIENTE NO ASAAS
+    if (!asaasCustomerId) {
+      const customerRes = await fetch(`${ASAAS_URL}/customers`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          name: tenant.name,
+          email: owner?.email || "contato@tratomarcado.com",
+          cpfCnpj: tenant.cpfCnpj, // Enviando o CPF na criação
+          externalReference: tenant.id,
+        }),
       });
 
-      stripeCustomerId = customer.id;
+      const customerData = await customerRes.json();
+      if (customerData.errors) throw new Error(customerData.errors[0].description);
+      asaasCustomerId = customerData.id;
 
       await prisma.tenant.update({
         where: { id: tenant.id },
-        data: {
-          stripeCustomerId,
-        },
+        data: { asaasCustomerId },
+      });
+    } else {
+      // 💡 GARANTIA: Se já tem ID, vamos atualizar o CPF só por segurança
+      await fetch(`${ASAAS_URL}/customers/${asaasCustomerId}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ cpfCnpj: tenant.cpfCnpj }),
       });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      customer: stripeCustomerId,
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      success_url: `${appUrl}/admin/${tenant.slug}/billing?success=true`,
-      cancel_url: `${appUrl}/admin/${tenant.slug}/billing?canceled=true`,
-      metadata: {
-        tenantId: tenant.id,
-        tenantSlug: tenant.slug,
-      },
-      subscription_data: {
-        metadata: {
-          tenantId: tenant.id,
-          tenantSlug: tenant.slug,
-        },
-      },
+    // 2. CRIAR ASSINATURA
+    let asaasSubscriptionId = tenant.asaasSubscriptionId;
+
+    if (!asaasSubscriptionId) {
+      const today = new Date().toISOString().split("T")[0];
+
+      const subRes = await fetch(`${ASAAS_URL}/subscriptions`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          customer: asaasCustomerId,
+          billingType: "UNDEFINED",
+          value: 39.00,
+          nextDueDate: today,
+          cycle: "MONTHLY",
+          description: "Assinatura Trato Pro",
+        }),
+      });
+
+      const subData = await subRes.json();
+      
+      // O erro estava acontecendo aqui porque o cliente lá no Asaas estava sem CPF
+      if (subData.errors) {
+        console.error("ERRO DO ASAAS NA ASSINATURA:", subData.errors);
+        throw new Error(subData.errors[0].description);
+      }
+
+      asaasSubscriptionId = subData.id;
+
+      await prisma.tenant.update({
+        where: { id: tenant.id },
+        data: { asaasSubscriptionId },
+      });
+    }
+
+    // 3. BUSCAR LINK DE PAGAMENTO
+    const paymentsRes = await fetch(`${ASAAS_URL}/payments?subscription=${asaasSubscriptionId}`, {
+      method: "GET",
+      headers,
     });
+    
+    const paymentsData = await paymentsRes.json();
+    const currentPayment = paymentsData.data[0];
+
+    if (!currentPayment) throw new Error("Não foi possível localizar a fatura.");
 
     return NextResponse.json({
       ok: true,
-      url: session.url,
+      url: currentPayment.invoiceUrl, 
     });
-  } catch (error: any) {
-    console.error("Erro em POST /api/admin/[slug]/billing/checkout:", error);
 
+  } catch (error: any) {
+    console.error("Erro no Checkout Asaas:", error);
     return NextResponse.json(
-      { error: error?.message || "Erro interno ao criar checkout" },
+      { error: error?.message || "Erro interno ao gerar cobrança" },
       { status: 500 }
     );
   }
