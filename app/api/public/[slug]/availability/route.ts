@@ -46,7 +46,7 @@ export async function GET(
     const weekday = getWeekdayFromDate(date);
 
     const [tenant, service, professional, tenantHour, professionalHour] = await Promise.all([
-      prisma.tenant.findUnique({ where: { slug }, select: { id: true, subscriptionStatus: true, trialEndsAt: true, minAdvanceHours: true } }),
+      prisma.tenant.findUnique({ where: { slug }, select: { id: true, planStatus: true, trialEndsAt: true, minAdvanceHours: true } }),
       prisma.service.findFirst({ where: { id: serviceId, active: true }, select: { id: true, tenantId: true, durationMin: true } }),
       prisma.professional.findFirst({ where: { id: professionalId, active: true }, select: { id: true, tenantId: true } }),
       prisma.tenantBusinessHour.findFirst({ where: { tenant: { slug }, weekday } }),
@@ -84,8 +84,20 @@ export async function GET(
         where: { tenantId: tenant.id, professionalId: professional.id, status: { not: "CANCELED" }, startAt: { lt: dayEnd }, endAt: { gt: dayStart } },
         select: { startAt: true, endAt: true },
       }),
+      // ✅ BUSCA DE BLOQUEIOS ATUALIZADA
       prisma.scheduleBlock.findMany({
-        where: { tenantId: tenant.id, startAt: { lt: dayEnd }, endAt: { gt: dayStart }, OR: [{ professionalId: null }, { professionalId: professional.id }] },
+        where: {
+          tenantId: tenant.id,
+          // Busca bloqueios que interceptam o dia atual
+          AND: [
+            { startAt: { lt: dayEnd } },
+            { endAt: { gt: dayStart } }
+          ],
+          OR: [
+            { professionalId: null },
+            { professionalId: professional.id }
+          ]
+        },
         select: { startAt: true, endAt: true },
       }),
     ]);
@@ -115,8 +127,8 @@ export async function GET(
           label: cursor.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }),
         });
       } else {
-         // Retire as duas barras "//" da linha de baixo se quiser ver no terminal EXATAMENTE porque um horário sumiu
-         console.log(`Rejeitado: ${cursor.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })} | isFuture=${isFuture}, fallsInBreak=${fallsInBreak}, appConflict=${appointmentConflict}`);
+        // Retire as duas barras "//" da linha de baixo se quiser ver no terminal EXATAMENTE porque um horário sumiu
+        console.log(`Rejeitado: ${cursor.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo' })} | isFuture=${isFuture}, fallsInBreak=${fallsInBreak}, appConflict=${appointmentConflict}`);
       }
 
       cursor = new Date(cursor.getTime() + 30 * 60 * 1000);

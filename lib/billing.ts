@@ -9,34 +9,25 @@ export type TenantSubscriptionStatus =
   | "UNPAID"
   | "PAUSED";
 
-type BillingTenant = {
-  subscriptionStatus: TenantSubscriptionStatus | string;
-  trialEndsAt: Date | string | null;
-  subscriptionCurrentPeriodEnd?: Date | string | null;
+export type BillingTenant = {
+  planStatus: string | null;
+  trialEndsAt: Date | null;
 };
 
-function toDate(value: Date | string | null | undefined) {
-  if (!value) return null;
-  return value instanceof Date ? value : new Date(value);
-}
+export function isTenantBillingActive(tenant: BillingTenant): boolean {
+  // Se for TRIAL, verifica se ainda não expirou
+  if (tenant.planStatus === "TRIAL") {
+    return tenant.trialEndsAt ? new Date() < new Date(tenant.trialEndsAt) : false;
+  }
 
-export function isTenantBillingActive(tenant: BillingTenant) {
-  const now = new Date();
-
-  if (tenant.subscriptionStatus === "ACTIVE") {
+  // Se for ACTIVE, está liberado
+  if (tenant.planStatus === "ACTIVE") {
     return true;
   }
 
-  if (tenant.subscriptionStatus === "TRIALING") {
-    const trialEndsAt = toDate(tenant.trialEndsAt);
-
-    if (!trialEndsAt) return true;
-    return trialEndsAt > now;
-  }
-
+  // Qualquer outro status (OVERDUE, EXPIRED, null) bloqueia o acesso
   return false;
 }
-
 export function billingStatusLabel(status: TenantSubscriptionStatus | string) {
   switch (status) {
     case "NONE":
