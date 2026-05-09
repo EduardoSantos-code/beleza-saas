@@ -104,7 +104,6 @@ export default function BookingPageClient({ slug }: { slug: string }) {
         const parsed = data as CatalogResponse;
         setCatalog(parsed);
 
-        if (parsed.services?.length > 0) setServiceId(parsed.services[0].id);
         if (parsed.professionals?.length > 0) setProfessionalId(parsed.professionals[0].id);
 
         const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
@@ -157,6 +156,10 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    if (!serviceId) {
+      setErrorMessage("Por favor, escolha qual serviço você deseja realizar.");
+      return;
+    }
     if (!selectedSlot) {
       setErrorMessage("Por favor, selecione um horário disponível.");
       return;
@@ -308,6 +311,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                     onChange={(e) => setServiceId(e.target.value)}
                     className="w-full appearance-none rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-10 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all cursor-pointer"
                   >
+                    <option value="">Selecione um serviço...</option>
                     {catalog.services.map((service) => (
                       <option key={service.id} value={service.id}>
                         {service.name} — {service.durationMin} min — R$ {(service.price / 100).toFixed(2).replace('.', ',')}

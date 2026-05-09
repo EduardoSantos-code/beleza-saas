@@ -241,11 +241,25 @@ export default function BlocksClient({ slug }: { slug: string }) {
             <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-1">
               <div className="flex flex-col gap-1 min-w-0">
                 <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 truncate">Hora Início</label>
-                <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-3 text-[11px] font-bold text-zinc-900 dark:text-white border-none appearance-none" required />
+                <input 
+                  type="time" 
+                  value={startTime} 
+                  onChange={(e) => setStartTime(e.target.value)} 
+                  onClick={(e) => e.currentTarget.showPicker()}
+                  className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-3 text-[11px] font-bold text-zinc-900 dark:text-white border-none appearance-none cursor-pointer" 
+                  required 
+                />
               </div>
               <div className="flex flex-col gap-1 min-w-0">
                 <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500 ml-1 truncate">Hora Fim</label>
-                <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-3 text-[11px] font-bold text-zinc-900 dark:text-white border-none appearance-none" required />
+                <input 
+                  type="time" 
+                  value={endTime} 
+                  onChange={(e) => setEndTime(e.target.value)} 
+                  onClick={(e) => e.currentTarget.showPicker()}
+                  className="w-full h-11 bg-zinc-100 dark:bg-zinc-950 rounded-xl px-3 text-[11px] font-bold text-zinc-900 dark:text-white border-none appearance-none cursor-pointer" 
+                  required 
+                />
               </div>
             </div>
           )}
@@ -267,8 +281,9 @@ export default function BlocksClient({ slug }: { slug: string }) {
             <input 
               type="date" 
               value={viewDate} 
-              onChange={(e) => setViewDate(e.target.value)}
-              className="pl-9 pr-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold text-zinc-900 dark:text-white"
+              onChange={(e) => setViewDate(e.target.value)} 
+              onClick={(e) => e.currentTarget.showPicker()}
+              className="pl-9 pr-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold text-zinc-900 dark:text-white cursor-pointer"
             />
           </div>
         </div>
