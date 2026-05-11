@@ -18,7 +18,9 @@ import {
   UserPlus,
   X,
   ArrowRight,
-  Sliders // Ícone novo para o filtro de intervalo
+  Sliders,
+  AlignLeft, // <-- Ícone adicionado
+  Phone      // <-- Ícone adicionado
 } from "lucide-react";
 
 type Appointment = {
@@ -27,7 +29,7 @@ type Appointment = {
   endAt: string;
   status: "PENDING" | "CONFIRMED" | "CANCELED" | "COMPLETED";
   notes?: string | null;
-  client: { name: string; phone: string };
+  client: { name: string; phoneE164: string };
   service: { name: string; price: number; durationMin: number };
   professional: { id: string; name: string; userId?: string };
 };
@@ -387,9 +389,9 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
                     <h4 className="font-black text-lg sm:text-2xl text-zinc-900 dark:text-white uppercase leading-tight truncate">
                       {item.client.name}
                     </h4>
-                    {item.client.phone && (
+                    {item.client.phoneE164 && (
                       <a
-                        href={`https://wa.me/${item.client.phone.replace(/\D/g, '')}`}
+                        href={`https://wa.me/${item.client.phoneE164.replace(/\D/g, '')}`}
                         target="_blank"
                         className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl lg:hidden"
                       >
@@ -405,16 +407,48 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
                       { Icon: DollarSign, text: `R$ ${(item.service.price / 100).toFixed(2).replace('.', ',')}` }
                     ].map(badge => (
                       <span key={badge.text} className="flex items-center gap-1 text-[9px] sm:text-xs font-black uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg">
-                        {badge.text}
+                        <badge.Icon size={12} /> {badge.text}
                       </span>
                     ))}
                   </div>
-                  {/* WhatsApp visível apenas em telas grandes (PCs) para economizar espaço no mobile */}
-                  {item.client.phone && (
-                    <a href={`https://wa.me/${item.client.phone.replace(/\D/g, '')}`} target="_blank" className="hidden lg:inline-flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 w-fit bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2 rounded-xl">
-                      <MessageCircle size={16} /> WhatsApp
-                    </a>
+
+                  {/* --- INÍCIO: BOX DE OBSERVAÇÕES E CONTATO --- */}
+                  {(item.notes || item.client.phoneE164) && (
+                    <div className="mt-4 p-3 sm:p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-100 dark:border-zinc-800 flex flex-col gap-2">
+                      {/* MOSTRA O NÚMERO */}
+                      {item.client.phoneE164 && (
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                            <Phone size={14} className="text-emerald-500" />
+                            {item.client.phoneE164}
+                          </div>
+
+                          {/* BOTÃO DO WHATSAPP */}
+                          <a
+                            href={`https://wa.me/${item.client.phoneE164.replace(/\D/g, '')}`}
+                            target="_blank"
+                            className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-md shadow-emerald-500/10"
+                          >
+                            <MessageCircle size={14} /> Chamar
+                          </a>
+                        </div>
+                      )}
+
+                      {/* MOSTRA AS OBSERVAÇÕES */}
+                      {item.notes && (
+                        <div className="pt-2 mt-1 border-t border-dashed border-zinc-200 dark:border-zinc-800">
+                          <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-1 flex items-center gap-1">
+                            <AlignLeft size={12} /> Observações do Cliente
+                          </p>
+                          <p className="text-xs sm:text-sm font-medium text-zinc-600 dark:text-zinc-400 italic">
+                            "{item.notes}"
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   )}
+                  {/* --- FIM: BOX DE OBSERVAÇÕES E CONTATO --- */}
+
                 </div>
 
                 {/* BOTÕES DE AÇÃO */}

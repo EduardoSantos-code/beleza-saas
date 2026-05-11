@@ -223,9 +223,9 @@ export default function BillingClient({ slug }: { slug: string }) {
                   <div className="p-6 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
                     <h3 className="font-bold mb-2">Dados de Faturamento</h3>
                     <p className="text-sm text-zinc-500 mb-4">Precisamos do seu CPF ou CNPJ para gerar as faturas.</p>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <input
-                        className="flex-1 h-11 px-4 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700"
+                        className="w-full sm:flex-1 h-11 px-4 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                         placeholder="000.000.000-00"
                         value={cpfCnpj}
                         onChange={e => setCpfCnpj(e.target.value)}
@@ -233,7 +233,7 @@ export default function BillingClient({ slug }: { slug: string }) {
                       <button
                         onClick={handleSaveData}
                         disabled={saving || cpfCnpj.length < 11}
-                        className="px-6 bg-zinc-900 dark:bg-emerald-600 text-white rounded-xl font-bold disabled:opacity-50"
+                        className="w-full sm:w-auto h-11 px-6 bg-zinc-900 dark:bg-emerald-600 text-white rounded-xl font-bold disabled:opacity-50 active:scale-[0.98] transition-all flex items-center justify-center"
                       >
                         {saving ? "Salvando..." : "Salvar"}
                       </button>

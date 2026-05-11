@@ -153,6 +153,22 @@ export default function BookingPageClient({ slug }: { slug: string }) {
 
   const primaryColor = catalog?.tenant.primaryColor || "#10b981";
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    // 1. Remove tudo que não for número ou o sinal de +
+    value = value.replace(/[^\d+]/g, "");
+    // 2. Garante que sempre comece com +55
+    if (!value.startsWith("+55")) {
+      value = "+55" + value.replace(/\D/g, "");
+    }
+    // 3. Remove qualquer espaço que possa ter sobrado (redundância)
+    value = value.trim();
+    // 4. Limita ao tamanho máximo de 14 caracteres (+ + 13 números)
+    if (value.length <= 14) {
+      setClientPhoneE164(value);
+    }
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -168,8 +184,8 @@ export default function BookingPageClient({ slug }: { slug: string }) {
       setErrorMessage("Por favor, digite seu nome completo (mínimo 3 letras).");
       return;
     }
-    if (clientPhoneE164.trim().length < 12) {
-      setErrorMessage("Por favor, digite o número do WhatsApp com DDD.");
+    if (clientPhoneE164.length !== 14 || !clientPhoneE164.startsWith("+55")) {
+      setErrorMessage("O número deve ter o formato +55 seguido de DDD e 9 dígitos (Ex: +5511999998888).");
       return;
     }
 
@@ -437,14 +453,18 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
                   <input
-                    type="text"
+                    type="text" // Mantemos text para aceitar o "+"
+                    inputMode="tel" // Abre o teclado numérico no celular
                     value={clientPhoneE164}
-                    onChange={(e) => setClientPhoneE164(e.target.value)}
-                    placeholder="WhatsApp (Ex: +55 11 99999-9999)"
+                    onChange={handlePhoneChange} // 👈 Usando a função nova
+                    placeholder="+5511999998888"
                     className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-4 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
                     required
                   />
                 </div>
+                <p className="mt-1 ml-4 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
+                  Formato: +55 + DDD + Número (Sem espaços)
+                </p>
               </div>
 
               <div>
