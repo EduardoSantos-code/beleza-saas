@@ -11,7 +11,8 @@ import {
   Phone, 
   AlignLeft,
   ChevronDown,
-  Info
+  Info,
+  Crown
 } from "lucide-react";
 
 type Service = {
@@ -41,6 +42,11 @@ type CatalogResponse = {
   };
   services: Service[];
   professionals: Professional[];
+  club?: {
+    enabled: boolean;
+    plansCount: number;
+    paymentProvider: "ASAAS" | "MERCADO_PAGO" | null;
+  };
 };
 
 type Slot = {
@@ -312,6 +318,31 @@ export default function BookingPageClient({ slug }: { slug: string }) {
       <div className="mx-auto max-w-6xl px-4 py-10 pb-24">
         <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr] items-start">
           
+          {/* CARD DO CLUBE (MOBILE ONLY - TOP) */}
+          {catalog.club?.enabled && (
+            <div className="lg:hidden mb-2 overflow-hidden rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 p-6 ring-1 ring-amber-200 dark:from-amber-950/20 dark:to-orange-950/20 dark:ring-amber-900/50 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20">
+                  <Crown size={24} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-amber-900 dark:text-amber-100 uppercase tracking-tight">
+                    Clube de Assinaturas
+                  </h3>
+                  <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                    Planos exclusivos para você.
+                  </p>
+                </div>
+              </div>
+              <a
+                href={`/s/${slug}/clube`}
+                className="shrink-0 rounded-xl bg-amber-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-amber-600 transition-colors"
+              >
+                Ver
+              </a>
+            </div>
+          )}
+
           {/* COLUNA ESQUERDA: ESCOLHAS */}
           <section className="rounded-3xl bg-white p-6 md:p-8 shadow-xl shadow-zinc-200/50 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800 dark:shadow-none space-y-8">
             
@@ -429,6 +460,30 @@ export default function BookingPageClient({ slug }: { slug: string }) {
 
           {/* COLUNA DIREITA: DADOS E CHECKOUT */}
           <aside className="rounded-3xl bg-white p-6 md:p-8 shadow-xl shadow-zinc-200/50 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800 dark:shadow-none sticky top-6">
+            
+            {/* CARD DO CLUBE (DESKTOP) */}
+            {catalog.club?.enabled && (
+              <div className="hidden lg:flex mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-5 ring-1 ring-amber-200 dark:from-amber-950/20 dark:to-orange-950/20 dark:ring-amber-900/50 items-center gap-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+                  <Crown size={20} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-[10px] font-black text-amber-900 dark:text-amber-100 uppercase tracking-widest">
+                    Clube VIP
+                  </h3>
+                  <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400 leading-tight">
+                    Assine e garanta benefícios exclusivos.
+                  </p>
+                </div>
+                <a
+                  href={`/s/${slug}/clube`}
+                  className="rounded-lg bg-amber-500 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-amber-600 transition-colors"
+                >
+                  Ver
+                </a>
+              </div>
+            )}
+
             <h2 className="text-2xl font-black text-zinc-900 dark:text-white italic tracking-tight">Finalizar</h2>
             <p className="mt-1 text-xs font-bold text-zinc-500 dark:text-zinc-400">
               Preencha seus dados para confirmar.

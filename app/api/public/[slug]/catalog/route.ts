@@ -21,6 +21,8 @@ export async function GET(
         publicPhone: true,
         address: true,
         instagram: true,
+        clubEnabled: true,
+        clubPaymentProvider: true,
       },
     });
 
@@ -31,7 +33,7 @@ export async function GET(
       );
     }
 
-    const [services, professionals] = await Promise.all([
+    const [services, professionals, activeClubPlansCount] = await Promise.all([
       prisma.service.findMany({
         where: { tenantId: tenant.id, active: true },
         select: {
@@ -50,12 +52,23 @@ export async function GET(
         },
         orderBy: { name: "asc" },
       }),
+      prisma.clubPlan.count({
+        where: {
+          tenantId: tenant.id,
+          isActive: true,
+        },
+      }),
     ]);
 
     return NextResponse.json({
       tenant,
       services,
       professionals,
+      club: {
+        enabled: tenant.clubEnabled && activeClubPlansCount > 0,
+        plansCount: activeClubPlansCount,
+        paymentProvider: tenant.clubPaymentProvider,
+      },
     });
   } catch (error) {
     console.error("Erro em /api/public/[slug]/catalog:", error);
