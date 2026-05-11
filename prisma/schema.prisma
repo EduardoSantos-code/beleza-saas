@@ -19,16 +19,20 @@ model Tenant {
   primaryColor                  String?                   @default("#7c3aed")
   publicDescription             String?
   publicPhone                   String?
-  cpfCnpj         String?
-  asaasCustomerId      String?  @unique
-  asaasSubscriptionId  String?  @unique
-  planStatus           String   @default("TRIAL") // TRIAL, ACTIVE, OVERDUE
+  cpfCnpj                       String?
+  asaasCustomerId               String?                   @unique
+  asaasSubscriptionId           String?                   @unique
+  planStatus                    String                    @default("TRIAL") // TRIAL, ACTIVE, OVERDUE
   subscriptionCancelAtPeriodEnd Boolean                   @default(false)
   subscriptionCurrentPeriodEnd  DateTime?
   subscriptionStatus            TenantSubscriptionStatus  @default(NONE)
   trialEndsAt                   DateTime?
   minAdvanceHours               Int                       @default(2)
   googleMapsLink                String?
+  clubEnabled                   Boolean                   @default(false)
+  clubPaymentProvider           ClubPaymentProvider?
+  clubPlans                     ClubPlan[]
+  clubSubscriptions             ClubSubscription[]
   appointments                  Appointment[]
   clients                       Client[]
   memberships                   Membership[]
@@ -38,6 +42,7 @@ model Tenant {
   businessHours                 TenantBusinessHour[]
   inboundMessages               WhatsAppInboundMessage[]
   outboundMessages              WhatsAppOutboundMessage[]
+  clientPhoneVerifications      ClientPhoneVerification[]
   whatsappConfig                WhatsappConfig?
 }
 
@@ -93,43 +98,51 @@ model Service {
 }
 
 model Client {
-  id               String                    @id @default(cuid())
-  tenantId         String
-  name             String
-  phoneE164        String
-  email            String?
-  createdAt        DateTime                  @default(now())
-  appointments     Appointment[]
-  tenant           Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  inboundMessages  WhatsAppInboundMessage[]
-  outboundMessages WhatsAppOutboundMessage[]
+  id                String                    @id @default(cuid())
+  tenantId          String
+  name              String
+  phoneE164         String
+  email             String?
+  createdAt         DateTime                  @default(now())
+  appointments      Appointment[]
+  clubSubscriptions ClubSubscription[]
+  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inboundMessages   WhatsAppInboundMessage[]
+  outboundMessages  WhatsAppOutboundMessage[]
 
   @@unique([tenantId, phoneE164])
   @@index([tenantId])
 }
 
 model Appointment {
-  id             String            @id @default(cuid())
-  tenantId       String
-  professionalId String
-  serviceId      String
-  clientId       String
-  startAt        DateTime
-  endAt          DateTime
-  status         AppointmentStatus @default(PENDING)
-  notes          String?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  businessDate   String
-  endMinutes     Int
-  startMinutes   Int
-  timeZone       String            @default("America/Sao_Paulo")
-  reminderSent   Boolean           @default(false)
-  client         Client            @relation(fields: [clientId], references: [id])
-  professional   Professional      @relation(fields: [professionalId], references: [id])
-  service        Service           @relation(fields: [serviceId], references: [id])
-  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  reminder       Reminder?
+  id                 String             @id @default(cuid())
+  tenantId           String
+  professionalId     String
+  serviceId          String
+  clientId           String
+  startAt            DateTime
+  endAt              DateTime
+  status             AppointmentStatus  @default(PENDING)
+  notes              String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  businessDate       String
+  endMinutes         Int
+  startMinutes       Int
+  timeZone           String             @default("America/Sao_Paulo")
+  reminderSent       Boolean            @default(false)
+  clubSubscriptionId String?
+  clubPlanName       String?
+  clubOriginalPrice  Int?
+  clubDiscountAmount Int?
+  clubFinalPrice     Int?
+  client             Client             @relation(fields: [clientId], references: [id])
+  professional       Professional       @relation(fields: [professionalId], references: [id])
+  service            Service            @relation(fields: [serviceId], references: [id])
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reminder           Reminder?
+  clubSubscription   ClubSubscription?  @relation(fields: [clubSubscriptionId], references: [id])
+  clubBenefitUsages  ClubBenefitUsage[]
 
   @@index([tenantId, professionalId, startAt])
   @@index([tenantId, status])
@@ -258,6 +271,105 @@ model Announcement {
   createdAt DateTime @default(now())
 }
 
+model ClubPlan {
+  id               String             @id @default(cuid())
+  tenantId         String
+  name             String
+  description      String?
+  terms            String?
+  priceInCents     Int
+  billingCycle     ClubBillingCycle   @default(MONTHLY)
+  discountPercent  Int?
+  includedServices Json?
+  isActive         Boolean            @default(true)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  subscriptions    ClubSubscription[]
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+}
+
+model ClubSubscription {
+  id                     String                 @id @default(cuid())
+  tenantId               String
+  clientId               String
+  planId                 String
+  provider               ClubPaymentProvider
+  status                 ClubSubscriptionStatus @default(PENDING)
+  providerCustomerId     String?
+  providerSubscriptionId String?
+  providerPaymentId      String?
+  providerCheckoutUrl    String?
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  canceledAt             DateTime?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  tenant                 Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client                 Client                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  plan                   ClubPlan               @relation(fields: [planId], references: [id])
+  usages                 ClubBenefitUsage[]
+  appointments           Appointment[]
+
+  @@index([tenantId, clientId])
+  @@index([tenantId, status])
+  @@index([provider, providerSubscriptionId])
+}
+
+model ClubBenefitUsage {
+  id             String           @id @default(cuid())
+  tenantId       String
+  subscriptionId String
+  appointmentId  String?
+  benefitCode    String
+  periodKey      String
+  usedAt         DateTime         @default(now())
+  subscription   ClubSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  appointment    Appointment?     @relation(fields: [appointmentId], references: [id])
+
+  @@unique([subscriptionId, benefitCode, periodKey])
+  @@index([tenantId])
+  @@index([subscriptionId])
+  @@index([appointmentId])
+}
+
+model ClientPhoneVerification {
+  id        String                         @id @default(cuid())
+  tenantId  String
+  phoneE164 String
+  codeHash  String
+  purpose   ClientPhoneVerificationPurpose
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime                       @default(now())
+  tenant    Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, phoneE164])
+  @@index([tenantId, phoneE164, purpose])
+}
+
+enum ClubPaymentProvider {
+  ASAAS
+  MERCADO_PAGO
+}
+
+enum ClubBillingCycle {
+  MONTHLY
+  QUARTERLY
+  SEMIANNUAL
+  YEARLY
+}
+
+enum ClubSubscriptionStatus {
+  PENDING
+  ACTIVE
+  OVERDUE
+  CANCELED
+  EXPIRED
+}
+
 enum MembershipRole {
   OWNER
   MANAGER
@@ -275,6 +387,13 @@ enum ReminderStatus {
   PENDING
   SENT
   FAILED
+}
+
+enum ClientPhoneVerificationPurpose {
+  CLUB_SUBSCRIBE
+  CLUB_PORTAL
+  CLUB_USE_BENEFIT
+  CLUB_CANCEL
 }
 
 enum Weekday {
