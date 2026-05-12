@@ -19,6 +19,13 @@ function getClientSessionSecret() {
   return new TextEncoder().encode(secret);
 }
 
+function formatCurrencyBR(valueInCents: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(valueInCents / 100);
+}
+
 function calculateClubDiscount(originalPrice: number, discountPercent: number | null) {
   const safeOriginalPrice = Math.max(0, originalPrice || 0);
   const safePercent =
@@ -176,6 +183,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       const dateLabel = formatInTimeZone(appointment.startAt, TZ, "dd/MM/yyyy");
       const timeLabel = formatInTimeZone(appointment.startAt, TZ, "HH:mm");
 
+      const clubMessage =
+        clubSubscriptionId && clubPlanName && clubOriginalPrice !== null && clubDiscountAmount !== null && clubFinalPrice !== null
+          ? [
+              "",
+              `Clube aplicado: ${clubPlanName}`,
+              `Valor original: ${formatCurrencyBR(clubOriginalPrice)}`,
+              `Desconto do clube: -${formatCurrencyBR(clubDiscountAmount)}`,
+              `Valor final: ${formatCurrencyBR(clubFinalPrice)}`
+            ].join("\n")
+          : "";
+
       // NOTIFICAR BARBEIRO
       if (appointment.professional?.phoneE164) {
         const msgBarbeiro = `🚨 *Novo Cliente na área!*\n\n` +
@@ -183,7 +201,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
           `👤 *Cliente:* ${appointment.client?.name}\n` +
           `💈 *Serviço:* ${appointment.service?.name}\n` +
           `📅 *Data:* ${dateLabel}\n` +
-          `🕒 *Hora:* ${timeLabel}\n\n` +
+          `🕒 *Hora:* ${timeLabel}${clubMessage}\n\n` +
           `Dá uma olhada na sua agenda completa no painel do TratoMarcado.`;
 
         await sendWhatsAppMessage(appointment.professional.phoneE164, msgBarbeiro);
@@ -200,7 +218,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
           `Seu trato tá oficialmente marcado na *${appointment.tenant?.name}*.\n\n` +
           `📅 *Data:* ${dateLabel}\n` +
           `🕒 *Hora:* ${timeLabel}\n` +
-          `💈 *Barbeiro:* ${appointment.professional?.name}\n\n` +
+          `💈 *Barbeiro:* ${appointment.professional?.name}${clubMessage}\n\n` +
           `📄 *Recibo e Cancelamento:* ${manageLink}\n\n` +
           `Dica: Se precisar desmarcar, use o link acima ou nos avise com antecedência. Nos vemos em breve! 👊`;
 

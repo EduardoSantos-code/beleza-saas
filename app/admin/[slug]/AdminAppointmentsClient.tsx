@@ -20,7 +20,9 @@ import {
   ArrowRight,
   Sliders,
   AlignLeft, // <-- Ícone adicionado
-  Phone      // <-- Ícone adicionado
+  Phone,      // <-- Ícone adicionado
+  Crown,
+  BadgePercent
 } from "lucide-react";
 
 type Appointment = {
@@ -32,7 +34,19 @@ type Appointment = {
   client: { name: string; phoneE164: string };
   service: { name: string; price: number; durationMin: number };
   professional: { id: string; name: string; userId?: string };
+  clubSubscriptionId?: string | null;
+  clubPlanName?: string | null;
+  clubOriginalPrice?: number | null;
+  clubDiscountAmount?: number | null;
+  clubFinalPrice?: number | null;
 };
+
+function formatCurrency(valueInCents: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(valueInCents / 100);
+}
 
 type Professional = { id: string; name: string; userId?: string };
 type Service = { id: string; name: string; price: number; durationMin: number };
@@ -404,13 +418,41 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
                     {[
                       { Icon: Scissors, text: item.service.name },
                       { Icon: Clock, text: `${item.service.durationMin || 0} min` },
-                      { Icon: DollarSign, text: `R$ ${(item.service.price / 100).toFixed(2).replace('.', ',')}` }
+                      { Icon: DollarSign, text: formatCurrency(item.service.price) }
                     ].map(badge => (
                       <span key={badge.text} className="flex items-center gap-1 text-[9px] sm:text-xs font-black uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg">
                         <badge.Icon size={12} /> {badge.text}
                       </span>
                     ))}
                   </div>
+
+                  {/* --- BLOCO DO CLUBE DE ASSINATURAS --- */}
+                  {item.clubSubscriptionId && (
+                    <div className="mb-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Crown size={14} className="text-amber-600 dark:text-amber-500" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-500">Clube Aplicado: {item.clubPlanName}</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-4">
+                        <div>
+                          <p className="text-[8px] font-bold text-amber-600/70 uppercase">Original</p>
+                          <p className="text-xs font-bold text-zinc-500 line-through">{formatCurrency(item.clubOriginalPrice || 0)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-bold text-amber-600/70 uppercase">Desconto</p>
+                          <p className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
+                            <BadgePercent size={10} /> -{formatCurrency(item.clubDiscountAmount || 0)}
+                          </p>
+                        </div>
+                        <div className="col-span-2 sm:col-span-1">
+                          <p className="text-[8px] font-bold text-amber-600/70 uppercase">Valor Final</p>
+                          <p className="text-sm font-black text-amber-700 dark:text-amber-400 italic">
+                            {formatCurrency(item.clubFinalPrice || 0)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* --- INÍCIO: BOX DE OBSERVAÇÕES E CONTATO --- */}
                   {(item.notes || item.client.phoneE164) && (

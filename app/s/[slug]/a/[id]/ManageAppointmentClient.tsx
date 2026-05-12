@@ -12,15 +12,39 @@ import {
   RefreshCcw, 
   AlertCircle,
   MapPin,
-  User
+  User,
+  Crown,
+  BadgePercent
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { formatInTimeZone } from 'date-fns-tz';
 import { ptBR } from 'date-fns/locale'
 
+type AppointmentData = {
+  id: string;
+  startAt: string;
+  status: string;
+  tenant: { name: string; primaryColor?: string };
+  service: { name: string; price: number };
+  professional: { name: string };
+  clubSubscriptionId?: string | null;
+  clubPlanName?: string | null;
+  clubOriginalPrice?: number | null;
+  clubDiscountAmount?: number | null;
+  clubFinalPrice?: number | null;
+};
+
+function formatCurrencyFromCents(valueInCents: number | null | undefined) {
+  const value = typeof valueInCents === "number" ? valueInCents : 0;
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value / 100);
+}
+
 export default function ManageAppointmentClient({ slug, id }: { slug: string; id: string }) {
   const router = useRouter();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<AppointmentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const TZ = 'America/Sao_Paulo';
@@ -176,10 +200,34 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
               </div>
             </div>
 
+            {/* BENEFÍCIO DO CLUBE */}
+            {data.clubSubscriptionId && (
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Crown size={14} className="text-amber-500" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Benefício do clube aplicado</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-[8px] font-bold text-zinc-500 uppercase">Plano</p>
+                    <p className="text-xs font-bold text-white">{data.clubPlanName}</p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-bold text-zinc-500 uppercase">Desconto</p>
+                    <p className="text-xs font-bold text-emerald-500 flex items-center gap-0.5">
+                      <BadgePercent size={10} /> -{formatCurrencyFromCents(data.clubDiscountAmount)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="pt-4 flex justify-between items-end">
               <div>
                  <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-0.5">Total a pagar</p>
-                 <p className="text-2xl font-black italic text-white leading-none">R$ {((data.service?.price || 0) / 100).toFixed(2).replace('.', ',')}</p>
+                 <p className="text-2xl font-black italic text-white leading-none">
+                   {formatCurrencyFromCents(data.clubSubscriptionId ? data.clubFinalPrice : data.service?.price)}
+                 </p>
               </div>
               <span className="text-[9px] bg-white text-zinc-900 px-2.5 py-1.5 rounded-lg font-black uppercase tracking-widest">No Local</span>
             </div>

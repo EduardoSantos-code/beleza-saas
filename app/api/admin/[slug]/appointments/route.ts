@@ -39,7 +39,11 @@ export async function GET(
       include: {
         client: true,
         professional: true,
-        service: true, // Traz todos os campos: name, price e DURATION
+        service: true,
+        // Os campos clubSubscriptionId, clubPlanName, clubOriginalPrice, 
+        // clubDiscountAmount e clubFinalPrice já são incluídos automaticamente 
+        // por estarem no modelo Appointment e não haver um 'select' restritivo 
+        // no nível superior desta query.
       },
       orderBy: { startAt: "asc" },
     });
