@@ -81,14 +81,22 @@ export default async function ClubPublicPage({ params }: PageProps) {
     <div className="min-h-screen bg-background pb-12">
       {/* Header */}
       <header className="border-b bg-card px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto flex items-center gap-4">
-          <Link href={`/s/${slug}`} className="p-2 -ml-2">
-            <ArrowLeft className="w-6 h-6" />
-          </Link>
-          <div>
-            <h2 className="font-semibold text-lg leading-tight">{tenant.name}</h2>
-            <p className="text-sm text-muted-foreground">Clube de Assinaturas</p>
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Link href={`/s/${slug}`} className="p-2 -ml-2">
+              <ArrowLeft className="w-6 h-6" />
+            </Link>
+            <div>
+              <h2 className="font-semibold text-lg leading-tight">{tenant.name}</h2>
+              <p className="text-sm text-muted-foreground">Clube de Assinaturas</p>
+            </div>
           </div>
+          <Link
+            href={`/s/${slug}/clube/minha-assinatura`}
+            className="text-xs font-bold uppercase tracking-wider text-primary hover:underline"
+          >
+            Já sou assinante
+          </Link>
         </div>
       </header>
 
