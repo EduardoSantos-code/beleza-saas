@@ -16,7 +16,8 @@ import {
   Users,
   Search,
   RefreshCw,
-  MessageCircle
+  MessageCircle,
+  Ban
 } from "lucide-react";
 
 type ClubTenant = {
@@ -120,6 +121,7 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
   const [subscribersError, setSubscribersError] = useState<string | null>(null);
   const [subscriberStatusFilter, setSubscriberStatusFilter] = useState<string>("ALL");
   const [subscriberSearch, setSubscriberSearch] = useState("");
+  const [cancelingSubscriptionId, setCancelingSubscriptionId] = useState<string | null>(null);
 
   // Form States
   const [formData, setFormData] = useState({
@@ -169,6 +171,40 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
       setSubscribersError("Não foi possível carregar a lista de assinantes.");
     } finally {
       setSubscribersLoading(false);
+    }
+  };
+
+  const cancelSubscription = async (subscriptionId: string) => {
+    const confirmed = window.confirm(
+      "Tem certeza que deseja cancelar esta assinatura? Esta ação não apaga o histórico e agendará o cancelamento para o fim do período de cobrança."
+    );
+    if (!confirmed) return;
+
+    setCancelingSubscriptionId(subscriptionId);
+    setMessage(null);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/admin/${slug}/club/subscribers/${subscriptionId}/cancel`, {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao cancelar assinatura.");
+      }
+
+      // A API retorna a assinatura atualizada
+      setSubscribers(prev => 
+        prev.map(sub => (sub.id === subscriptionId ? data.subscription : sub))
+      );
+      setMessage("Assinatura cancelada com sucesso.");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
+      setError(errorMessage);
+    } finally {
+      setCancelingSubscriptionId(null);
     }
   };
 
@@ -715,14 +751,29 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
                     )}
                   </div>
 
-                  <a 
-                    href={whatsappLink(sub.client.phoneE164)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors"
-                  >
-                    <MessageCircle size={14} /> WhatsApp
-                  </a>
+                  <div className="mt-3 grid grid-cols-1 gap-2">
+                    <a 
+                      href={whatsappLink(sub.client.phoneE164)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors"
+                    >
+                      <MessageCircle size={14} /> WhatsApp
+                    </a>
+                    {sub.status !== 'CANCELED' && sub.status !== 'EXPIRED' && (
+                      <button
+                        onClick={() => cancelSubscription(sub.id)}
+                        disabled={cancelingSubscriptionId === sub.id}
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-red-200 text-red-600 dark:border-red-800 dark:text-red-400 bg-card hover:bg-red-50 dark:hover:bg-red-900/20 text-xs font-bold transition-colors disabled:opacity-50"
+                      >
+                        {cancelingSubscriptionId === sub.id ? (
+                          <><Loader2 size={14} className="animate-spin" /> Cancelando...</>
+                        ) : (
+                          <><Ban size={14} /> Cancelar Assinatura</>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))
             )}
