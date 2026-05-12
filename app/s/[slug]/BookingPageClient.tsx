@@ -12,7 +12,8 @@ import {
   AlignLeft,
   ChevronDown,
   Info,
-  Crown
+  Crown,
+  CheckCircle
 } from "lucide-react";
 
 type Service = {
@@ -54,6 +55,13 @@ type Slot = {
   label: string;
 };
 
+type ActiveClubMembership = {
+  subscriptionId: string;
+  planId: string;
+  planName: string;
+  discountPercent: number | null;
+  currentPeriodEnd: string;
+};
 
 export default function BookingPageClient({ slug }: { slug: string }) {
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
@@ -73,6 +81,16 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   const [notes, setNotes] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
+
+  // Estados do Clube
+  const [clubPhone, setClubPhone] = useState("+55");
+  const [clubCode, setClubCode] = useState("");
+  const [clubStep, setClubStep] = useState<"IDLE" | "PHONE" | "CODE" | "VERIFIED">("IDLE");
+  const [clubLoading, setClubLoading] = useState(false);
+  const [clubError, setClubError] = useState("");
+  const [clubMessage, setClubMessage] = useState("");
+  const [clubDevCode, setClubDevCode] = useState("");
+  const [activeClubMembership, setActiveClubMembership] = useState<ActiveClubMembership | null>(null);
 
   const selectedProfessional = useMemo(() => {
     return catalog?.professionals.find((p) => p.id === professionalId) || null;
@@ -172,6 +190,85 @@ export default function BookingPageClient({ slug }: { slug: string }) {
     // 4. Limita ao tamanho máximo de 14 caracteres (+ + 13 números)
     if (value.length <= 14) {
       setClientPhoneE164(value);
+    }
+  };
+
+  const handleClubPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/[^\d+]/g, "");
+    if (!value.startsWith("+55")) {
+      value = "+55" + value.replace(/\D/g, "");
+    }
+    value = value.trim();
+    if (value.length <= 14) {
+      setClubPhone(value);
+    }
+  };
+
+  const handleSendClubCode = async () => {
+    if (clubPhone.length !== 14 || !clubPhone.startsWith("+55")) {
+      setClubError("Formato inválido. Use +55 e o DDD (Ex: +5511999998888).");
+      return;
+    }
+    try {
+      setClubLoading(true);
+      setClubError("");
+      setClubMessage("");
+      setClubDevCode("");
+
+      const res = await fetch(`/api/public/${slug}/club/benefit/send-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneE164: clubPhone }),
+      });
+
+      const text = await res.text();
+      let data: { error?: string; devCode?: string } | null = null;
+      try { data = JSON.parse(text); } catch { throw new Error(`Resposta API: ${text}`); }
+
+      if (!res.ok) throw new Error(data?.error || "Erro ao enviar código.");
+
+      if (data?.devCode) setClubDevCode(data.devCode);
+      setClubMessage("Código enviado para seu WhatsApp!");
+      setClubStep("CODE");
+    } catch (err: unknown) {
+      if (err instanceof Error) setClubError(err.message);
+      else setClubError("Erro inesperado ao enviar código.");
+    } finally {
+      setClubLoading(false);
+    }
+  };
+
+  const handleVerifyClubCode = async () => {
+    if (clubCode.length !== 6) {
+      setClubError("O código deve ter exatamente 6 dígitos.");
+      return;
+    }
+    try {
+      setClubLoading(true);
+      setClubError("");
+      setClubMessage("");
+
+      const res = await fetch(`/api/public/${slug}/club/benefit/verify-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneE164: clubPhone, code: clubCode }),
+      });
+
+      const text = await res.text();
+      let data: { error?: string; membership?: ActiveClubMembership } | null = null;
+      try { data = JSON.parse(text); } catch { throw new Error(`Resposta API: ${text}`); }
+
+      if (!res.ok) throw new Error(data?.error || "Erro ao validar código.");
+
+      if (data?.membership) {
+        setActiveClubMembership(data.membership);
+        setClubStep("VERIFIED");
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) setClubError(err.message);
+      else setClubError("Erro inesperado ao validar código.");
+    } finally {
+      setClubLoading(false);
     }
   };
 
@@ -481,6 +578,104 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                 >
                   Ver
                 </a>
+              </div>
+            )}
+
+            {/* CARD DE VALIDAÇÃO DE BENEFÍCIO DO CLUBE */}
+            {catalog.club?.enabled && (
+              <div className="mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-5 ring-1 ring-amber-200 dark:from-amber-950/20 dark:to-orange-950/20 dark:ring-amber-900/50">
+                
+                {clubStep === "IDLE" && (
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-md">
+                        <Crown size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-amber-900 dark:text-amber-100 uppercase tracking-tight">
+                          Já é assinante?
+                        </h3>
+                        <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                          Valide seu WhatsApp para usar benefícios do clube neste agendamento.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setClubStep("PHONE")}
+                      className="w-full rounded-xl bg-amber-500 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/20"
+                    >
+                      Sou assinante
+                    </button>
+                  </div>
+                )}
+
+                {clubStep === "PHONE" && (
+                  <div className="flex flex-col gap-3">
+                    <h3 className="text-sm font-black text-amber-900 dark:text-amber-100 uppercase">Qual seu WhatsApp?</h3>
+                    <input
+                      type="tel"
+                      inputMode="tel"
+                      maxLength={14}
+                      value={clubPhone}
+                      onChange={handleClubPhoneChange}
+                      className="w-full rounded-xl border border-amber-200 bg-white p-3 text-sm font-bold text-zinc-900 outline-none dark:border-amber-900/50 dark:bg-zinc-900 dark:text-white"
+                    />
+                    {clubError && <p className="text-xs font-bold text-red-600 dark:text-red-400">{clubError}</p>}
+                    <button
+                      type="button"
+                      onClick={handleSendClubCode}
+                      disabled={clubLoading}
+                      className="w-full rounded-xl bg-amber-500 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-amber-600 transition-colors disabled:opacity-50"
+                    >
+                      {clubLoading ? "Enviando..." : "Receber código"}
+                    </button>
+                  </div>
+                )}
+
+                {clubStep === "CODE" && (
+                  <div className="flex flex-col gap-3">
+                    <h3 className="text-sm font-black text-amber-900 dark:text-amber-100 uppercase">Digite o código</h3>
+                    {clubMessage && <p className="text-xs font-bold text-green-600 dark:text-green-400">{clubMessage}</p>}
+                    {clubDevCode && process.env.NODE_ENV !== "production" && <p className="text-xs font-mono text-zinc-500">Código de teste: {clubDevCode}</p>}
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={clubCode}
+                      onChange={(e) => setClubCode(e.target.value.replace(/\D/g, ""))}
+                      className="w-full rounded-xl border border-amber-200 bg-white p-3 text-lg font-black tracking-[0.5em] text-center text-zinc-900 outline-none dark:border-amber-900/50 dark:bg-zinc-900 dark:text-white"
+                    />
+                    {clubError && <p className="text-xs font-bold text-red-600 dark:text-red-400">{clubError}</p>}
+                    <button
+                      type="button"
+                      onClick={handleVerifyClubCode}
+                      disabled={clubLoading}
+                      className="w-full rounded-xl bg-amber-500 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-amber-600 transition-colors disabled:opacity-50"
+                    >
+                      {clubLoading ? "Validando..." : "Validar código"}
+                    </button>
+                  </div>
+                )}
+
+                {clubStep === "VERIFIED" && activeClubMembership && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-md">
+                      <CheckCircle size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-emerald-900 dark:text-emerald-100 uppercase tracking-tight">Assinatura Validada!</h3>
+                      <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                        Plano ativo: {activeClubMembership.planName}
+                      </p>
+                      {activeClubMembership.discountPercent && (
+                        <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase mt-0.5">
+                          Desconto disponível: {activeClubMembership.discountPercent}%
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

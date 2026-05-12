@@ -21,6 +21,11 @@ interface AsaasPaymentListResponse {
   data?: AsaasPayment[];
 }
 
+interface AsaasErrorResponse {
+  errors?: Array<{ code: string; description: string }>;
+  [key: string]: unknown;
+}
+
 function getAsaasBaseUrl(environment: ClubAsaasEnvironment): string {
   return environment === "PRODUCTION"
     ? "https://api.asaas.com/v3"
@@ -58,13 +63,15 @@ async function asaasRequest<T>(
   });
 
   if (!response.ok) {
-    let errorMessage = `Asaas API Error: ${response.status}`;
+    let errorMessage = `Asaas ${response.status}`;
     try {
-      const errorData = await response.json();
-      errorMessage = errorData.errors?.[0]?.description || JSON.stringify(errorData);
+      const errorData = (await response.json()) as AsaasErrorResponse;
+      const description = errorData.errors?.[0]?.description;
+      if (description) {
+        errorMessage = `Asaas ${response.status}: ${description}`;
+      }
     } catch {
-      const text = await response.text();
-      if (text) errorMessage = text;
+      // Fallback para o status code se o JSON falhar
     }
     throw new Error(errorMessage);
   }
@@ -92,7 +99,7 @@ export async function createAsaasCustomer(params: {
       name: params.name,
       cpfCnpj: cleanCpfCnpj,
       mobilePhone,
-      externalReference: params.externalReference,
+      externalReference: `club_subscription:${params.externalReference}`,
       notificationDisabled: false,
     }
   );

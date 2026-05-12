@@ -213,6 +213,19 @@ export async function POST(
     });
   } catch (error) {
     console.error("[CLUB_CHECKOUT_ERROR]", error instanceof Error ? error.message : error);
+
+    if (error instanceof Error) {
+      const msg = error.message.toLowerCase();
+      if (
+        msg.includes("chave de api") ||
+        msg.includes("access_token") ||
+        msg.includes("401") ||
+        msg.includes("ambiente")
+      ) {
+        return NextResponse.json({ error: "Pagamento do clube não configurado corretamente. Verifique a chave Asaas e o ambiente." }, { status: 400 });
+      }
+    }
+
     return NextResponse.json({ error: "Erro ao processar checkout." }, { status: 500 });
   }
 }
