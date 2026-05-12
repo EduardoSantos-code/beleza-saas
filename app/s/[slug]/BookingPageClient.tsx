@@ -91,6 +91,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   const [clubMessage, setClubMessage] = useState("");
   const [clubDevCode, setClubDevCode] = useState("");
   const [activeClubMembership, setActiveClubMembership] = useState<ActiveClubMembership | null>(null);
+  const [validatedClubPhone, setValidatedClubPhone] = useState<string | null>(null);
 
   const selectedProfessional = useMemo(() => {
     return catalog?.professionals.find((p) => p.id === professionalId) || null;
@@ -262,6 +263,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
 
       if (data?.membership) {
         setActiveClubMembership(data.membership);
+        setValidatedClubPhone(clubPhone);
         setClubStep("VERIFIED");
       }
     } catch (err: unknown) {
@@ -291,6 +293,11 @@ export default function BookingPageClient({ slug }: { slug: string }) {
       setErrorMessage("O número deve ter o formato +55 seguido de DDD e 9 dígitos (Ex: +5511999998888).");
       return;
     }
+    
+    if (activeClubMembership && clientPhoneE164.trim() !== validatedClubPhone) {
+      setErrorMessage("O WhatsApp do agendamento precisa ser o mesmo validado no clube.");
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -302,6 +309,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
         body: JSON.stringify({
           serviceId, professionalId, startAt: selectedSlot, 
           clientName: clientName.trim(), clientPhoneE164: clientPhoneE164.trim(), notes,
+          useClubBenefit: !!activeClubMembership
         }),
       });
 
@@ -760,6 +768,26 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   </div>
                 </div>
               </div>
+
+              {/* RESUMO DO BENEFÍCIO DO CLUBE */}
+              {activeClubMembership && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-900/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Crown className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
+                    <h4 className="text-xs font-black uppercase text-emerald-900 dark:text-emerald-100">
+                      Benefício do clube será aplicado
+                    </h4>
+                  </div>
+                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                    Plano: {activeClubMembership.planName}
+                  </p>
+                  {activeClubMembership.discountPercent && (
+                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-500">
+                      Desconto: {activeClubMembership.discountPercent}%
+                    </p>
+                  )}
+                </div>
+              )}
 
               {errorMessage && (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">

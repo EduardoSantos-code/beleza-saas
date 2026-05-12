@@ -2,12 +2,45 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { formatInTimeZone } from "date-fns-tz";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { cookies } from "next/headers";
+import { jwtVerify } from "jose";
+
+function getClientSessionSecret() {
+  const secret =
+    process.env.CLIENT_SESSION_SECRET ||
+    process.env.JWT_SECRET ||
+    process.env.AUTH_SECRET ||
+    "dev-only-client-session-secret";
+
+  if (process.env.NODE_ENV === "production" && secret === "dev-only-client-session-secret") {
+    throw new Error("CLIENT_SESSION_SECRET não configurado.");
+  }
+
+  return new TextEncoder().encode(secret);
+}
+
+function calculateClubDiscount(originalPrice: number, discountPercent: number | null) {
+  const safeOriginalPrice = Math.max(0, originalPrice || 0);
+  const safePercent =
+    typeof discountPercent === "number"
+      ? Math.min(100, Math.max(0, discountPercent))
+      : 0;
+
+  const discountAmount = Math.round((safeOriginalPrice * safePercent) / 100);
+  const finalPrice = Math.max(0, safeOriginalPrice - discountAmount);
+
+  return {
+    originalPrice: safeOriginalPrice,
+    discountAmount,
+    finalPrice,
+  };
+}
 
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params;
     const body = await req.json();
-    const { serviceId, professionalId, startAt, clientName, clientPhoneE164, notes } = body;
+    const { serviceId, professionalId, startAt, clientName, clientPhoneE164, notes, useClubBenefit } = body;
 
     // VALIDAÇÃO DE SEGURANÇA
     if (!clientName || clientName.trim().length < 3) {
@@ -23,6 +56,67 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
 
     if (!tenant || !service || !professional) {
       return NextResponse.json({ error: "Dados do agendamento inválidos." }, { status: 400 });
+    }
+
+    let clubSubscriptionId: string | null = null;
+    let clubPlanName: string | null = null;
+    let clubOriginalPrice: number | null = null;
+    let clubDiscountAmount: number | null = null;
+    let clubFinalPrice: number | null = null;
+
+    if (useClubBenefit === true) {
+      const cookieStore = await cookies();
+      const sessionToken = cookieStore.get("club_benefit_session")?.value;
+
+      if (!sessionToken) {
+        return NextResponse.json({ error: "Valide sua assinatura do clube para usar o benefício." }, { status: 401 });
+      }
+
+      try {
+        const { payload } = await jwtVerify(sessionToken, getClientSessionSecret());
+        
+        const isValid = 
+          payload.purpose === "CLUB_USE_BENEFIT" &&
+          payload.tenantId === tenant.id &&
+          payload.slug === tenant.slug &&
+          payload.phoneE164 === clientPhoneE164 &&
+          !!payload.subscriptionId;
+
+        if (!isValid) {
+          return NextResponse.json({ error: "Sessão do clube inválida. Valide seu WhatsApp novamente." }, { status: 401 });
+        }
+
+        const subscription = await prisma.clubSubscription.findFirst({
+          where: {
+            id: payload.subscriptionId as string,
+            tenantId: tenant.id,
+            status: "ACTIVE",
+            currentPeriodEnd: { gte: new Date() }
+          },
+          include: {
+            plan: true,
+            client: true
+          }
+        });
+
+        if (!subscription || !subscription.plan || subscription.client.phoneE164 !== clientPhoneE164) {
+          return NextResponse.json({ error: "Assinatura do clube não está ativa." }, { status: 400 });
+        }
+
+        const prices = calculateClubDiscount(
+          service.price || 0,
+          subscription.plan.discountPercent
+        );
+
+        clubSubscriptionId = subscription.id;
+        clubPlanName = subscription.plan.name;
+        clubOriginalPrice = prices.originalPrice;
+        clubDiscountAmount = prices.discountAmount;
+        clubFinalPrice = prices.finalPrice;
+
+      } catch (err) {
+        return NextResponse.json({ error: "Sessão do clube inválida. Valide seu WhatsApp novamente." }, { status: 401 });
+      }
     }
 
     const TZ = "America/Sao_Paulo";
@@ -63,6 +157,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
         endMinutes,
         timeZone: TZ,
         startAt: startUtc, // Salva a data cravada
+        clubSubscriptionId,
+        clubPlanName,
+        clubOriginalPrice,
+        clubDiscountAmount,
+        clubFinalPrice,
         endAt: endUtc,
         notes,
         status: "CONFIRMED",
