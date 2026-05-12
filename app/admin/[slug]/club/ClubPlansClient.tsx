@@ -12,7 +12,11 @@ import {
   XCircle, 
   Loader2, 
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  Users,
+  Search,
+  RefreshCw,
+  MessageCircle
 } from "lucide-react";
 
 type ClubTenant = {
@@ -34,6 +38,28 @@ type ClubPlan = {
   isActive: boolean;
   createdAt: string | Date;
   updatedAt: string | Date;
+};
+
+type ClubSubscriber = {
+  id: string;
+  status: "PENDING" | "ACTIVE" | "OVERDUE" | "CANCELED" | "EXPIRED";
+  provider: "ASAAS" | "MERCADO_PAGO";
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  createdAt: string;
+  canceledAt: string | null;
+  client: {
+    id: string;
+    name: string;
+    phoneE164: string;
+  };
+  plan: {
+    id: string;
+    name: string;
+    priceInCents: number;
+    billingCycle: "MONTHLY" | "QUARTERLY" | "SEMIANNUAL" | "YEARLY";
+    discountPercent: number | null;
+  };
 };
 
 type Props = {
@@ -64,6 +90,12 @@ const parseCurrencyToCents = (value: string) => {
   return parseInt(cleanValue || "0", 10);
 };
 
+const formatDateBR = (dateStr: string | null) => {
+  if (!dateStr) return "-";
+  const date = new Date(dateStr);
+  return new Intl.DateTimeFormat("pt-BR").format(date);
+};
+
 export default function ClubPlansClient({ slug, initialTenant, initialPlans }: Props) {
   const [plans, setPlans] = useState<ClubPlan[]>(initialPlans);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -81,6 +113,13 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
   const [asaasEnvironment, setAsaasEnvironment] = useState<"SANDBOX" | "PRODUCTION">("SANDBOX");
   const [asaasConfigured, setAsaasConfigured] = useState(false);
   const [asaasApiKeyInput, setAsaasApiKeyInput] = useState("");
+
+  // Subscribers States
+  const [subscribers, setSubscribers] = useState<ClubSubscriber[]>([]);
+  const [subscribersLoading, setSubscribersLoading] = useState(false);
+  const [subscribersError, setSubscribersError] = useState<string | null>(null);
+  const [subscriberStatusFilter, setSubscriberStatusFilter] = useState<string>("ALL");
+  const [subscriberSearch, setSubscriberSearch] = useState("");
 
   // Form States
   const [formData, setFormData] = useState({
@@ -111,7 +150,60 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
     };
 
     fetchPaymentSettings();
+    loadSubscribers();
   }, [slug]);
+
+  const loadSubscribers = async () => {
+    setSubscribersLoading(true);
+    setSubscribersError(null);
+    try {
+      const params = new URLSearchParams();
+      if (subscriberStatusFilter !== "ALL") params.append("status", subscriberStatusFilter);
+      if (subscriberSearch) params.append("search", subscriberSearch);
+      
+      const res = await fetch(`/api/admin/${slug}/club/subscribers?${params.toString()}`);
+      if (!res.ok) throw new Error("Erro ao carregar assinantes");
+      const data = await res.json();
+      setSubscribers(Array.isArray(data.subscribers) ? data.subscribers : []);
+    } catch (err) {
+      setSubscribersError("Não foi possível carregar a lista de assinantes.");
+    } finally {
+      setSubscribersLoading(false);
+    }
+  };
+
+  const formatStatus = (status: ClubSubscriber["status"]) => {
+    const labels: Record<ClubSubscriber["status"], string> = {
+      PENDING: "Pendente",
+      ACTIVE: "Ativo",
+      OVERDUE: "Inadimplente",
+      CANCELED: "Cancelado",
+      EXPIRED: "Expirado",
+    };
+    return labels[status] || status;
+  };
+
+  const statusBadgeClass = (status: ClubSubscriber["status"]) => {
+    switch (status) {
+      case "ACTIVE":
+        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400";
+      case "PENDING":
+        return "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400";
+      case "OVERDUE":
+        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+      case "CANCELED":
+      case "EXPIRED":
+        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400";
+      default:
+        return "bg-gray-100 text-gray-700";
+    }
+  };
+
+  const whatsappLink = (phone: string) => {
+    const cleanPhone = phone.replace(/\D/g, "");
+    // Remove leading + if exists
+    return `https://wa.me/${cleanPhone}`;
+  };
 
   const handleCloseMessage = () => {
     setMessage(null);
@@ -534,6 +626,108 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
             </div>
           ))
         )}
+      </div>
+
+      {/* Subscribers Section */}
+      <div className="mt-12 space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Users className="text-primary" /> Assinantes do Clube
+          </h2>
+        </div>
+
+        <div className="bg-card border rounded-xl p-4 shadow-sm space-y-4">
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+              <input 
+                type="text"
+                placeholder="Buscar por nome ou WhatsApp..."
+                className="w-full pl-10 pr-4 py-2 rounded-lg border bg-background text-sm"
+                value={subscriberSearch}
+                onChange={(e) => setSubscriberSearch(e.target.value)}
+              />
+            </div>
+            <select 
+              className="p-2 rounded-lg border bg-background text-sm"
+              value={subscriberStatusFilter}
+              onChange={(e) => setSubscriberStatusFilter(e.target.value)}
+            >
+              <option value="ALL">Todos os status</option>
+              <option value="ACTIVE">Ativos</option>
+              <option value="PENDING">Pendentes</option>
+              <option value="OVERDUE">Inadimplentes</option>
+              <option value="CANCELED">Cancelados</option>
+              <option value="EXPIRED">Expirados</option>
+            </select>
+            <button 
+              onClick={loadSubscribers}
+              disabled={subscribersLoading}
+              className="flex items-center justify-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-all disabled:opacity-50"
+            >
+              {subscribersLoading ? <Loader2 className="animate-spin" size={18} /> : <RefreshCw size={18} />}
+              Atualizar
+            </button>
+          </div>
+
+          {subscribersError && (
+            <div className="p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-100">
+              {subscribersError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {subscribersLoading && subscribers.length === 0 ? (
+              <div className="col-span-full py-10 flex justify-center">
+                <Loader2 className="animate-spin text-primary" size={32} />
+              </div>
+            ) : subscribers.length === 0 ? (
+              <div className="col-span-full py-10 text-center border-2 border-dashed rounded-xl text-muted-foreground">
+                Nenhum assinante encontrado.
+              </div>
+            ) : (
+              subscribers.map((sub) => (
+                <div key={sub.id} className="p-4 rounded-xl border bg-muted/10 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-bold leading-tight">{sub.client.name}</p>
+                      <p className="text-xs text-muted-foreground">{sub.client.phoneE164}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${statusBadgeClass(sub.status)}`}>
+                      {formatStatus(sub.status)}
+                    </span>
+                  </div>
+
+                  <div className="text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Plano:</span>
+                      <span className="font-medium">{sub.plan.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Valor:</span>
+                      <span className="font-medium">{formatCurrency(sub.plan.priceInCents)}</span>
+                    </div>
+                    {sub.currentPeriodEnd && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Validade:</span>
+                        <span className="font-medium">{formatDateBR(sub.currentPeriodEnd)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <a 
+                    href={whatsappLink(sub.client.phoneE164)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors"
+                  >
+                    <MessageCircle size={14} /> WhatsApp
+                  </a>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
