@@ -17,7 +17,12 @@ import {
   Search,
   RefreshCw,
   MessageCircle,
-  Ban
+  Ban,
+  Wallet,
+  AlertTriangle,
+  Clock,
+  BadgePercent,
+  CalendarCheck
 } from "lucide-react";
 
 type ClubTenant = {
@@ -61,6 +66,20 @@ type ClubSubscriber = {
     billingCycle: "MONTHLY" | "QUARTERLY" | "SEMIANNUAL" | "YEARLY";
     discountPercent: number | null;
   };
+};
+
+type ClubSummary = {
+  activeSubscribers: number;
+  pendingSubscribers: number;
+  overdueSubscribers: number;
+  canceledSubscribers: number;
+  expiredSubscribers: number;
+  totalSubscribers: number;
+  monthlyRecurringRevenueInCents: number;
+  activeRevenueInCents: number;
+  averageActiveTicketInCents: number;
+  totalClubDiscountThisMonthInCents: number;
+  clubAppointmentsThisMonth: number;
 };
 
 type Props = {
@@ -123,6 +142,11 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
   const [subscriberSearch, setSubscriberSearch] = useState("");
   const [cancelingSubscriptionId, setCancelingSubscriptionId] = useState<string | null>(null);
 
+  // Summary States
+  const [summary, setSummary] = useState<ClubSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+
   // Form States
   const [formData, setFormData] = useState({
     name: "",
@@ -153,7 +177,23 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
 
     fetchPaymentSettings();
     loadSubscribers();
+    loadSummary();
   }, [slug]);
+
+  const loadSummary = async () => {
+    setSummaryLoading(true);
+    setSummaryError(null);
+    try {
+      const res = await fetch(`/api/admin/${slug}/club/summary`);
+      if (!res.ok) throw new Error("Erro ao carregar resumo");
+      const data = await res.json();
+      setSummary(data);
+    } catch (err) {
+      setSummaryError("Não foi possível carregar o resumo gerencial.");
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
 
   const loadSubscribers = async () => {
     setSubscribersLoading(true);
@@ -203,6 +243,7 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
       setSubscribers(prev => 
         prev.map(sub => (sub.id === subscriptionId ? data.subscription : sub))
       );
+      loadSummary();
       
       if (data.gatewayCanceled) {
         setMessage("Assinatura cancelada no Asaas e no TratoMarcado.");
@@ -389,6 +430,84 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
         >
           <Plus size={18} /> Novo plano
         </button>
+      </div>
+
+      {/* Summary Section */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-bold flex items-center gap-2">
+          <ShieldCheck className="text-primary" size={20} /> Resumo do Clube
+        </h2>
+        
+        {summaryError && (
+          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-400 text-xs flex items-center gap-2">
+            <AlertTriangle size={14} /> {summaryError}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {summaryLoading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-24 rounded-xl border bg-card animate-pulse" />
+            ))
+          ) : summary ? (
+            <>
+              <div className="p-4 rounded-xl border bg-card">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                    <Users size={20} />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">Assinantes Ativos</span>
+                </div>
+                <p className="text-2xl font-bold">{summary.activeSubscribers}</p>
+              </div>
+              <div className="p-4 rounded-xl border bg-card">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                    <Wallet size={20} />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">Receita Mensal (MRR)</span>
+                </div>
+                <p className="text-2xl font-bold">{formatCurrency(summary.monthlyRecurringRevenueInCents)}</p>
+              </div>
+              <div className="p-4 rounded-xl border bg-card">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                    <Clock size={20} />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">Pendentes</span>
+                </div>
+                <p className="text-2xl font-bold">{summary.pendingSubscribers}</p>
+              </div>
+              <div className="p-4 rounded-xl border bg-card">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                    <AlertTriangle size={20} />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">Inadimplentes</span>
+                </div>
+                <p className="text-2xl font-bold">{summary.overdueSubscribers}</p>
+              </div>
+              <div className="p-4 rounded-xl border bg-card">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+                    <BadgePercent size={20} />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">Descontos (Mês)</span>
+                </div>
+                <p className="text-2xl font-bold">{formatCurrency(summary.totalClubDiscountThisMonthInCents)}</p>
+              </div>
+              <div className="p-4 rounded-xl border bg-card">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+                    <CalendarCheck size={20} />
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">Agendamentos Clube</span>
+                </div>
+                <p className="text-2xl font-bold">{summary.clubAppointmentsThisMonth}</p>
+              </div>
+            </>
+          ) : null}
+        </div>
       </div>
 
       {/* Status Card */}
@@ -703,10 +822,16 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
               <option value="PENDING">Pendentes</option>
               <option value="OVERDUE">Inadimplentes</option>
               <option value="CANCELED">Cancelados</option>
+              <option value="PENDING">Pendentes</option>
+              <option value="OVERDUE">Inadimplentes</option>
+              <option value="CANCELED">Cancelados</option>
               <option value="EXPIRED">Expirados</option>
             </select>
             <button 
-              onClick={loadSubscribers}
+              onClick={() => {
+                loadSubscribers();
+                loadSummary();
+              }}
               disabled={subscribersLoading}
               className="flex items-center justify-center gap-2 bg-secondary text-secondary-foreground px-4 py-2 rounded-lg font-medium hover:opacity-90 transition-all disabled:opacity-50"
             >
