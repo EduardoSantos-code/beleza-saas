@@ -4,6 +4,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { sendWhatsAppMessage } from "@/lib/whatsapp";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
+import { Prisma } from "@prisma/client";
 
 function getClientSessionSecret() {
   const secret =
@@ -43,6 +44,21 @@ function calculateClubDiscount(originalPrice: number, discountPercent: number | 
   };
 }
 
+function getBenefitPeriodKey(date: Date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function calculateFreeServicePrice(originalPrice: number) {
+  const safeOriginalPrice = Math.max(0, originalPrice || 0);
+  return {
+    originalPrice: safeOriginalPrice,
+    discountAmount: safeOriginalPrice,
+    finalPrice: 0,
+  };
+}
+
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params;
@@ -65,11 +81,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       return NextResponse.json({ error: "Dados do agendamento inválidos." }, { status: 400 });
     }
 
-    let clubSubscriptionId: string | null = null;
-    let clubPlanName: string | null = null;
-    let clubOriginalPrice: number | null = null;
-    let clubDiscountAmount: number | null = null;
-    let clubFinalPrice: number | null = null;
+    let subscriptionData: Prisma.ClubSubscriptionGetPayload<{
+      include: { plan: true; client: true }
+    }> | null = null;
 
     if (useClubBenefit === true) {
       const cookieStore = await cookies();
@@ -110,17 +124,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
           return NextResponse.json({ error: "Assinatura do clube não está ativa." }, { status: 400 });
         }
 
-        const prices = calculateClubDiscount(
-          service.price || 0,
-          subscription.plan.discountPercent
-        );
-
-        clubSubscriptionId = subscription.id;
-        clubPlanName = subscription.plan.name;
-        clubOriginalPrice = prices.originalPrice;
-        clubDiscountAmount = prices.discountAmount;
-        clubFinalPrice = prices.finalPrice;
-
+        subscriptionData = subscription;
       } catch (err) {
         return NextResponse.json({ error: "Sessão do clube inválida. Valide seu WhatsApp novamente." }, { status: 401 });
       }
@@ -147,33 +151,94 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const startMinutes = hours * 60 + minutes;
     const endMinutes = startMinutes + service.durationMin;
 
-    const clientRecord = await prisma.client.upsert({
-      where: { tenantId_phoneE164: { tenantId: tenant.id, phoneE164: clientPhoneE164 } },
-      update: { name: clientName },
-      create: { tenantId: tenant.id, name: clientName, phoneE164: clientPhoneE164 }
-    });
+    const appointment = await prisma.$transaction(async (tx) => {
+      const clientRecord = await tx.client.upsert({
+        where: { tenantId_phoneE164: { tenantId: tenant.id, phoneE164: clientPhoneE164 } },
+        update: { name: clientName },
+        create: { tenantId: tenant.id, name: clientName, phoneE164: clientPhoneE164 }
+      });
 
-    const appointment = await prisma.appointment.create({
-      data: {
-        tenantId: tenant.id,
-        serviceId,
-        professionalId,
-        clientId: clientRecord.id,
-        businessDate: localDateString,
-        startMinutes,
-        endMinutes,
-        timeZone: TZ,
-        startAt: startUtc, // Salva a data cravada
-        clubSubscriptionId,
-        clubPlanName,
-        clubOriginalPrice,
-        clubDiscountAmount,
-        clubFinalPrice,
-        endAt: endUtc,
-        notes,
-        status: "CONFIRMED",
-      },
-      include: { professional: true, service: true, tenant: true, client: true }
+      let clubSubscriptionId: string | null = null;
+      let clubPlanName: string | null = null;
+      let finalClubOriginalPrice: number | null = null;
+      let finalClubDiscountAmount: number | null = null;
+      let finalClubFinalPrice: number | null = null;
+      let shouldUseIncludedBenefit = false;
+      let periodKey = "";
+
+      if (subscriptionData && subscriptionData.plan) {
+        const plan = subscriptionData.plan;
+        clubSubscriptionId = subscriptionData.id;
+        clubPlanName = plan.name;
+
+        if (plan.includedBenefitType === "FREE_SERVICE" && plan.includedServiceId === service.id && (plan.includedUsesPerPeriod || 0) > 0) {
+          periodKey = getBenefitPeriodKey(startUtc);
+          const usedCount = await tx.clubBenefitUsage.count({
+            where: {
+              tenantId: tenant.id,
+              subscriptionId: subscriptionData.id,
+              serviceId: service.id,
+              periodKey,
+              benefitType: "FREE_SERVICE",
+            },
+          });
+
+          if (usedCount < (plan.includedUsesPerPeriod || 0)) {
+            shouldUseIncludedBenefit = true;
+            const freePrices = calculateFreeServicePrice(service.price || 0);
+            finalClubOriginalPrice = freePrices.originalPrice;
+            finalClubDiscountAmount = freePrices.discountAmount;
+            finalClubFinalPrice = freePrices.finalPrice;
+          }
+        }
+
+        if (!shouldUseIncludedBenefit && typeof plan.discountPercent === "number") {
+          const discountPrices = calculateClubDiscount(service.price || 0, plan.discountPercent);
+          finalClubOriginalPrice = discountPrices.originalPrice;
+          finalClubDiscountAmount = discountPrices.discountAmount;
+          finalClubFinalPrice = discountPrices.finalPrice;
+        }
+      }
+
+      const newAppointment = await tx.appointment.create({
+        data: {
+          tenantId: tenant.id,
+          serviceId,
+          professionalId,
+          clientId: clientRecord.id,
+          businessDate: localDateString,
+          startMinutes,
+          endMinutes,
+          timeZone: TZ,
+          startAt: startUtc, // Salva a data cravada
+          clubSubscriptionId,
+          clubPlanName,
+          clubOriginalPrice: finalClubOriginalPrice,
+          clubDiscountAmount: finalClubDiscountAmount,
+          clubFinalPrice: finalClubFinalPrice,
+          endAt: endUtc,
+          notes,
+          status: "CONFIRMED",
+        },
+        include: { professional: true, service: true, tenant: true, client: true }
+      });
+
+      if (shouldUseIncludedBenefit && subscriptionData) {
+        await tx.clubBenefitUsage.create({
+          data: {
+            tenantId: tenant.id,
+            subscriptionId: subscriptionData.id,
+            appointmentId: newAppointment.id,
+            clientId: clientRecord.id,
+            planId: subscriptionData.planId,
+            serviceId: service.id,
+            periodKey,
+            benefitType: "FREE_SERVICE",
+          }
+        });
+      }
+
+      return newAppointment;
     });
 
     // WhatsApp Notification
@@ -184,13 +249,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       const timeLabel = formatInTimeZone(appointment.startAt, TZ, "HH:mm");
 
       const clubMessage =
-        clubSubscriptionId && clubPlanName && clubOriginalPrice !== null && clubDiscountAmount !== null && clubFinalPrice !== null
+        appointment.clubSubscriptionId && appointment.clubPlanName && appointment.clubOriginalPrice !== null && appointment.clubDiscountAmount !== null && appointment.clubFinalPrice !== null
           ? [
               "",
-              `Clube aplicado: ${clubPlanName}`,
-              `Valor original: ${formatCurrencyBR(clubOriginalPrice)}`,
-              `Desconto do clube: -${formatCurrencyBR(clubDiscountAmount)}`,
-              `Valor final: ${formatCurrencyBR(clubFinalPrice)}`
+              `Clube aplicado: ${appointment.clubPlanName}`,
+              `Valor original: ${formatCurrencyBR(appointment.clubOriginalPrice)}`,
+              `Desconto do clube: -${formatCurrencyBR(appointment.clubDiscountAmount)}`,
+              `Valor final: ${formatCurrencyBR(appointment.clubFinalPrice)}`
             ].join("\n")
           : "";
 
