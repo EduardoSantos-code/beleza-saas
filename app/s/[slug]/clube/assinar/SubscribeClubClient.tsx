@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowLeft, CheckCircle2, Loader2, Smartphone } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Smartphone, CreditCard } from "lucide-react";
 import Link from "next/link";
 
 type TenantInfo = {
@@ -45,19 +45,46 @@ const formatCycle = (cycle: string) => {
   return map[cycle] || cycle;
 };
 
-const sanitizePhone = (val: string) => {
-  return val.replace(/[^\d+]/g, "");
+const sanitizePhone = (val: string) => val.replace(/[^\d+]/g, "");
+
+const getCpfCnpjDigits = (val: string) => val.replace(/\D/g, "");
+
+const formatCpfCnpj = (val: string) => {
+  const digits = getCpfCnpjDigits(val).slice(0, 14);
+  if (digits.length <= 11) {
+    return digits
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+  }
+  return digits
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d)/, "$1-$2");
 };
 
 export default function SubscribeClubClient({ slug, tenant, plan }: Props) {
   const [step, setStep] = useState<"FORM" | "CODE" | "VERIFIED">("FORM");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("+55");
+  
+  // Verification
   const [code, setCode] = useState("");
+  const [devCode, setDevCode] = useState<string | null>(null);
+  
+  // Subscription
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
+  
+  // Payment
+  const [cpfCnpj, setCpfCnpj] = useState("");
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // UI States
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
-  const [devCode, setDevCode] = useState<string | null>(null);
+
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,25 +139,54 @@ export default function SubscribeClubClient({ slug, tenant, plan }: Props) {
 
       if (!res.ok) throw new Error(data.error || "Código inválido.");
 
-      // Create pre-subscription
+      // Create the pending subscription
       const subRes = await fetch(`/api/public/${slug}/club/subscribe`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          planId: plan.id,
-        }),
+        body: JSON.stringify({ phoneE164: phone, planId: plan.id, name }),
       });
       const subData = await subRes.json();
-
       if (!subRes.ok) throw new Error(subData.error || "Erro ao criar assinatura.");
 
-      setSubscriptionId(subData.subscription?.id || null);
+      setSubscriptionId(subData.subscription.id);
       setStep("VERIFIED");
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoToPayment = async () => {
+    setPaymentError(null);
+    const digits = getCpfCnpjDigits(cpfCnpj);
+    
+    if (digits.length !== 11 && digits.length !== 14) {
+      setPaymentError("CPF deve ter 11 dígitos ou CNPJ 14 dígitos.");
+      return;
+    }
+
+    if (!subscriptionId) {
+      setPaymentError("Assinatura não encontrada.");
+      return;
+    }
+
+    setPaymentLoading(true);
+    try {
+      const res = await fetch(`/api/public/${slug}/club/subscriptions/${subscriptionId}/checkout`, {
+        method: "POST",
+        body: JSON.stringify({ cpfCnpj: digits }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Erro ao gerar checkout.");
+
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      }
+    } catch (err: any) {
+      setPaymentError(err.message);
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
@@ -188,7 +244,7 @@ export default function SubscribeClubClient({ slug, tenant, plan }: Props) {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: João Silva"
                 className="w-full p-3 rounded-xl border dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-2 outline-none"
-                style={{ "--tw-ring-color": primaryBg } as any}
+                style={{ "--tw-ring-color": primaryBg } as React.CSSProperties}
               />
             </div>
             <div className="space-y-2">
@@ -202,7 +258,7 @@ export default function SubscribeClubClient({ slug, tenant, plan }: Props) {
                 value={phone}
                 onChange={(e) => setPhone(sanitizePhone(e.target.value))}
                 className="w-full p-3 rounded-xl border dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-2 outline-none"
-                style={{ "--tw-ring-color": primaryBg } as any}
+                style={{ "--tw-ring-color": primaryBg } as React.CSSProperties}
               />
               <p className="text-[10px] text-zinc-500">Formato: +5511999999999</p>
             </div>
@@ -236,7 +292,7 @@ export default function SubscribeClubClient({ slug, tenant, plan }: Props) {
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
               placeholder="000000"
               className="w-full p-4 text-center text-2xl tracking-[1em] font-mono rounded-xl border dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-2 outline-none"
-              style={{ "--tw-ring-color": primaryBg } as any}
+              style={{ "--tw-ring-color": primaryBg } as React.CSSProperties}
             />
             {devCode && (
               <div className="p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-700 dark:text-amber-400 text-center">
@@ -260,19 +316,55 @@ export default function SubscribeClubClient({ slug, tenant, plan }: Props) {
         {/* Step 3: Verified */}
         {step === "VERIFIED" && (
           <div className="text-center space-y-6 py-8">
-            <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
-            <div className="space-y-2">
-              <h3 className="text-xl font-bold">WhatsApp verificado e pré-assinatura criada com sucesso.</h3>
-              <p className="text-zinc-500">Na próxima etapa, você será direcionado para o pagamento.</p>
+            <div className="space-y-4">
+              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
+              <div className="space-y-1">
+                <h3 className="text-xl font-bold">Pré-assinatura criada</h3>
+                <p className="text-sm text-zinc-500">Status: Pendente de pagamento</p>
+              </div>
             </div>
-            <div className="p-4 bg-zinc-100 dark:bg-zinc-800 rounded-xl text-left space-y-1">
-              <p className="text-xs text-zinc-500 uppercase font-bold">Resumo</p>
-              <p className="font-medium">{plan.name}</p>
-              <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">Status: Pendente de pagamento</p>
-            </div>
-            <button disabled className="w-full py-4 rounded-xl font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-500">
-              Pagamento em breve
-            </button>
+
+            {tenant.clubPaymentProvider === "ASAAS" ? (
+              <div className="space-y-4 text-left">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">CPF ou CNPJ para cobrança</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={cpfCnpj}
+                    onChange={(e) => setCpfCnpj(formatCpfCnpj(e.target.value))}
+                    placeholder="000.000.000-00"
+                    className="w-full p-3 rounded-xl border dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-2 outline-none"
+                    style={{ "--tw-ring-color": primaryBg } as React.CSSProperties}
+                  />
+                  <p className="text-[10px] text-zinc-500">
+                    Usado apenas para gerar a cobrança no Asaas da barbearia.
+                  </p>
+                </div>
+                {paymentError && <p className="text-red-500 text-sm text-center">{paymentError}</p>}
+                <button
+                  onClick={handleGoToPayment}
+                  disabled={paymentLoading}
+                  className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-70"
+                  style={{ backgroundColor: primaryBg }}
+                >
+                  {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CreditCard className="w-5 h-5" /> Ir para pagamento</>}
+                </button>
+              </div>
+            ) : tenant.clubPaymentProvider === "MERCADO_PAGO" ? (
+              <div className="space-y-4">
+                <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-100 dark:border-amber-800">
+                  Pagamento via Mercado Pago será liberado em uma próxima etapa.
+                </p>
+                <button disabled className="w-full py-4 rounded-xl font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-500">
+                  Aguarde liberação
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500">Gateway de pagamento não configurado.</p>
+            )}
+
           </div>
         )}
       </main>
