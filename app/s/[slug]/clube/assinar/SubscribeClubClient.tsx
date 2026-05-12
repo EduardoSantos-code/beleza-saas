@@ -56,6 +56,7 @@ export default function SubscribeClubClient({ slug, tenant, plan }: Props) {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [devCode, setDevCode] = useState<string | null>(null);
 
   const handleSendCode = async (e: React.FormEvent) => {
@@ -111,6 +112,20 @@ export default function SubscribeClubClient({ slug, tenant, plan }: Props) {
 
       if (!res.ok) throw new Error(data.error || "Código inválido.");
 
+      // Create pre-subscription
+      const subRes = await fetch(`/api/public/${slug}/club/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          planId: plan.id,
+        }),
+      });
+      const subData = await subRes.json();
+
+      if (!subRes.ok) throw new Error(subData.error || "Erro ao criar assinatura.");
+
+      setSubscriptionId(subData.subscription?.id || null);
       setStep("VERIFIED");
     } catch (err: any) {
       setError(err.message);
@@ -247,8 +262,13 @@ export default function SubscribeClubClient({ slug, tenant, plan }: Props) {
           <div className="text-center space-y-6 py-8">
             <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
             <div className="space-y-2">
-              <h3 className="text-xl font-bold">WhatsApp verificado!</h3>
+              <h3 className="text-xl font-bold">WhatsApp verificado e pré-assinatura criada com sucesso.</h3>
               <p className="text-zinc-500">Na próxima etapa, você será direcionado para o pagamento.</p>
+            </div>
+            <div className="p-4 bg-zinc-100 dark:bg-zinc-800 rounded-xl text-left space-y-1">
+              <p className="text-xs text-zinc-500 uppercase font-bold">Resumo</p>
+              <p className="font-medium">{plan.name}</p>
+              <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">Status: Pendente de pagamento</p>
             </div>
             <button disabled className="w-full py-4 rounded-xl font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-500">
               Pagamento em breve
