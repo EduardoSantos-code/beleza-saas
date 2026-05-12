@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTenantAccess } from "@/lib/auth";
+import { decryptSecret } from "@/lib/crypto";
+import { deleteAsaasSubscription, ClubAsaasEnvironment } from "@/lib/asaas-club";
 
 export async function POST(
   request: Request,
@@ -13,6 +15,11 @@ export async function POST(
 
     const tenant = await prisma.tenant.findUnique({
       where: { slug },
+      select: {
+        id: true,
+        clubAsaasApiKeyEnc: true,
+        clubAsaasEnvironment: true,
+      },
     });
 
     if (!tenant) {
@@ -35,7 +42,56 @@ export async function POST(
     }
 
     if (subscription.status === "CANCELED") {
-      return NextResponse.json({ ok: true, subscription });
+      return NextResponse.json({
+        ok: true,
+        gatewayCanceled: false,
+        subscription: {
+          id: subscription.id,
+          status: subscription.status,
+          canceledAt: subscription.canceledAt,
+          client: {
+            name: subscription.client.name,
+            phoneE164: subscription.client.phoneE164,
+          },
+          plan: {
+            name: subscription.plan.name,
+          },
+        },
+      });
+    }
+
+    let gatewayCanceled = false;
+
+    if (subscription.provider === "MERCADO_PAGO") {
+      return NextResponse.json(
+        { error: "Cancelamento via Mercado Pago ainda não implementado." },
+        { status: 400 }
+      );
+    }
+
+    if (subscription.provider === "ASAAS" && subscription.providerSubscriptionId) {
+      if (!tenant.clubAsaasApiKeyEnc) {
+        return NextResponse.json(
+          { error: "Chave Asaas do clube não configurada. Não foi possível cancelar no gateway." },
+          { status: 400 }
+        );
+      }
+
+      try {
+        const apiKey = decryptSecret(tenant.clubAsaasApiKeyEnc);
+        await deleteAsaasSubscription({
+          apiKey,
+          environment: tenant.clubAsaasEnvironment as ClubAsaasEnvironment,
+          subscriptionId: subscription.providerSubscriptionId,
+        });
+        gatewayCanceled = true;
+      } catch (asaasError) {
+        console.error("[ASAAS_CANCEL_ERROR]", asaasError instanceof Error ? asaasError.message : String(asaasError));
+        return NextResponse.json(
+          { error: "Não foi possível cancelar a assinatura no Asaas. Tente novamente ou verifique a configuração da chave." },
+          { status: 400 }
+        );
+      }
     }
 
     const updatedSubscription = await prisma.clubSubscription.update({
@@ -52,6 +108,7 @@ export async function POST(
 
     return NextResponse.json({
       ok: true,
+      gatewayCanceled,
       subscription: {
         id: updatedSubscription.id,
         status: updatedSubscription.status,

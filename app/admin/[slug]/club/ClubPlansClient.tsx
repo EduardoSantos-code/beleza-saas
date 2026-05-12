@@ -163,7 +163,11 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
       if (subscriberStatusFilter !== "ALL") params.append("status", subscriberStatusFilter);
       if (subscriberSearch) params.append("search", subscriberSearch);
       
-      const res = await fetch(`/api/admin/${slug}/club/subscribers?${params.toString()}`);
+      const query = params.toString();
+
+      const res = await fetch(
+        `/api/admin/${slug}/club/subscribers${query ? `?${query}` : ""}`
+      );
       if (!res.ok) throw new Error("Erro ao carregar assinantes");
       const data = await res.json();
       setSubscribers(Array.isArray(data.subscribers) ? data.subscribers : []);
@@ -199,7 +203,12 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
       setSubscribers(prev => 
         prev.map(sub => (sub.id === subscriptionId ? data.subscription : sub))
       );
-      setMessage("Assinatura cancelada com sucesso.");
+      
+      if (data.gatewayCanceled) {
+        setMessage("Assinatura cancelada no Asaas e no TratoMarcado.");
+      } else {
+        setMessage("Assinatura cancelada no TratoMarcado.");
+      }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
       setError(errorMessage);

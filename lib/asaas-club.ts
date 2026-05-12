@@ -153,4 +153,23 @@ export async function listAsaasSubscriptionPayments(params: {
   );
 }
 
+export async function deleteAsaasSubscription(params: {
+  apiKey: string;
+  environment: ClubAsaasEnvironment;
+  subscriptionId: string;
+}): Promise<{ deleted: true }> {
+  if (!params.subscriptionId) {
+    throw new Error("O ID da assinatura é obrigatório para cancelamento.");
+  }
+
+  await asaasRequest(
+    params.apiKey,
+    params.environment,
+    "DELETE",
+    `/subscriptions/${params.subscriptionId}`
+  );
+
+  return { deleted: true };
+}
+
 export { getAsaasBaseUrl, getTodayInSaoPauloDate };
