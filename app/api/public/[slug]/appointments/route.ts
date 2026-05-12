@@ -218,7 +218,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
           `Seu trato tá oficialmente marcado na *${appointment.tenant?.name}*.\n\n` +
           `📅 *Data:* ${dateLabel}\n` +
           `🕒 *Hora:* ${timeLabel}\n` +
-          `💈 *Barbeiro:* ${appointment.professional?.name}${clubMessage}\n\n` +
+          `💈 *Profissional:* ${appointment.professional?.name}${clubMessage}\n\n` +
           `📄 *Recibo e Cancelamento:* ${manageLink}\n\n` +
           `Dica: Se precisar desmarcar, use o link acima ou nos avise com antecedência. Nos vemos em breve! 👊`;
 

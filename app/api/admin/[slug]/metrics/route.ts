@@ -1,7 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { Appointment, Service, Professional } from "@prisma/client";
 
 export const dynamic = 'force-dynamic';
+
+type AppointmentWithRelations = Appointment & {
+  service: Service | null;
+  professional: Professional | null;
+};
+
+function getAppointmentRevenueInCents(appointment: AppointmentWithRelations): number {
+  if (typeof appointment.clubFinalPrice === "number") {
+    return appointment.clubFinalPrice;
+  }
+  return appointment.service?.price ?? 0;
+}
 
 export async function GET(
   req: Request,
@@ -40,35 +53,37 @@ export async function GET(
 
     let totalBruto = 0;
     let totalComissoes = 0;
+    let totalClubDiscountInCents = 0;
 
-    const completed = appointments.filter((a) => a.status === "COMPLETED");
-    completed.forEach((a: any) => {
+    const completed = appointments.filter((a) => a.status === "COMPLETED") as AppointmentWithRelations[];
+    completed.forEach((a) => {
       console.log(`🕵️ Data REAL do Agendamento: ${a.startAt}`);
     });
 
-    completed.forEach((a: any) => {
-      const preco = a.service?.price || 0;
+    completed.forEach((a) => {
+      const preco = getAppointmentRevenueInCents(a);
       const taxa = a.professional?.commissionRate || 0;
 
       const comissao = (preco * taxa) / 100;
 
       totalBruto += preco;
       totalComissoes += comissao;
+      totalClubDiscountInCents += (a.clubDiscountAmount ?? 0);
     });
 
     // 4. Agrupar Top Serviços
-    const serviceMap: Record<string, any> = {};
-    completed.forEach((a: any) => {
+    const serviceMap: Record<string, { name: string; count: number; revenue: number }> = {};
+    completed.forEach((a) => {
       console.log(`💰 Agendamento ID: ${a.id} | Serviço: ${a.service?.name} | Preço no Banco: ${a.service?.price}`);
       const name = a.service?.name || "Outros";
       if (!serviceMap[name]) serviceMap[name] = { name, count: 0, revenue: 0 };
       serviceMap[name].count++;
-      serviceMap[name].revenue += (a.service?.price || 0);
+      serviceMap[name].revenue += getAppointmentRevenueInCents(a);
     });
 
     // 5. Agrupar Performance Profissionais
-    const professionalMap: Record<string, any> = {};
-    completed.forEach((a: any) => {
+    const professionalMap: Record<string, { name: string; count: number }> = {};
+    completed.forEach((a) => {
       const name = a.professional?.name || "Desconhecido";
       if (!professionalMap[name]) professionalMap[name] = { name, count: 0 };
       professionalMap[name].count++;
@@ -96,7 +111,7 @@ export async function GET(
           const appointmentDate = getLocalDateString(new Date(a.startAt));
           return appointmentDate === dateStr;
         })
-        .reduce((sum, a: any) => sum + (a.service?.price || 0), 0);
+        .reduce((sum, a) => sum + getAppointmentRevenueInCents(a), 0);
 
       // Criar o nome do dia (dom, seg...) ou a data curta se for mais de 7 dias
       const [y, m, d] = dateStr.split('-').map(Number);
@@ -108,14 +123,19 @@ export async function GET(
 
       return {
         date: label,
-        faturamento: dayTotal / 100,
+        faturamento: dayTotal,
       };
     });
 
-    const detalheProfissionais: Record<string, any> = {};
-    completed.forEach((a: any) => {
+    const detalheProfissionais: Record<string, {
+      name: string;
+      count: number;
+      bruto: number;
+      comissao: number;
+    }> = {};
+    completed.forEach((a) => {
       const profName = a.professional?.name || "Barbeiro";
-      const preco = a.service?.price || 0;
+      const preco = getAppointmentRevenueInCents(a);
       const taxa = a.professional?.commissionRate || 0;
       const comissao = (preco * taxa) / 100;
 
@@ -143,6 +163,7 @@ export async function GET(
         totalRevenue: totalBruto,
         totalComissoes: totalComissoes,
         lucroLiquido: totalBruto - totalComissoes,
+        totalClubDiscountInCents,
       },
       chartData,
       topServices: Object.values(serviceMap).sort((a: any, b: any) => b.revenue - a.revenue).slice(0, 5),
