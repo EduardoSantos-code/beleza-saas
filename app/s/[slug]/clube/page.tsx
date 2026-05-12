@@ -38,15 +38,24 @@ export default async function ClubPublicPage({ params }: PageProps) {
   }
 
   const plans = await prisma.clubPlan.findMany({
-    where: {
-      tenantId: tenant.id,
-      isActive: true,
-    },
-    orderBy: {
-      priceInCents: "asc",
-    },
-  });
-
+  where: {
+    tenantId: tenant.id,
+    isActive: true,
+  },
+  orderBy: {
+    priceInCents: "asc",
+  },
+  select: {
+    id: true,
+    name: true,
+    description: true,
+    terms: true,
+    priceInCents: true,
+    billingCycle: true,
+    discountPercent: true,
+    isActive: true,
+  },
+});
   const isClubAvailable = tenant.clubEnabled && plans.length > 0;
 
   if (!isClubAvailable) {
@@ -134,7 +143,7 @@ export default async function ClubPublicPage({ params }: PageProps) {
               )}
 
               <Link
-                href={`/s/${slug}/clube/assinar?planId=${plan.id}`}
+                href={`/s/${slug}/clube/assinar?planId=${encodeURIComponent(plan.id)}`}
                 className="block w-full py-3 px-4 bg-primary text-primary-foreground text-center rounded-xl font-semibold hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: tenant.primaryColor || undefined }}
               >

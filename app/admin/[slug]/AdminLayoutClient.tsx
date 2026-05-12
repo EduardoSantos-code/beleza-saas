@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
+import { Crown } from "lucide-react";
 import LogoutButton from "./LogoutButton";
 
 export default function AdminLayout({
@@ -43,6 +44,7 @@ export default function AdminLayout({
   // Lista de links do menu
   const links = [
     { name: "Agenda", href: `/admin/${slug}`, icon: "📅" },
+    { name: "Clube", href: `/admin/${slug}/club`, icon: <Crown size={18} className="text-amber-500" /> },
     { name: "Assinatura", href: `/admin/${slug}/billing`, icon: "💳" },
     { name: "Métricas", href: `/admin/${slug}/metrics`, icon: "📊" },
     { name: "Serviços", href: `/admin/${slug}/services`, icon: "✂️" },
