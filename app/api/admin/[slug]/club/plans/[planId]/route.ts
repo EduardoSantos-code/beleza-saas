@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireTenantAccess } from '@/lib/auth';
+import { Prisma } from "@prisma/client";
+
 
 export async function PATCH(
   request: Request,
@@ -36,9 +38,12 @@ export async function PATCH(
       billingCycle,
       discountPercent,
       isActive,
+      includedServiceId,
+      includedUsesPerPeriod,
+      includedBenefitType,
     } = body;
 
-    const updateData: any = {};
+    const updateData: Prisma.ClubPlanUncheckedUpdateInput = {};
 
     if (name !== undefined) {
       if (typeof name !== 'string' || name.length < 2) {
@@ -81,9 +86,56 @@ export async function PATCH(
     if (description !== undefined) updateData.description = description;
     if (terms !== undefined) updateData.terms = terms;
 
+    // Validações de Benefícios
+    if (includedUsesPerPeriod !== undefined) {
+      if (!Number.isInteger(includedUsesPerPeriod) || includedUsesPerPeriod < 0) {
+        return NextResponse.json({ error: 'Usos inclusos deve ser um número inteiro >= 0' }, { status: 400 });
+      }
+    }
+
+    if (includedBenefitType !== undefined && includedBenefitType !== null && includedBenefitType !== 'FREE_SERVICE') {
+      return NextResponse.json({ error: 'Tipo de benefício inválido' }, { status: 400 });
+    }
+
+    // Regras de consistência combinando plano atual + campos enviados
+    const finalUses = includedUsesPerPeriod !== undefined ? Number(includedUsesPerPeriod) : plan.includedUsesPerPeriod;
+    let finalServiceId = includedServiceId !== undefined ? includedServiceId : plan.includedServiceId;
+    let finalBenefitType = includedBenefitType !== undefined ? includedBenefitType : plan.includedBenefitType;
+
+    if (finalUses > 0) {
+      if (!finalServiceId) {
+        return NextResponse.json({ error: 'Serviço incluso é obrigatório para benefícios' }, { status: 400 });
+      }
+      if (finalBenefitType !== 'FREE_SERVICE') {
+        return NextResponse.json({ error: 'Tipo de benefício deve ser FREE_SERVICE para usos > 0' }, { status: 400 });
+      }
+    } else {
+      finalServiceId = null;
+      finalBenefitType = null;
+    }
+
+    if (finalServiceId) {
+      const service = await prisma.service.findFirst({
+        where: { id: finalServiceId, tenantId: tenant.id },
+      });
+
+      if (!service) {
+        return NextResponse.json({ error: 'Serviço não encontrado ou não pertence a este estabelecimento' }, { status: 400 });
+      }
+    }
+
+    updateData.includedUsesPerPeriod = finalUses;
+    updateData.includedServiceId = finalUses > 0 ? finalServiceId : null;
+    updateData.includedBenefitType = (finalUses > 0 ? finalBenefitType : null) as Prisma.NullableEnumClubBenefitTypeFieldUpdateOperationsInput | "FREE_SERVICE" | null;
+
     const updatedPlan = await prisma.clubPlan.update({
       where: { id: planId },
       data: updateData,
+      include: {
+        includedService: {
+          select: { id: true, name: true }
+        }
+      }
     });
 
     return NextResponse.json(updatedPlan);

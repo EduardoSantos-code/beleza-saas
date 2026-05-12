@@ -35,14 +35,43 @@ export default async function ClubAdminPage({ params }: PageProps) {
     where: {
       tenantId: tenant.id,
     },
+    include: {
+      includedService: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
     orderBy: {
       createdAt: "desc",
     },
   });
 
+  // 5. Buscar serviços do tenant
+  const services = await prisma.service.findMany({
+    where: {
+      tenantId: tenant.id,
+      active: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+    },
+  });
+
   return (
     <div className="container mx-auto py-6">
-      <ClubPlansClient slug={slug} initialTenant={tenant} initialPlans={plans} />
+      <ClubPlansClient
+        slug={slug}
+        initialTenant={tenant}
+        initialPlans={plans}
+        initialServices={services}
+      />
     </div>
   );
 }

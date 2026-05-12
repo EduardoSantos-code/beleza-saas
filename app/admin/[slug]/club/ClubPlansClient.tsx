@@ -44,6 +44,19 @@ type ClubPlan = {
   isActive: boolean;
   createdAt: string | Date;
   updatedAt: string | Date;
+  includedServiceId: string | null;
+  includedUsesPerPeriod: number;
+  includedBenefitType: "FREE_SERVICE" | null;
+  includedService?: {
+    id: string;
+    name: string;
+  } | null;
+};
+
+type ClubServiceOption = {
+  id: string;
+  name: string;
+  price: number;
 };
 
 type ClubSubscriber = {
@@ -86,6 +99,7 @@ type Props = {
   slug: string;
   initialTenant: ClubTenant;
   initialPlans: ClubPlan[];
+  initialServices: ClubServiceOption[];
 };
 
 const formatCurrency = (cents: number) => {
@@ -116,7 +130,7 @@ const formatDateBR = (dateStr: string | null) => {
   return new Intl.DateTimeFormat("pt-BR").format(date);
 };
 
-export default function ClubPlansClient({ slug, initialTenant, initialPlans }: Props) {
+export default function ClubPlansClient({ slug, initialTenant, initialPlans, initialServices }: Props) {
   const [plans, setPlans] = useState<ClubPlan[]>(initialPlans);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -156,6 +170,9 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
     description: "",
     terms: "",
     isActive: true,
+    includedServiceId: "",
+    includedUsesPerPeriod: "0",
+    includedBenefitType: "",
   });
 
   React.useEffect(() => {
@@ -307,6 +324,9 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
         description: plan.description || "",
         terms: plan.terms || "",
         isActive: plan.isActive,
+        includedServiceId: plan.includedServiceId || "",
+        includedUsesPerPeriod: plan.includedUsesPerPeriod.toString(),
+        includedBenefitType: plan.includedBenefitType || "",
       });
     } else {
       setEditingPlan(null);
@@ -318,6 +338,9 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
         description: "",
         terms: "",
         isActive: true,
+        includedServiceId: "",
+        includedUsesPerPeriod: "0",
+        includedBenefitType: "",
       });
     }
     setIsFormOpen(true);
@@ -329,10 +352,15 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
     setMessage(null);
     setError(null);
 
+    const uses = parseInt(formData.includedUsesPerPeriod || "0", 10);
+
     const payload = {
       ...formData,
       priceInCents: Math.round(parseFloat(formData.price.replace(",", ".")) * 100),
       discountPercent: formData.discountPercent ? parseFloat(formData.discountPercent) : null,
+      includedServiceId: formData.includedServiceId || null,
+      includedUsesPerPeriod: uses,
+      includedBenefitType: uses > 0 ? (formData.includedBenefitType || "FREE_SERVICE") : null,
     };
 
     try {
@@ -704,6 +732,56 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
                 placeholder="O que o cliente ganha assinando este plano?"
               />
             </div>
+
+            <div className="p-4 rounded-lg border bg-muted/20 space-y-4">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <ShieldCheck size={16} className="text-primary" /> Benefício incluso no ciclo
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Quantidade por ciclo</label>
+                  <input 
+                    type="number"
+                    min="0"
+                    className="w-full p-2 rounded-md border bg-background"
+                    value={formData.includedUsesPerPeriod}
+                    onChange={e => setFormData({...formData, includedUsesPerPeriod: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Serviço incluído</label>
+                  <select 
+                    className="w-full p-2 rounded-md border bg-background"
+                    value={formData.includedServiceId}
+                    onChange={e => setFormData({...formData, includedServiceId: e.target.value})}
+                    required={parseInt(formData.includedUsesPerPeriod) > 0}
+                  >
+                    <option value="">Nenhum serviço incluso</option>
+                    {initialServices.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Tipo do benefício</label>
+                  <select 
+                    className="w-full p-2 rounded-md border bg-background"
+                    value={formData.includedBenefitType}
+                    onChange={e => setFormData({...formData, includedBenefitType: e.target.value})}
+                    required={parseInt(formData.includedUsesPerPeriod) > 0}
+                  >
+                    <option value="">Nenhum</option>
+                    <option value="FREE_SERVICE">Serviço grátis</option>
+                  </select>
+                </div>
+              </div>
+              {parseInt(formData.includedUsesPerPeriod) > 0 && (
+                <p className="text-[10px] text-muted-foreground italic">
+                  Exemplo: {formData.includedUsesPerPeriod} {initialServices.find(s => s.id === formData.includedServiceId)?.name || 'serviço'} grátis por {formatCycle(formData.billingCycle).toLowerCase()}.
+                </p>
+              )}
+            </div>
+
             <div className="flex items-center gap-2">
               <input 
                 type="checkbox" 
@@ -767,6 +845,15 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
                 {plan.discountPercent && (
                   <div className="flex items-center gap-2 text-sm font-medium text-green-600">
                     <CheckCircle2 size={14} /> {plan.discountPercent}% de desconto em serviços
+                  </div>
+                )}
+                {plan.includedUsesPerPeriod > 0 && plan.includedService && (
+                  <div className="p-2 rounded-lg bg-primary/5 border border-primary/10 space-y-1">
+                    <p className="text-[10px] font-bold uppercase text-primary">Benefício incluso</p>
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <CheckCircle2 size={14} className="text-primary" /> 
+                      {plan.includedUsesPerPeriod}x {plan.includedService.name} ({plan.includedBenefitType === 'FREE_SERVICE' ? 'Grátis' : plan.includedBenefitType})
+                    </div>
                   </div>
                 )}
               </div>

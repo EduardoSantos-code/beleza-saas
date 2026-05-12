@@ -37,6 +37,15 @@ export async function GET(
         billingCycle: true,
         discountPercent: true,
         isActive: true,
+        includedServiceId: true,
+        includedUsesPerPeriod: true,
+        includedBenefitType: true,
+        includedService: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         createdAt: true,
         updatedAt: true,
       },
@@ -77,6 +86,9 @@ export async function POST(
       billingCycle = 'MONTHLY',
       discountPercent,
       isActive = true,
+      includedServiceId,
+      includedUsesPerPeriod,
+      includedBenefitType,
     } = body;
 
     // Validações
@@ -100,6 +112,34 @@ export async function POST(
       }
     }
 
+    // Validações de Benefícios
+    let finalIncludedServiceId = includedServiceId || null;
+    let finalIncludedBenefitType = includedBenefitType || null;
+    let finalIncludedUsesPerPeriod = Number(includedUsesPerPeriod) || 0;
+
+    if (finalIncludedUsesPerPeriod > 0) {
+      if (!finalIncludedServiceId) {
+        return NextResponse.json({ error: 'Serviço incluso é obrigatório para benefícios' }, { status: 400 });
+      }
+      if (finalIncludedBenefitType !== 'FREE_SERVICE') {
+        return NextResponse.json({ error: 'Tipo de benefício inválido' }, { status: 400 });
+      }
+    } else {
+      finalIncludedServiceId = null;
+      finalIncludedBenefitType = null;
+      finalIncludedUsesPerPeriod = 0;
+    }
+
+    if (finalIncludedServiceId) {
+      const service = await prisma.service.findFirst({
+        where: { id: finalIncludedServiceId, tenantId: tenant.id },
+      });
+
+      if (!service) {
+        return NextResponse.json({ error: 'Serviço não encontrado ou não pertence a este estabelecimento' }, { status: 400 });
+      }
+    }
+
     // Criar plano e atualizar tenant se necessário
     const [newPlan] = await prisma.$transaction([
       prisma.clubPlan.create({
@@ -112,6 +152,14 @@ export async function POST(
           billingCycle,
           discountPercent: discountPercent !== null ? Number(discountPercent) : null,
           isActive: Boolean(isActive),
+          includedServiceId: finalIncludedServiceId,
+          includedUsesPerPeriod: finalIncludedUsesPerPeriod,
+          includedBenefitType: finalIncludedBenefitType,
+        },
+        include: {
+          includedService: {
+            select: { id: true, name: true }
+          }
         },
       }),
       ...( (!tenant.clubEnabled || !tenant.clubPaymentProvider) ? [
@@ -134,6 +182,10 @@ export async function POST(
       billingCycle: newPlan.billingCycle,
       discountPercent: newPlan.discountPercent,
       isActive: newPlan.isActive,
+      includedServiceId: newPlan.includedServiceId,
+      includedUsesPerPeriod: newPlan.includedUsesPerPeriod,
+      includedBenefitType: newPlan.includedBenefitType,
+      includedService: newPlan.includedService,
       createdAt: newPlan.createdAt,
       updatedAt: newPlan.updatedAt,
     }, { status: 201 });

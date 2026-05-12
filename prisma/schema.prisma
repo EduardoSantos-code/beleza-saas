@@ -35,6 +35,7 @@ model Tenant {
   clubAsaasEnvironment          ClubAsaasEnvironment      @default(SANDBOX)
   clubPlans                     ClubPlan[]
   clubSubscriptions             ClubSubscription[]
+  clubBenefitUsages             ClubBenefitUsage[]
   appointments                  Appointment[]
   clients                       Client[]
   memberships                   Membership[]
@@ -87,14 +88,16 @@ model Professional {
 }
 
 model Service {
-  id           String        @id @default(cuid())
-  tenantId     String
-  name         String
-  durationMin  Int
-  active       Boolean       @default(true)
-  price        Int           @default(0)
-  appointments Appointment[]
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                String             @id @default(cuid())
+  tenantId          String
+  name              String
+  durationMin       Int
+  active            Boolean            @default(true)
+  price             Int                @default(0)
+  appointments      Appointment[]
+  clubPlansIncluded ClubPlan[]         @relation("ClubPlanIncludedService")
+  clubBenefitUsages ClubBenefitUsage[]
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, active])
 }
@@ -108,6 +111,7 @@ model Client {
   createdAt         DateTime                  @default(now())
   appointments      Appointment[]
   clubSubscriptions ClubSubscription[]
+  clubBenefitUsages ClubBenefitUsage[]
   tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   inboundMessages   WhatsAppInboundMessage[]
   outboundMessages  WhatsAppOutboundMessage[]
@@ -274,20 +278,25 @@ model Announcement {
 }
 
 model ClubPlan {
-  id               String             @id @default(cuid())
-  tenantId         String
-  name             String
-  description      String?
-  terms            String?
-  priceInCents     Int
-  billingCycle     ClubBillingCycle   @default(MONTHLY)
-  discountPercent  Int?
-  includedServices Json?
-  isActive         Boolean            @default(true)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  subscriptions    ClubSubscription[]
+  id                    String             @id @default(cuid())
+  tenantId              String
+  name                  String
+  description           String?
+  terms                 String?
+  priceInCents          Int
+  billingCycle          ClubBillingCycle   @default(MONTHLY)
+  discountPercent       Int?
+  includedServices      Json?
+  includedServiceId     String?
+  includedUsesPerPeriod Int                @default(0)
+  includedBenefitType   ClubBenefitType?
+  isActive              Boolean            @default(true)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  tenant                Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  includedService       Service?           @relation("ClubPlanIncludedService", fields: [includedServiceId], references: [id])
+  subscriptions         ClubSubscription[]
+  benefitUsages         ClubBenefitUsage[]
 
   @@index([tenantId])
   @@index([tenantId, isActive])
@@ -321,19 +330,26 @@ model ClubSubscription {
 }
 
 model ClubBenefitUsage {
-  id             String           @id @default(cuid())
+  id             String          @id @default(cuid())
   tenantId       String
   subscriptionId String
-  appointmentId  String?
-  benefitCode    String
+  appointmentId  String
+  clientId       String
+  planId         String
+  serviceId      String
   periodKey      String
-  usedAt         DateTime         @default(now())
-  subscription   ClubSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  appointment    Appointment?     @relation(fields: [appointmentId], references: [id])
+  benefitType    ClubBenefitType
+  createdAt      DateTime        @default(now())
 
-  @@unique([subscriptionId, benefitCode, periodKey])
-  @@index([tenantId])
-  @@index([subscriptionId])
+  tenant       Tenant           @relation(fields: [tenantId], references: [id])
+  subscription ClubSubscription @relation(fields: [subscriptionId], references: [id])
+  appointment  Appointment      @relation(fields: [appointmentId], references: [id])
+  client       Client           @relation(fields: [clientId], references: [id])
+  plan         ClubPlan         @relation(fields: [planId], references: [id])
+  service      Service          @relation(fields: [serviceId], references: [id])
+
+  @@index([tenantId, subscriptionId, periodKey])
+  @@index([tenantId, clientId])
   @@index([appointmentId])
 }
 
@@ -355,6 +371,10 @@ model ClientPhoneVerification {
 enum ClubPaymentProvider {
   ASAAS
   MERCADO_PAGO
+}
+
+enum ClubBenefitType {
+  FREE_SERVICE
 }
 
 enum ClubBillingCycle {
