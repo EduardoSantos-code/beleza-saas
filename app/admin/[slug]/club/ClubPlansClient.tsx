@@ -5,7 +5,9 @@ import {
   Crown, 
   Plus, 
   Pencil, 
-  Trash2, 
+  Trash2,
+  CreditCard,
+  ShieldCheck,
   CheckCircle2, 
   XCircle, 
   Loader2, 
@@ -70,6 +72,16 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Payment Settings States
+  const [paymentLoading, setPaymentLoading] = useState(true);
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
+  const [clubPaymentProvider, setClubPaymentProvider] = useState<"ASAAS" | "MERCADO_PAGO" | "">("");
+  const [asaasEnvironment, setAsaasEnvironment] = useState<"SANDBOX" | "PRODUCTION">("SANDBOX");
+  const [asaasConfigured, setAsaasConfigured] = useState(false);
+  const [asaasApiKeyInput, setAsaasApiKeyInput] = useState("");
+
   // Form States
   const [formData, setFormData] = useState({
     name: "",
@@ -80,6 +92,31 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
     terms: "",
     isActive: true,
   });
+
+  React.useEffect(() => {
+    const fetchPaymentSettings = async () => {
+      try {
+        const res = await fetch(`/api/admin/${slug}/club/payment-settings`);
+        if (res.ok) {
+          const data = await res.json();
+          setClubPaymentProvider(data.clubPaymentProvider || "");
+          setAsaasEnvironment(data.asaasEnvironment || "SANDBOX");
+          setAsaasConfigured(data.asaasConfigured || false);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar configurações de pagamento", err);
+      } finally {
+        setPaymentLoading(false);
+      }
+    };
+
+    fetchPaymentSettings();
+  }, [slug]);
+
+  const handleCloseMessage = () => {
+    setMessage(null);
+    setError(null);
+  };
 
   const handleOpenForm = (plan?: ClubPlan) => {
     if (plan) {
@@ -169,6 +206,34 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
     }
   };
 
+  const handleSavePaymentSettings = async () => {
+    setPaymentSaving(true);
+    setPaymentError(null);
+    setPaymentMessage(null);
+
+    try {
+      const res = await fetch(`/api/admin/${slug}/club/payment-settings`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          clubPaymentProvider: clubPaymentProvider || null,
+          asaasEnvironment,
+          asaasApiKey: asaasApiKeyInput || undefined,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Erro ao salvar configurações");
+
+      const data = await res.json();
+      setAsaasConfigured(data.asaasConfigured);
+      setAsaasApiKeyInput("");
+      setPaymentMessage("Configuração de pagamento salva.");
+    } catch (err) {
+      setPaymentError("Ocorreu um erro ao salvar as configurações de pagamento.");
+    } finally {
+      setPaymentSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-10">
       {/* Header */}
@@ -208,6 +273,104 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans }: P
             <p className="text-xs text-muted-foreground uppercase font-bold">Gateway de Pagamento</p>
             <p className="font-semibold">{initialTenant.clubPaymentProvider || "Não configurado"}</p>
           </div>
+        </div>
+      </div>
+
+      {/* Payment Settings Card */}
+      <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
+        <div className="p-6 border-b bg-muted/30">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <CreditCard size={20} className="text-primary" /> Pagamento do clube
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Configure como os clientes pagarão as assinaturas deste clube.
+          </p>
+        </div>
+        
+        <div className="p-6 space-y-6">
+          {paymentLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Gateway do clube</label>
+                  <select 
+                    className="w-full p-2 rounded-md border bg-background"
+                    value={clubPaymentProvider}
+                    onChange={(e) => setClubPaymentProvider(e.target.value as any)}
+                  >
+                    <option value="">Selecione um gateway</option>
+                    <option value="ASAAS">ASAAS</option>
+                    <option value="MERCADO_PAGO">MERCADO PAGO</option>
+                  </select>
+                </div>
+
+                {clubPaymentProvider === "MERCADO_PAGO" && (
+                  <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 text-blue-700 dark:text-blue-300 text-xs">
+                    Mercado Pago será configurado em uma próxima etapa.
+                  </div>
+                )}
+
+                {clubPaymentProvider === "ASAAS" && (
+                  <div className="space-y-4 p-4 rounded-lg border bg-muted/20 animate-in fade-in zoom-in-95">
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium">Ambiente</label>
+                      <select 
+                        className="w-full p-2 rounded-md border bg-background"
+                        value={asaasEnvironment}
+                        onChange={(e) => setAsaasEnvironment(e.target.value as any)}
+                      >
+                        <option value="SANDBOX">SANDBOX (Testes)</option>
+                        <option value="PRODUCTION">PRODUCTION (Produção)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium">Chave API Asaas da barbearia</label>
+                      <input 
+                        type="password"
+                        className="w-full p-2 rounded-md border bg-background"
+                        value={asaasApiKeyInput}
+                        onChange={(e) => setAsaasApiKeyInput(e.target.value)}
+                        placeholder="$asaas_api_key..."
+                      />
+                      {asaasConfigured && (
+                        <p className="text-[10px] text-emerald-600 flex items-center gap-1 mt-1">
+                          <ShieldCheck size={12} /> Chave Asaas cadastrada. Preencha novamente apenas se quiser substituir.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col justify-end space-y-4">
+                {paymentMessage && (
+                  <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300 text-sm">
+                    {paymentMessage}
+                  </div>
+                )}
+                {paymentError && (
+                  <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900 text-red-700 dark:text-red-300 text-sm">
+                    {paymentError}
+                  </div>
+                )}
+                <button
+                  disabled={paymentSaving}
+                  onClick={handleSavePaymentSettings}
+                  className="w-full md:w-auto self-end px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {paymentSaving ? (
+                    <Loader2 className="animate-spin" size={18} />
+                  ) : (
+                    "Salvar configuração"
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

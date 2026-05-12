@@ -31,6 +31,8 @@ model Tenant {
   googleMapsLink                String?
   clubEnabled                   Boolean                   @default(false)
   clubPaymentProvider           ClubPaymentProvider?
+  clubAsaasApiKeyEnc            String?
+  clubAsaasEnvironment          ClubAsaasEnvironment      @default(SANDBOX)
   clubPlans                     ClubPlan[]
   clubSubscriptions             ClubSubscription[]
   appointments                  Appointment[]
@@ -394,6 +396,11 @@ enum ClientPhoneVerificationPurpose {
   CLUB_PORTAL
   CLUB_USE_BENEFIT
   CLUB_CANCEL
+}
+
+enum ClubAsaasEnvironment {
+  SANDBOX
+  PRODUCTION
 }
 
 enum Weekday {
