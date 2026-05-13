@@ -352,107 +352,164 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
 
         {timelineData.length > 0 ? (
           <div className="grid gap-4">
-            {timelineData.map((item: any) => item.isFree ? (
-              // --- SLOT LIVRE ---
-              <div
-                key={item.id}
-                className="group flex items-center justify-between p-4 bg-zinc-50/50 dark:bg-zinc-900/20 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl hover:bg-white dark:hover:bg-zinc-900 hover:border-emerald-500/50 transition-all duration-300"
-              >
-                <div className="flex items-center gap-4">
-                  <span className="text-sm font-black text-zinc-400 dark:text-zinc-500 w-12">{item.time}</span>
-                  <div className="h-4 w-[2px] bg-zinc-200 dark:bg-zinc-800" />
-                  <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">Disponível</span>
-                </div>
-
-                <button
-                  onClick={() => {
-                    setManualForm({
-                      ...manualForm,
-                      time: item.time,
-                      date: date
-                    });
-                    setIsModalOpen(true);
-                  }}
-                  className="opacity-100 md:opacity-0 md:group-hover:opacity-100 flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all shadow-sm active:scale-95"
-                >
-                  <Plus size={14} /> Reservar
-                </button>
-              </div>
-            ) : (
-              // --- CARD DE AGENDAMENTO ---
-              /* --- CARD DE AGENDAMENTO COMPACTO NO MOBILE --- */
-              <div key={item.id} className="group flex flex-col lg:flex-row bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/40 dark:shadow-none overflow-hidden transition-all hover:border-emerald-500/50">
-                {/* LADO ESQUERDO: HORÁRIO */}
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-6 flex lg:flex-col items-center justify-between border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 lg:w-48 text-center">
-                  <div>
-                    <p className="text-[9px] sm:text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-0.5 sm:mb-1">Horário</p>
-                    <p className="text-2xl sm:text-4xl font-black text-zinc-900 dark:text-white italic tracking-tighter leading-none">
-                      {formatBR(item.startAt, "HH:mm")}
-                    </p>
-                  </div>
-                  {activeProfId === null && (
-                    <div className="mt-0 lg:mt-4 flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-900 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border border-zinc-200 dark:border-zinc-800">
-                      <Scissors size={12} /> {item.professional.name.split(' ')[0]}
+            {timelineData.map((item: any) => {
+              if (item.isFree) {
+                return (
+                  // --- SLOT LIVRE ---
+                  <div
+                    key={item.id}
+                    className="group flex items-center justify-between p-4 bg-zinc-50/50 dark:bg-zinc-900/20 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl hover:bg-white dark:hover:bg-zinc-900 hover:border-emerald-500/50 transition-all duration-300"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-black text-zinc-400 dark:text-zinc-500 w-12">{item.time}</span>
+                      <div className="h-4 w-[2px] bg-zinc-200 dark:bg-zinc-800" />
+                      <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">Disponível</span>
                     </div>
-                  )}
-                </div>
 
-                {/* CONTEÚDO CENTRAL: CLIENTE E SERVIÇO */}
-                <div className="flex-1 p-4 sm:p-6">
-                  <div className="flex justify-between items-start mb-2 sm:mb-3">
-                    <h4 className="font-black text-lg sm:text-2xl text-zinc-900 dark:text-white uppercase leading-tight truncate">
-                      {item.client.name}
-                    </h4>
-                    {item.client.phoneE164 && (
-                      <a
-                        href={`https://wa.me/${item.client.phoneE164.replace(/\D/g, '')}`}
-                        target="_blank"
-                        className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl lg:hidden"
-                      >
-                        <MessageCircle size={18} />
-                      </a>
+                    <button
+                      onClick={() => {
+                        setManualForm({
+                          ...manualForm,
+                          time: item.time,
+                          date: date
+                        });
+                        setIsModalOpen(true);
+                      }}
+                      className="opacity-100 md:opacity-0 md:group-hover:opacity-100 flex items-center gap-2 px-4 py-2 rounded-xl bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all shadow-sm active:scale-95"
+                    >
+                      <Plus size={14} /> Reservar
+                    </button>
+                  </div>
+                );
+              }
+
+              const hasClubReference = Boolean(item.clubSubscriptionId || item.clubPlanName);
+
+              const usedIncludedBenefit =
+                hasClubReference &&
+                typeof item.clubOriginalPrice === "number" &&
+                typeof item.clubDiscountAmount === "number" &&
+                typeof item.clubFinalPrice === "number" &&
+                item.clubOriginalPrice > 0 &&
+                item.clubDiscountAmount === item.clubOriginalPrice &&
+                item.clubFinalPrice === 0;
+
+              const usedClubPercentDiscount =
+                hasClubReference &&
+                typeof item.clubDiscountAmount === "number" &&
+                typeof item.clubFinalPrice === "number" &&
+                item.clubDiscountAmount > 0 &&
+                item.clubFinalPrice > 0;
+
+              const clubValidatedButNoAppliedBenefit =
+                hasClubReference &&
+                !usedIncludedBenefit &&
+                !usedClubPercentDiscount;
+
+              const finalPriceToDisplay = hasClubReference && typeof item.clubFinalPrice === "number"
+                ? item.clubFinalPrice
+                : item.service.price;
+
+              return (
+                // --- CARD DE AGENDAMENTO ---
+                /* --- CARD DE AGENDAMENTO COMPACTO NO MOBILE --- */
+                <div key={item.id} className="group flex flex-col lg:flex-row bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/40 dark:shadow-none overflow-hidden transition-all hover:border-emerald-500/50">
+                  {/* LADO ESQUERDO: HORÁRIO */}
+                  <div className="bg-zinc-50 dark:bg-zinc-950 p-4 sm:p-6 flex lg:flex-col items-center justify-between border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 lg:w-48 text-center">
+                    <div>
+                      <p className="text-[9px] sm:text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-0.5 sm:mb-1">Horário</p>
+                      <p className="text-2xl sm:text-4xl font-black text-zinc-900 dark:text-white italic tracking-tighter leading-none">
+                        {formatBR(item.startAt, "HH:mm")}
+                      </p>
+                    </div>
+                    {activeProfId === null && (
+                      <div className="mt-0 lg:mt-4 flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-900 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border border-zinc-200 dark:border-zinc-800">
+                        <Scissors size={12} /> {item.professional.name.split(' ')[0]}
+                      </div>
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-0 sm:mb-4">
-                    {[
-                      { Icon: Scissors, text: item.service.name },
-                      { Icon: Clock, text: `${item.service.durationMin || 0} min` },
-                      { Icon: DollarSign, text: formatCurrency(item.service.price) }
-                    ].map(badge => (
-                      <span key={badge.text} className="flex items-center gap-1 text-[9px] sm:text-xs font-black uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg">
-                        <badge.Icon size={12} /> {badge.text}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* --- BLOCO DO CLUBE DE ASSINATURAS --- */}
-                  {item.clubSubscriptionId && (
-                    <div className="mb-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Crown size={14} className="text-amber-600 dark:text-amber-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-500">Clube Aplicado: {item.clubPlanName}</span>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-4">
-                        <div>
-                          <p className="text-[8px] font-bold text-amber-600/70 uppercase">Original</p>
-                          <p className="text-xs font-bold text-zinc-500 line-through">{formatCurrency(item.clubOriginalPrice || 0)}</p>
-                        </div>
-                        <div>
-                          <p className="text-[8px] font-bold text-amber-600/70 uppercase">Desconto</p>
-                          <p className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
-                            <BadgePercent size={10} /> -{formatCurrency(item.clubDiscountAmount || 0)}
-                          </p>
-                        </div>
-                        <div className="col-span-2 sm:col-span-1">
-                          <p className="text-[8px] font-bold text-amber-600/70 uppercase">Valor Final</p>
-                          <p className="text-sm font-black text-amber-700 dark:text-amber-400 italic">
-                            {formatCurrency(item.clubFinalPrice || 0)}
-                          </p>
-                        </div>
-                      </div>
+                  {/* CONTEÚDO CENTRAL: CLIENTE E SERVIÇO */}
+                  <div className="flex-1 p-4 sm:p-6">
+                    <div className="flex justify-between items-start mb-2 sm:mb-3">
+                      <h4 className="font-black text-lg sm:text-2xl text-zinc-900 dark:text-white uppercase leading-tight truncate">
+                        {item.client.name}
+                      </h4>
+                      {item.client.phoneE164 && (
+                        <a
+                          href={`https://wa.me/${item.client.phoneE164.replace(/\D/g, '')}`}
+                          target="_blank"
+                          className="p-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl lg:hidden"
+                        >
+                          <MessageCircle size={18} />
+                        </a>
+                      )}
                     </div>
-                  )}
+
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-0 sm:mb-4">
+                      {[
+                        { Icon: Scissors, text: item.service.name },
+                        { Icon: Clock, text: `${item.service.durationMin || 0} min` },
+                        { Icon: DollarSign, text: formatCurrency(finalPriceToDisplay) }
+                      ].map(badge => (
+                        <span key={badge.text} className="flex items-center gap-1 text-[9px] sm:text-xs font-black uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg">
+                          <badge.Icon size={12} /> {badge.text}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* --- BLOCO DO CLUBE DE ASSINATURAS --- */}
+                    {hasClubReference && (
+                      <div className="mb-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Crown size={14} className="text-amber-600 dark:text-amber-500" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-500">
+                            {usedIncludedBenefit && "Benefício incluso utilizado"}
+                            {usedClubPercentDiscount && "Desconto do clube aplicado"}
+                            {clubValidatedButNoAppliedBenefit && "Assinatura do clube identificada"}
+                          </span>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-2 gap-x-4">
+                            {item.clubPlanName && (
+                              <div className="col-span-2 sm:col-span-3">
+                                <p className="text-[8px] font-bold text-amber-600/70 uppercase">Plano</p>
+                                <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{item.clubPlanName}</p>
+                              </div>
+                            )}
+                            {(usedIncludedBenefit || usedClubPercentDiscount) && (
+                              <>
+                                <div>
+                                  <p className="text-[8px] font-bold text-amber-600/70 uppercase">Original</p>
+                                  <p className="text-xs font-bold text-zinc-500 line-through">
+                                    {formatCurrency(item.clubOriginalPrice || 0)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[8px] font-bold text-amber-600/70 uppercase">Desconto</p>
+                                  <p className="text-xs font-bold text-emerald-600 flex items-center gap-0.5">
+                                    <BadgePercent size={10} /> -{formatCurrency(item.clubDiscountAmount || 0)}
+                                  </p>
+                                </div>
+                                <div className="col-span-2 sm:col-span-1">
+                                  <p className="text-[8px] font-bold text-amber-600/70 uppercase">Valor Final</p>
+                                  <p className="text-sm font-black text-amber-700 dark:text-amber-400 italic">
+                                    {formatCurrency(item.clubFinalPrice || 0)}
+                                  </p>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {clubValidatedButNoAppliedBenefit && (
+                            <div className="pt-2 border-t border-amber-500/10">
+                              <p className="text-[9px] font-medium text-amber-700/80 dark:text-amber-400/80 italic">Sem benefício aplicado neste agendamento.</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                   {/* --- INÍCIO: BOX DE OBSERVAÇÕES E CONTATO --- */}
                   {(item.notes || item.client.phoneE164) && (
@@ -503,7 +560,8 @@ export default function AdminAppointmentsClient({ slug, isMaster }: { slug: stri
                   </button>
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
         ) : (
           <div className="rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 p-16 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 shadow-sm transition-colors">

@@ -117,6 +117,31 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
   const isCanceled = data.status === "CANCELED";
   const primaryColor = data.tenant?.primaryColor || "#10b981";
 
+  const hasClubReference = Boolean(data.clubSubscriptionId || data.clubPlanName);
+
+  const usedIncludedBenefit =
+    hasClubReference &&
+    typeof data.clubOriginalPrice === "number" &&
+    typeof data.clubDiscountAmount === "number" &&
+    typeof data.clubFinalPrice === "number" &&
+    data.clubOriginalPrice > 0 &&
+    data.clubDiscountAmount === data.clubOriginalPrice &&
+    data.clubFinalPrice === 0;
+
+  const usedClubPercentDiscount =
+    hasClubReference &&
+    typeof data.clubDiscountAmount === "number" &&
+    typeof data.clubFinalPrice === "number" &&
+    data.clubDiscountAmount > 0 &&
+    data.clubFinalPrice > 0;
+
+  const clubValidatedButNoAppliedBenefit =
+    hasClubReference && !usedIncludedBenefit && !usedClubPercentDiscount;
+
+  const finalPriceToDisplay = hasClubReference
+    ? (data.clubFinalPrice ?? data.service?.price)
+    : data.service?.price;
+
   return (
     <div 
       className="min-h-[100dvh] p-4 flex flex-col items-center justify-center antialiased relative overflow-hidden"
@@ -201,33 +226,65 @@ export default function ManageAppointmentClient({ slug, id }: { slug: string; id
             </div>
 
             {/* BENEFÍCIO DO CLUBE */}
-            {data.clubSubscriptionId && (
+            {hasClubReference && (
               <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20">
                 <div className="flex items-center gap-2 mb-2">
                   <Crown size={14} className="text-amber-500" />
-                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Benefício do clube aplicado</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">
+                    {usedIncludedBenefit && "Benefício incluso utilizado"}
+                    {usedClubPercentDiscount && "Desconto do clube aplicado"}
+                    {clubValidatedButNoAppliedBenefit && "Assinatura do clube identificada"}
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <p className="text-[8px] font-bold text-zinc-500 uppercase">Plano</p>
-                    <p className="text-xs font-bold text-white">{data.clubPlanName}</p>
+                
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {data.clubPlanName && (
+                      <div className="col-span-2 sm:col-span-3">
+                        <p className="text-[8px] font-bold text-zinc-500 uppercase">Plano</p>
+                        <p className="text-xs font-bold text-white">{data.clubPlanName}</p>
+                      </div>
+                    )}
+                    {(usedIncludedBenefit || usedClubPercentDiscount) && (
+                      <div>
+                        <p className="text-[8px] font-bold text-zinc-500 uppercase">Desconto</p>
+                        <p className="text-xs font-bold text-emerald-500 flex items-center gap-0.5">
+                          <BadgePercent size={10} /> -{formatCurrencyFromCents(data.clubDiscountAmount)}
+                        </p>
+                      </div>
+                    )}
+                    {(usedIncludedBenefit || usedClubPercentDiscount) && (
+                      <div>
+                        <p className="text-[8px] font-bold text-zinc-500 uppercase">Valor Final</p>
+                        <p className="text-xs font-black text-amber-500 italic">
+                          {formatCurrencyFromCents(data.clubFinalPrice)}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <p className="text-[8px] font-bold text-zinc-500 uppercase">Desconto</p>
-                    <p className="text-xs font-bold text-emerald-500 flex items-center gap-0.5">
-                      <BadgePercent size={10} /> -{formatCurrencyFromCents(data.clubDiscountAmount)}
-                    </p>
-                  </div>
+
+                  {(usedIncludedBenefit || usedClubPercentDiscount) && (
+                    <div className="pt-2 border-t border-amber-500/10 flex justify-between items-center">
+                      <p className="text-[8px] font-bold text-zinc-500 uppercase">Valor Original</p>
+                      <p className="text-[10px] font-bold text-zinc-400 line-through">
+                        {formatCurrencyFromCents(data.clubOriginalPrice)}
+                      </p>
+                    </div>
+                  )}
+
+                  {clubValidatedButNoAppliedBenefit && (
+                    <p className="text-[9px] font-medium text-zinc-400 italic">Este agendamento seguiu sem benefício aplicado.</p>
+                  )}
                 </div>
               </div>
             )}
 
             <div className="pt-4 flex justify-between items-end">
               <div>
-                 <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-0.5">Total a pagar</p>
-                 <p className="text-2xl font-black italic text-white leading-none">
-                   {formatCurrencyFromCents(data.clubSubscriptionId ? data.clubFinalPrice : data.service?.price)}
-                 </p>
+                <p className="text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-0.5">Total a pagar</p>
+                <p className="text-2xl font-black italic text-white leading-none">
+                  {formatCurrencyFromCents(finalPriceToDisplay)}
+                </p>
               </div>
               <span className="text-[9px] bg-white text-zinc-900 px-2.5 py-1.5 rounded-lg font-black uppercase tracking-widest">No Local</span>
             </div>

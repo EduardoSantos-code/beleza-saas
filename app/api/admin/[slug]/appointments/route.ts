@@ -15,7 +15,10 @@ export async function GET(
     // 2. Buscamos o salão (Tenant)
     const tenant = await prisma.tenant.findUnique({
       where: { slug },
-      select: { id: true, name: true }
+      select: { 
+        id: true, 
+        name: true
+      }
     });
 
     if (!tenant) {
@@ -40,12 +43,13 @@ export async function GET(
         client: true,
         professional: true,
         service: true,
-        // Os campos clubSubscriptionId, clubPlanName, clubOriginalPrice, 
-        // clubDiscountAmount e clubFinalPrice já são incluídos automaticamente 
-        // por estarem no modelo Appointment e não haver um 'select' restritivo 
-        // no nível superior desta query.
       },
-      orderBy: { startAt: "asc" },
+      // Nota: Campos de clube (clubSubscriptionId, clubPlanName, clubOriginalPrice, 
+      // clubDiscountAmount, clubFinalPrice) são incluídos automaticamente por serem
+      // campos escalares do modelo Appointment e não haver 'select' restritivo.
+      orderBy: {
+        startAt: "asc",
+      },
     });
 
     // 2. Buscamos todos os serviços (Necessário para o Modal de Agendamento Manual)

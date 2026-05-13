@@ -63,6 +63,23 @@ type ActiveClubMembership = {
   currentPeriodEnd: string;
 };
 
+type ClubBenefitEligibility = {
+  ok: boolean;
+  hasActiveMembership: boolean;
+  membership?: {
+    subscriptionId: string;
+    planName: string;
+    discountPercent: number | null;
+  };
+  includedBenefit?: {
+    configured: boolean;
+    eligible: boolean;
+    available: boolean;
+    usedCount: number;
+    totalAllowed: number;
+  };
+};
+
 export default function BookingPageClient({ slug }: { slug: string }) {
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
@@ -92,6 +109,24 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   const [clubDevCode, setClubDevCode] = useState("");
   const [activeClubMembership, setActiveClubMembership] = useState<ActiveClubMembership | null>(null);
   const [validatedClubPhone, setValidatedClubPhone] = useState<string | null>(null);
+
+  const [clubBenefitEligibility, setClubBenefitEligibility] = useState<ClubBenefitEligibility | null>(null);
+  const [clubBenefitEligibilityLoading, setClubBenefitEligibilityLoading] = useState(false);
+  const [clubBenefitEligibilityError, setClubBenefitEligibilityError] = useState<string | null>(null);
+
+  const includedBenefitConfigured = 
+    Boolean(clubBenefitEligibility?.includedBenefit?.configured);
+  const includedBenefitEligible = 
+    Boolean(clubBenefitEligibility?.includedBenefit?.eligible);
+  const includedBenefitAvailable = 
+    Boolean(clubBenefitEligibility?.includedBenefit?.available);
+  const membershipDiscountPercent = 
+    clubBenefitEligibility?.membership?.discountPercent ?? null;
+  
+  const benefitUsage = {
+    remaining: (clubBenefitEligibility?.includedBenefit?.totalAllowed ?? 0) - (clubBenefitEligibility?.includedBenefit?.usedCount ?? 0),
+    total: clubBenefitEligibility?.includedBenefit?.totalAllowed ?? 0
+  };
 
   const selectedProfessional = useMemo(() => {
     return catalog?.professionals.find((p) => p.id === professionalId) || null;
@@ -175,6 +210,43 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   const selectedService = useMemo(() => {
     return catalog?.services.find((s) => s.id === serviceId) || null;
   }, [catalog, serviceId]);
+
+  async function loadClubBenefitEligibility(sId: string, sDate: string) {
+    if (!activeClubMembership) {
+      setClubBenefitEligibility(null);
+      return;
+    }
+    try {
+      setClubBenefitEligibilityLoading(true);
+      setClubBenefitEligibilityError(null);
+      const qs = new URLSearchParams({ serviceId: sId, date: sDate });
+      const res = await fetch(`/api/public/${slug}/club/benefit/eligibility?${qs.toString()}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Erro ao verificar elegibilidade");
+      const data: ClubBenefitEligibility = await res.json();
+      setClubBenefitEligibility(data);
+    } catch (err) {
+      setClubBenefitEligibility(null);
+    } finally {
+      setClubBenefitEligibilityLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activeClubMembership && serviceId && date) {
+      loadClubBenefitEligibility(serviceId, date);
+    } else {
+      setClubBenefitEligibility(null);
+    }
+  }, [activeClubMembership, serviceId, date]);
+
+  useEffect(() => {
+    if (!activeClubMembership) {
+      setClubBenefitEligibility(null);
+    }
+  }, [activeClubMembership]);
 
   const primaryColor = catalog?.tenant.primaryColor || "#10b981";
 
@@ -303,13 +375,20 @@ export default function BookingPageClient({ slug }: { slug: string }) {
       setSubmitting(true);
       setErrorMessage("");
 
+      console.log("[BOOKING_SUBMIT_DEBUG]", {
+        useClubBenefit: Boolean(activeClubMembership),
+        validatedClubPhone,
+        clientPhoneE164,
+        selectedServiceId: selectedService?.id ?? null,
+      });
+
       const res = await fetch(`/api/public/${slug}/appointments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           serviceId, professionalId, startAt: selectedSlot, 
           clientName: clientName.trim(), clientPhoneE164: clientPhoneE164.trim(), notes,
-          useClubBenefit: !!activeClubMembership
+          useClubBenefit: Boolean(activeClubMembership)
         }),
       });
 
@@ -672,15 +751,11 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                       <CheckCircle size={20} />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-emerald-900 dark:text-emerald-100 uppercase tracking-tight">Assinatura Validada!</h3>
+                      <h3 className="text-sm font-black text-emerald-900 dark:text-emerald-100 uppercase tracking-tight">Assinatura Validada</h3>
                       <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                        Plano ativo: {activeClubMembership.planName}
+                        Plano: {activeClubMembership.planName}
                       </p>
-                      {activeClubMembership.discountPercent && (
-                        <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase mt-0.5">
-                          Desconto disponível: {activeClubMembership.discountPercent}%
-                        </p>
-                      )}
+                      <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase mt-0.5">Verificando benefícios para o serviço...</p>
                     </div>
                   </div>
                 )}
@@ -770,23 +845,70 @@ export default function BookingPageClient({ slug }: { slug: string }) {
               </div>
 
               {/* RESUMO DO BENEFÍCIO DO CLUBE */}
-              {activeClubMembership && (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-900/10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Crown className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
-                    <h4 className="text-xs font-black uppercase text-emerald-900 dark:text-emerald-100">
-                      Benefício do clube será aplicado
-                    </h4>
-                  </div>
-                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                    Plano: {activeClubMembership.planName}
-                  </p>
-                  {activeClubMembership.discountPercent && (
-                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-500">
-                      Desconto: {activeClubMembership.discountPercent}%
-                    </p>
+              {activeClubMembership && clubBenefitEligibility && (
+                <div className="mt-4">
+                  {clubBenefitEligibilityLoading ? (
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase animate-pulse">Verificando benefício do clube...</p>
+                  ) : (
+                    <>
+                      {/* CASO A: Benefício Incluso Disponível */}
+                      {includedBenefitConfigured && includedBenefitEligible && includedBenefitAvailable && (
+                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/50 dark:bg-emerald-900/10">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Crown className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
+                            <h4 className="text-xs font-black uppercase text-emerald-900 dark:text-emerald-100">Serviço Coberto</h4>
+                          </div>
+                          <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Este agendamento será coberto pelo seu clube.</p>
+                          <p className="text-[10px] font-black text-emerald-600 uppercase mt-1">Uso disponível: {benefitUsage.remaining} de {benefitUsage.total}</p>
+                        </div>
+                      )}
+
+                      {/* CASO B: Benefício Incluso Esgotado */}
+                      {includedBenefitConfigured && includedBenefitEligible && !includedBenefitAvailable && (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-900/10">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Info className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                            <h4 className="text-xs font-black uppercase text-amber-900 dark:text-amber-100">Limite Atingido</h4>
+                          </div>
+                          <p className="text-xs font-bold text-amber-700 dark:text-amber-400">Seu benefício incluído para este serviço já foi utilizado neste período.</p>
+                          {membershipDiscountPercent && membershipDiscountPercent > 0 ? (
+                            <p className="text-[10px] font-black text-amber-600 uppercase mt-1">Seu plano ainda aplica {membershipDiscountPercent}% de desconto.</p>
+                          ) : (
+                            <p className="text-[10px] font-black text-amber-600 uppercase mt-1">Este agendamento seguirá com preço normal.</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* CASO C: Não incluso, mas tem desconto */}
+                      {!includedBenefitConfigured && membershipDiscountPercent && membershipDiscountPercent > 0 && (
+                        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/50 dark:bg-blue-900/10">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Crown className="h-4 w-4 text-blue-600 dark:text-blue-500" />
+                            <h4 className="text-xs font-black uppercase text-blue-900 dark:text-blue-100">Desconto VIP</h4>
+                          </div>
+                          <p className="text-xs font-bold text-blue-700 dark:text-blue-400">Este serviço não faz parte do benefício incluso do seu plano.</p>
+                          <p className="text-[10px] font-black text-blue-600 uppercase mt-1">Seu plano aplica {membershipDiscountPercent}% de desconto neste agendamento.</p>
+                        </div>
+                      )}
+
+                      {/* CASO D: Sem benefício para este serviço */}
+                      {!includedBenefitConfigured && (!membershipDiscountPercent || membershipDiscountPercent === 0) && (
+                        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Info className="h-4 w-4 text-zinc-400" />
+                            <h4 className="text-xs font-black uppercase text-zinc-500">Plano Ativo</h4>
+                          </div>
+                          <p className="text-xs font-bold text-zinc-600 dark:text-zinc-400">Este serviço não possui benefício incluso configurado no seu plano.</p>
+                          <p className="text-[10px] font-black text-zinc-500 uppercase mt-1">Este agendamento seguirá com preço normal.</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
+              )}
+
+              {activeClubMembership && !clubBenefitEligibility && !clubBenefitEligibilityLoading && (
+                <p className="text-[10px] font-bold text-zinc-400 uppercase mt-4">Selecione serviço e data para ver benefícios.</p>
               )}
 
               {errorMessage && (

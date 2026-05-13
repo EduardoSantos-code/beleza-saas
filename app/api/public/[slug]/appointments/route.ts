@@ -154,52 +154,67 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const appointment = await prisma.$transaction(async (tx) => {
       const clientRecord = await tx.client.upsert({
         where: { tenantId_phoneE164: { tenantId: tenant.id, phoneE164: clientPhoneE164 } },
-        update: { name: clientName },
-        create: { tenantId: tenant.id, name: clientName, phoneE164: clientPhoneE164 }
+        update: { name: clientName.trim() },
+        create: { tenantId: tenant.id, name: clientName.trim(), phoneE164: clientPhoneE164 }
       });
 
+      let appliedClubMode: "NONE" | "INCLUDED_FREE_SERVICE" | "PERCENT_DISCOUNT" = "NONE";
       let clubSubscriptionId: string | null = null;
       let clubPlanName: string | null = null;
-      let finalClubOriginalPrice: number | null = null;
-      let finalClubDiscountAmount: number | null = null;
-      let finalClubFinalPrice: number | null = null;
-      let shouldUseIncludedBenefit = false;
-      let periodKey = "";
+      let clubOriginalPrice: number | null = null;
+      let clubDiscountAmount: number | null = null;
+      let clubFinalPrice: number | null = null;
+      let periodKey = ""; // Used for usage tracking
 
       if (subscriptionData && subscriptionData.plan) {
         const plan = subscriptionData.plan;
+
+        // Inicializa estado base do clube (Caso NORMAL_PRICE com assinatura válida) para persistência
         clubSubscriptionId = subscriptionData.id;
         clubPlanName = plan.name;
+        clubOriginalPrice = service.price || 0;
+        clubDiscountAmount = 0;
+        clubFinalPrice = service.price || 0;
 
-        if (plan.includedBenefitType === "FREE_SERVICE" && plan.includedServiceId === service.id && (plan.includedUsesPerPeriod || 0) > 0) {
+        // 1. Tentar Benefício Incluso (Grátis)
+        const isEligibleForFree =
+          plan.includedBenefitType === "FREE_SERVICE" &&
+          (plan.includedUsesPerPeriod ?? 0) > 0;
+
+        if (isEligibleForFree) {
           periodKey = getBenefitPeriodKey(startUtc);
           const usedCount = await tx.clubBenefitUsage.count({
             where: {
               tenantId: tenant.id,
               subscriptionId: subscriptionData.id,
               serviceId: service.id,
-              periodKey,
+              periodKey: periodKey,
               benefitType: "FREE_SERVICE",
             },
           });
 
-          if (usedCount < (plan.includedUsesPerPeriod || 0)) {
-            shouldUseIncludedBenefit = true;
-            const freePrices = calculateFreeServicePrice(service.price || 0);
-            finalClubOriginalPrice = freePrices.originalPrice;
-            finalClubDiscountAmount = freePrices.discountAmount;
-            finalClubFinalPrice = freePrices.finalPrice;
+          if (usedCount < (plan.includedUsesPerPeriod ?? 0)) {
+            const prices = calculateFreeServicePrice(service.price || 0);
+            clubOriginalPrice = prices.originalPrice;
+            clubDiscountAmount = prices.discountAmount;
+            clubFinalPrice = prices.finalPrice;
+            appliedClubMode = "INCLUDED_FREE_SERVICE";
           }
         }
 
-        if (!shouldUseIncludedBenefit && typeof plan.discountPercent === "number") {
-          const discountPrices = calculateClubDiscount(service.price || 0, plan.discountPercent);
-          finalClubOriginalPrice = discountPrices.originalPrice;
-          finalClubDiscountAmount = discountPrices.discountAmount;
-          finalClubFinalPrice = discountPrices.finalPrice;
+        // 2. Fallback para Desconto Percentual se não aplicou grátis
+        if (appliedClubMode === "NONE" && (plan.discountPercent ?? 0) > 0) {
+          const prices = calculateClubDiscount(service.price || 0, plan.discountPercent);
+          clubOriginalPrice = prices.originalPrice;
+          clubDiscountAmount = prices.discountAmount;
+          clubFinalPrice = prices.finalPrice;
+          appliedClubMode = "PERCENT_DISCOUNT";
         }
+
+        // Se appliedClubMode continuar "NONE", os valores base inicializados acima (NORMAL_PRICE) serão persistidos.
       }
 
+      // 3. Criar o agendamento com os valores definidos acima
       const newAppointment = await tx.appointment.create({
         data: {
           tenantId: tenant.id,
@@ -213,9 +228,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
           startAt: startUtc, // Salva a data cravada
           clubSubscriptionId,
           clubPlanName,
-          clubOriginalPrice: finalClubOriginalPrice,
-          clubDiscountAmount: finalClubDiscountAmount,
-          clubFinalPrice: finalClubFinalPrice,
+          clubOriginalPrice,
+          clubDiscountAmount,
+          clubFinalPrice,
           endAt: endUtc,
           notes,
           status: "CONFIRMED",
@@ -223,7 +238,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
         include: { professional: true, service: true, tenant: true, client: true }
       });
 
-      if (shouldUseIncludedBenefit && subscriptionData) {
+      // 4. Registrar uso do benefício apenas se foi INCLUDED_FREE_SERVICE
+      if (appliedClubMode === "INCLUDED_FREE_SERVICE" && subscriptionData) {
         await tx.clubBenefitUsage.create({
           data: {
             tenantId: tenant.id,

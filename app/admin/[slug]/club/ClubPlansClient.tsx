@@ -22,7 +22,10 @@ import {
   AlertTriangle,
   Clock,
   BadgePercent,
-  CalendarCheck
+  CalendarCheck,
+  History,
+  Scissors,
+  CalendarClock
 } from "lucide-react";
 
 type ClubTenant = {
@@ -95,6 +98,32 @@ type ClubSummary = {
   clubAppointmentsThisMonth: number;
 };
 
+type ClubBenefitUsageItem = {
+  id: string;
+  periodKey: string;
+  benefitType: "FREE_SERVICE";
+  createdAt: string;
+  client: {
+    id: string;
+    name: string;
+    phoneE164: string;
+  };
+  service: {
+    id: string;
+    name: string;
+    price: number;
+  };
+  plan: {
+    id: string;
+    name: string;
+  };
+  appointment: {
+    id: string;
+    status: string;
+    startsAt: string | null;
+  };
+};
+
 type Props = {
   slug: string;
   initialTenant: ClubTenant;
@@ -130,6 +159,12 @@ const formatDateBR = (dateStr: string | null) => {
   return new Intl.DateTimeFormat("pt-BR").format(date);
 };
 
+const formatDateTimeBR = (dateStr: string | null) => {
+  if (!dateStr) return "-";
+  const date = new Date(dateStr);
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+};
+
 export default function ClubPlansClient({ slug, initialTenant, initialPlans, initialServices }: Props) {
   const [plans, setPlans] = useState<ClubPlan[]>(initialPlans);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -160,6 +195,11 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans, ini
   const [summary, setSummary] = useState<ClubSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  // Benefit Usages States
+  const [benefitUsages, setBenefitUsages] = useState<ClubBenefitUsageItem[]>([]);
+  const [benefitUsagesLoading, setBenefitUsagesLoading] = useState(true);
+  const [benefitUsagesError, setBenefitUsagesError] = useState<string | null>(null);
 
   // Form States
   const [formData, setFormData] = useState({
@@ -195,6 +235,7 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans, ini
     fetchPaymentSettings();
     loadSubscribers();
     loadSummary();
+    loadBenefitUsages();
   }, [slug]);
 
   const loadSummary = async () => {
@@ -232,6 +273,22 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans, ini
       setSubscribersError("Não foi possível carregar a lista de assinantes.");
     } finally {
       setSubscribersLoading(false);
+    }
+  };
+
+  const loadBenefitUsages = async () => {
+    setBenefitUsagesLoading(true);
+    setBenefitUsagesError(null);
+    try {
+      const res = await fetch(`/api/admin/${slug}/club/benefit-usages?limit=20`);
+      if (!res.ok) throw new Error("Erro ao carregar usos");
+      const data = await res.json();
+      setBenefitUsages(Array.isArray(data.benefitUsages) ? data.benefitUsages : []);
+    } catch (err) {
+      setBenefitUsagesError("Não foi possível carregar o histórico de usos.");
+      setBenefitUsages([]);
+    } finally {
+      setBenefitUsagesLoading(false);
     }
   };
 
@@ -999,6 +1056,89 @@ export default function ClubPlansClient({ slug, initialTenant, initialPlans, ini
               ))
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Benefit Usages Section */}
+      <div className="mt-12 space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <History className="text-primary" /> Usos recentes de benefícios
+          </h2>
+        </div>
+
+        {benefitUsagesError && (
+          <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-400 text-xs flex items-center gap-2">
+            <AlertTriangle size={14} /> {benefitUsagesError}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {benefitUsagesLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-48 rounded-xl border bg-card animate-pulse" />
+            ))
+          ) : benefitUsages.length === 0 ? (
+            <div className="col-span-full py-10 text-center border-2 border-dashed rounded-xl text-muted-foreground">
+              Nenhum uso de benefício registrado até o momento.
+            </div>
+          ) : (
+            benefitUsages.map((usage) => (
+              <div key={usage.id} className="p-4 rounded-xl border bg-card space-y-3 shadow-sm">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-bold leading-tight">{usage.client.name}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">{usage.plan.name}</p>
+                  </div>
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <Scissors size={16} />
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between border-b border-dashed pb-1">
+                    <span className="text-muted-foreground">Serviço:</span>
+                    <span className="font-medium">{usage.service.name}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed pb-1">
+                    <span className="text-muted-foreground">Tipo:</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">Serviço grátis</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed pb-1">
+                    <span className="text-muted-foreground">Valor original:</span>
+                    <span className="font-medium">{formatCurrency(usage.service.price)}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed pb-1">
+                    <span className="text-muted-foreground">Período:</span>
+                    <span className="font-medium">{usage.periodKey}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed pb-1">
+                    <span className="text-muted-foreground">Data do uso:</span>
+                    <span className="font-medium">{formatDateBR(usage.createdAt)}</span>
+                  </div>
+                  
+                  {usage.appointment.startsAt && (
+                    <div className="flex items-center gap-2 p-2 rounded bg-muted/50 text-[11px]">
+                      <CalendarClock size={14} className="text-primary" />
+                      <div>
+                        <p className="font-semibold">Agendamento:</p>
+                        <p>{formatDateTimeBR(usage.appointment.startsAt)}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <a 
+                  href={whatsappLink(usage.client.phoneE164)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-500/20 transition-colors"
+                >
+                  <MessageCircle size={14} /> Contatar Cliente
+                </a>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
