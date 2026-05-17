@@ -1,113 +1,366 @@
-import { Smartphone, Wifi, WifiOff, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import {
+  MessageCircle,
+  Wifi,
+  WifiOff,
+  Clock3,
+  AlertCircle,
+  ExternalLink,
+} from "lucide-react";
+import { formatInTimeZone } from "date-fns-tz";
 
-// Função para buscar o status na VPS (Evolution API)
-async function getWhatsAppStatus() {
-  const evolutionUrl = process.env.NEXT_PUBLIC_EVOLUTION_URL || process.env.EVOLUTION_API_URL;
-  const apiKey = process.env.EVOLUTION_API_KEY;
-  const instanceName = process.env.EVOLUTION_INSTANCE || "TratoMarcado";
+async function getWhatsAppOverview() {
+  const [totalTenants, configured, connected, connecting, disconnected, tenants] =
+    await Promise.all([
+      prisma.tenant.count(),
+      prisma.whatsappConfig.count(),
+      prisma.whatsappConfig.count({
+        where: { status: "OPEN" },
+      }),
+      prisma.whatsappConfig.count({
+        where: { status: "CONNECTING" },
+      }),
+      prisma.whatsappConfig.count({
+        where: {
+          status: "DISCONNECTED",
+        },
+      }),
+      prisma.tenant.findMany({
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          createdAt: true,
+          planStatus: true,
+          subscriptionStatus: true,
+          whatsappConfig: {
+            select: {
+              instanceName: true,
+              status: true,
+              connectedPhone: true,
+              profileName: true,
+              lastConnectionAt: true,
+              updatedAt: true,
+            },
+          },
+        },
+      }),
+    ]);
 
-  if (!evolutionUrl || !apiKey) {
-    return { status: "CONFIG_ERROR" };
-  }
+  return {
+    totalTenants,
+    configured,
+    connected,
+    connecting,
+    disconnected,
+    notConfigured: Math.max(totalTenants - configured, 0),
+    tenants,
+  };
+}
 
-  try {
-    const res = await fetch(`${evolutionUrl}/instance/connectionState/${instanceName}`, {
-      method: "GET",
-      headers: {
-        "apikey": apiKey,
-      },
-      // cache: "no-store" garante que a página sempre pegue o status real da hora
-      cache: "no-store" 
-    });
+function MetricCard({
+  title,
+  value,
+  icon,
+  tone,
+}: {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  tone: "emerald" | "amber" | "red" | "zinc";
+}) {
+  const tones = {
+    emerald: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+    amber: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+    red: "bg-red-500/10 text-red-500 border-red-500/20",
+    zinc: "bg-zinc-800 text-zinc-300 border-zinc-700",
+  };
 
-    if (!res.ok) {
-      return { status: "OFFLINE" };
-    }
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-medium text-zinc-400">{title}</h3>
+        <div className={`rounded-lg border p-2 ${tones[tone]}`}>{icon}</div>
+      </div>
+      <p className="mt-4 text-2xl font-bold text-white sm:text-3xl">{value}</p>
+    </div>
+  );
+}
 
-    const data = await res.json();
-    // A Evolution geralmente retorna 'open' para conectado e 'close' para desconectado
-    return { status: data?.instance?.state || "UNKNOWN" }; 
+function statusBadge(status?: string | null) {
+  const base =
+    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium";
 
-  } catch (error) {
-    console.error("Erro ao checar Evolution:", error);
-    return { status: "OFFLINE" };
+  switch (status) {
+    case "OPEN":
+      return {
+        className:
+          `${base} border-emerald-500/20 bg-emerald-500/10 text-emerald-500`,
+        label: "Conectado",
+        icon: <Wifi size={14} />,
+      };
+    case "CONNECTING":
+      return {
+        className:
+          `${base} border-amber-500/20 bg-amber-500/10 text-amber-500`,
+        label: "Conectando",
+        icon: <Clock3 size={14} />,
+      };
+    case "DISCONNECTED":
+      return {
+        className:
+          `${base} border-red-500/20 bg-red-500/10 text-red-500`,
+        label: "Desconectado",
+        icon: <WifiOff size={14} />,
+      };
+    default:
+      return {
+        className: `${base} border-zinc-700 bg-zinc-800 text-zinc-300`,
+        label: "Sem configuração",
+        icon: <AlertCircle size={14} />,
+      };
   }
 }
 
 export default async function WhatsAppMasterPage() {
-  const connection = await getWhatsAppStatus();
-
-  // Tratamento visual baseado no status
-  const isConnected = connection.status === "open";
-  const isConfigError = connection.status === "CONFIG_ERROR";
+  const data = await getWhatsAppOverview();
+  const TZ = "America/Sao_Paulo";
+  const today = formatInTimeZone(new Date(), TZ, "yyyy-MM-dd");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h2 className="text-3xl font-bold text-white">Central do WhatsApp</h2>
-        <p className="text-zinc-400 mt-1">Gerencie a conexão do número oficial do TratoMarcado.</p>
+        <h2 className="text-2xl font-bold text-white sm:text-3xl">
+          Central do WhatsApp
+        </h2>
+        <p className="mt-1 text-sm text-zinc-400 sm:text-base">
+          Visão geral das conexões de WhatsApp por barbearia.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Card de Status da Conexão */}
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl flex flex-col items-center justify-center text-center space-y-4">
-          <div className={`p-4 rounded-full ${isConnected ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
-            {isConnected ? <Wifi size={40} /> : <WifiOff size={40} />}
-          </div>
-          
-          <div>
-            <h3 className="text-xl font-bold text-white">
-              {isConnected ? "Conectado e Operante" : "Desconectado"}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <MetricCard
+          title="Total de salões"
+          value={data.totalTenants}
+          icon={<MessageCircle size={20} />}
+          tone="zinc"
+        />
+        <MetricCard
+          title="Com WhatsApp configurado"
+          value={data.configured}
+          icon={<MessageCircle size={20} />}
+          tone="zinc"
+        />
+        <MetricCard
+          title="Conectados"
+          value={data.connected}
+          icon={<Wifi size={20} />}
+          tone="emerald"
+        />
+        <MetricCard
+          title="Conectando"
+          value={data.connecting}
+          icon={<Clock3 size={20} />}
+          tone="amber"
+        />
+        <MetricCard
+          title="Desconectados / sem config"
+          value={data.disconnected + data.notConfigured}
+          icon={<WifiOff size={20} />}
+          tone="red"
+        />
+      </div>
+
+      {data.tenants.length === 0 && (
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center text-zinc-500">
+          Nenhuma barbearia cadastrada ainda.
+        </div>
+      )}
+
+      {/* Mobile: cards */}
+      {data.tenants.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 md:hidden">
+          {data.tenants.map((tenant) => {
+            const badge = statusBadge(tenant.whatsappConfig?.status);
+
+            return (
+              <div
+                key={tenant.id}
+                className="rounded-xl border border-zinc-800 bg-zinc-900 p-4"
+              >
+                <div>
+                  <p className="font-medium text-white">{tenant.name}</p>
+                  <p className="text-xs text-zinc-500">/{tenant.slug}</p>
+                </div>
+
+                <div className="mt-4">
+                  <span className={badge.className}>
+                    {badge.icon}
+                    {badge.label}
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-3 text-sm">
+                  <div className="rounded-lg bg-zinc-800/50 p-3">
+                    <p className="text-xs text-zinc-500">Telefone</p>
+                    <p className="mt-1 break-all text-zinc-200">
+                      {tenant.whatsappConfig?.connectedPhone || "-"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg bg-zinc-800/50 p-3">
+                    <p className="text-xs text-zinc-500">Perfil</p>
+                    <p className="mt-1 break-words text-zinc-200">
+                      {tenant.whatsappConfig?.profileName || "-"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg bg-zinc-800/50 p-3">
+                    <p className="text-xs text-zinc-500">Instância</p>
+                    <p className="mt-1 break-all font-mono text-xs text-zinc-300">
+                      {tenant.whatsappConfig?.instanceName || "-"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg bg-zinc-800/50 p-3">
+                    <p className="text-xs text-zinc-500">Última conexão</p>
+                    <p className="mt-1 text-zinc-200">
+                      {tenant.whatsappConfig?.lastConnectionAt
+                        ? new Date(
+                            tenant.whatsappConfig.lastConnectionAt
+                          ).toLocaleString("pt-BR")
+                        : "-"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-col gap-2">
+                  <Link
+                    href={`/admin/${tenant.slug}/whatsapp`}
+                    target="_blank"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-zinc-800 px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
+                  >
+                    Abrir WhatsApp
+                    <ExternalLink size={14} />
+                  </Link>
+
+                  <Link
+                    href={`/admin/${tenant.slug}?date=${today}`}
+                    target="_blank"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-zinc-700 px-3 py-2.5 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-800"
+                  >
+                    Abrir Painel
+                    <ExternalLink size={14} />
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Desktop: tabela */}
+      {data.tenants.length > 0 && (
+        <div className="hidden overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 md:block">
+          <div className="border-b border-zinc-800 px-6 py-4">
+            <h3 className="text-lg font-semibold text-white">
+              Status por barbearia
             </h3>
-            <p className="text-zinc-400 mt-1 text-sm">
-              Instância: <span className="font-mono text-zinc-300">TratoMarcado_Master</span>
+            <p className="mt-1 text-sm text-zinc-400">
+              Cada tenant usa sua própria instância da Evolution.
             </p>
           </div>
 
-          {!isConnected && !isConfigError && (
-            <p className="text-sm text-red-400 mt-2 bg-red-500/10 py-2 px-4 rounded-md">
-              O celular mestre perdeu a conexão. Verifique o aparelho ou leia o QR Code novamente.
-            </p>
-          )}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1100px] text-left text-sm text-zinc-400">
+              <thead className="border-b border-zinc-800 bg-zinc-900/50 text-xs font-semibold uppercase text-zinc-500">
+                <tr>
+                  <th className="px-6 py-4">Salão</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4">Telefone</th>
+                  <th className="px-6 py-4">Perfil</th>
+                  <th className="px-6 py-4">Instância</th>
+                  <th className="px-6 py-4">Última conexão</th>
+                  <th className="px-6 py-4 text-right">Ações</th>
+                </tr>
+              </thead>
 
-          {isConfigError && (
-            <p className="text-sm text-amber-400 mt-2 bg-amber-500/10 py-2 px-4 rounded-md flex items-center gap-2">
-              <AlertCircle size={16} />
-              Variáveis de ambiente da Evolution ausentes na Vercel.
-            </p>
-          )}
-        </div>
+              <tbody className="divide-y divide-zinc-800">
+                {data.tenants.map((tenant) => {
+                  const badge = statusBadge(tenant.whatsappConfig?.status);
 
-        {/* Card de Informações do Aparelho (Placeholder para o futuro) */}
-        <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-xl flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <Smartphone className="text-blue-500" size={24} />
-              <h3 className="text-lg font-bold text-white">Aparelho Host</h3>
-            </div>
-            <p className="text-zinc-400 text-sm mb-4">
-              Este é o aparelho que está disparando as mensagens para todos os salões cadastrados. Mantenha-o sempre carregado e com internet.
-            </p>
-            <ul className="space-y-3">
-              <li className="flex justify-between items-center text-sm border-b border-zinc-800 pb-2">
-                <span className="text-zinc-500">Delay de disparo</span>
-                <span className="text-zinc-300 font-medium">1.2 segundos</span>
-              </li>
-              <li className="flex justify-between items-center text-sm border-b border-zinc-800 pb-2">
-                <span className="text-zinc-500">Status da VPS (Motor)</span>
-                <span className="text-emerald-400 font-medium">Rodando (Porta 8080)</span>
-              </li>
-            </ul>
+                  return (
+                    <tr
+                      key={tenant.id}
+                      className="transition-colors hover:bg-zinc-800/30"
+                    >
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-medium text-white">{tenant.name}</p>
+                          <p className="text-xs text-zinc-500">/{tenant.slug}</p>
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <span className={badge.className}>
+                          {badge.icon}
+                          {badge.label}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4 text-zinc-300">
+                        {tenant.whatsappConfig?.connectedPhone || "-"}
+                      </td>
+
+                      <td className="px-6 py-4 text-zinc-300">
+                        {tenant.whatsappConfig?.profileName || "-"}
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <span className="font-mono text-xs text-zinc-400">
+                          {tenant.whatsappConfig?.instanceName || "-"}
+                        </span>
+                      </td>
+
+                      <td className="px-6 py-4 text-zinc-400">
+                        {tenant.whatsappConfig?.lastConnectionAt
+                          ? new Date(
+                              tenant.whatsappConfig.lastConnectionAt
+                            ).toLocaleString("pt-BR")
+                          : "-"}
+                      </td>
+
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Link
+                            href={`/admin/${tenant.slug}/whatsapp`}
+                            target="_blank"
+                            className="inline-flex items-center gap-2 rounded-md bg-zinc-800 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-zinc-700"
+                          >
+                            Abrir WhatsApp
+                            <ExternalLink size={14} />
+                          </Link>
+
+                          <Link
+                            href={`/admin/${tenant.slug}?date=${today}`}
+                            target="_blank"
+                            className="inline-flex items-center gap-2 rounded-md border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:bg-zinc-800"
+                          >
+                            Abrir Painel
+                            <ExternalLink size={14} />
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          
-          <button 
-            disabled={isConnected}
-            className={`mt-6 py-2 px-4 rounded-md font-medium transition-colors ${isConnected ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500 text-white"}`}
-          >
-            {isConnected ? "Nenhuma ação necessária" : "Gerar QR Code de Reconexão"}
-          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

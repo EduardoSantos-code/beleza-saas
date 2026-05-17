@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentMembershipBySlug } from "@/lib/auth";
-import { sendWhatsAppText } from "@/lib/whatsapp";
-import { logWhatsAppOutboundMessage } from "@/lib/whatsapp-log";
+import { sendTenantWhatsAppMessage } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const ReplySchema = z.object({
   text: z.string().min(1).max(2000),
+  replyToMessageId: z.string().optional(),
 });
 
 export async function POST(
@@ -36,24 +36,17 @@ export async function POST(
       );
     }
 
-    const [client, config] = await Promise.all([
-      prisma.client.findFirst({
-        where: {
-          id: clientId,
-          tenantId: membership.tenantId,
-        },
-        select: {
-          id: true,
-          name: true,
-          phoneE164: true,
-        },
-      }),
-      prisma.whatsappConfig.findUnique({
-        where: {
-          tenantId: membership.tenantId,
-        },
-      }),
-    ]);
+    const client = await prisma.client.findFirst({
+      where: {
+        id: clientId,
+        tenantId: membership.tenantId,
+      },
+      select: {
+        id: true,
+        name: true,
+        phoneE164: true,
+      },
+    });
 
     if (!client) {
       return NextResponse.json(
@@ -62,38 +55,57 @@ export async function POST(
       );
     }
 
-    if (!config) {
+    if (!client.phoneE164) {
       return NextResponse.json(
-        { error: "WhatsApp não configurado para este salão" },
+        { error: "Cliente sem telefone cadastrado" },
         { status: 400 }
       );
     }
 
-    const waResponse = await sendWhatsAppText({
-      phoneNumberId: config.phoneNumberId,
-      accessToken: config.accessToken,
-      to: client.phoneE164,
-      text: parsed.data.text,
-    });
+    try {
+      const waResponse = await sendTenantWhatsAppMessage({
+        tenantId: membership.tenantId,
+        clientId: client.id,
+        to: client.phoneE164,
+        text: parsed.data.text,
+        replyToMessageId: parsed.data.replyToMessageId,
+      });
 
-    const waMessageId = waResponse?.messages?.[0]?.id ?? null;
+      if (!waResponse.success) {
+        console.error(
+          "[INBOX_REPLY_WHATSAPP_TEMPORARY_FAILURE]",
+          waResponse.reason,
+          waResponse.data
+        );
 
-    await logWhatsAppOutboundMessage({
-      tenantId: membership.tenantId,
-      clientId: client.id,
-      phoneNumberId: config.phoneNumberId,
-      toPhoneE164: client.phoneE164,
-      textBody: parsed.data.text,
-      waMessageId,
-      rawJson: waResponse,
-    });
+        return NextResponse.json(
+          {
+            error: "Falha temporária ao enviar mensagem no WhatsApp",
+            reason: waResponse.reason,
+          },
+          { status: waResponse.status || 502 }
+        );
+      }
 
-    return NextResponse.json({
-      ok: true,
-      waMessageId,
-    });
+      return NextResponse.json({
+        ok: true,
+        waMessageId: waResponse.messages?.[0]?.id ?? null,
+      });
+    } catch (waError: any) {
+      console.error("[INBOX_REPLY_WHATSAPP_TEMPORARY_FAILURE]", waError);
+
+      return NextResponse.json(
+        {
+          error: waError?.message || "Erro temporário ao enviar resposta",
+        },
+        { status: 500 }
+      );
+    }
   } catch (error: any) {
-    console.error("Erro em POST /api/admin/[slug]/inbox/[clientId]/reply:", error);
+    console.error(
+      "Erro em POST /api/admin/[slug]/inbox/[clientId]/reply:",
+      error
+    );
 
     return NextResponse.json(
       { error: error?.message || "Erro interno ao enviar resposta" },

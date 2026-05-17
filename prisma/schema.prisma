@@ -7,35 +7,39 @@ datasource db {
 }
 
 model Tenant {
-  id                            String                    @id @default(cuid())
+  id                            String                     @id @default(cuid())
   name                          String
-  slug                          String                    @unique
-  timezone                      String                    @default("America/Sao_Paulo")
-  createdAt                     DateTime                  @default(now())
+  slug                          String                     @unique
+  timezone                      String                     @default("America/Sao_Paulo")
+  createdAt                     DateTime                   @default(now())
   address                       String?
   heroImageUrl                  String?
   instagram                     String?
   logoUrl                       String?
-  primaryColor                  String?                   @default("#7c3aed")
+  primaryColor                  String?                    @default("#7c3aed")
   publicDescription             String?
   publicPhone                   String?
   cpfCnpj                       String?
-  asaasCustomerId               String?                   @unique
-  asaasSubscriptionId           String?                   @unique
-  planStatus                    String                    @default("TRIAL") // TRIAL, ACTIVE, OVERDUE
-  subscriptionCancelAtPeriodEnd Boolean                   @default(false)
+  asaasCustomerId               String?                    @unique
+  asaasSubscriptionId           String?                    @unique
+  planStatus                    String                     @default("TRIAL") // TRIAL, ACTIVE, OVERDUE
+  subscriptionCancelAtPeriodEnd Boolean                    @default(false)
   subscriptionCurrentPeriodEnd  DateTime?
-  subscriptionStatus            TenantSubscriptionStatus  @default(NONE)
+  subscriptionStatus            TenantSubscriptionStatus   @default(NONE)
   trialEndsAt                   DateTime?
-  minAdvanceHours               Int                       @default(2)
+  minAdvanceHours               Int                        @default(2)
   googleMapsLink                String?
-  clubEnabled                   Boolean                   @default(false)
+  clubEnabled                   Boolean                    @default(false)
   clubPaymentProvider           ClubPaymentProvider?
   clubAsaasApiKeyEnc            String?
-  clubAsaasEnvironment          ClubAsaasEnvironment      @default(SANDBOX)
+  clubAsaasEnvironment          ClubAsaasEnvironment       @default(SANDBOX)
+  clubMercadoPagoAccessTokenEnc String?
+  clubMercadoPagoPublicKey      String?
+  clubMercadoPagoEnvironment    ClubMercadoPagoEnvironment @default(SANDBOX)
   clubPlans                     ClubPlan[]
   clubSubscriptions             ClubSubscription[]
   clubBenefitUsages             ClubBenefitUsage[]
+  clubBillingWebhookEvents      ClubBillingWebhookEvent[]
   appointments                  Appointment[]
   clients                       Client[]
   memberships                   Membership[]
@@ -170,14 +174,22 @@ model Reminder {
 }
 
 model WhatsappConfig {
-  id            String   @id @default(cuid())
-  tenantId      String   @unique
-  phoneNumberId String
-  accessToken   String
-  verifyToken   String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
+  tenantId         String   @unique
+  provider         String   @default("EVOLUTION")
+  instanceName     String?  @unique
+  instanceToken    String?
+  status           String   @default("DISCONNECTED")
+  connectedPhone   String?
+  profileName      String?
+  qrCodeBase64     String?
+  qrCodeText       String?
+  pairingCode      String?
+  lastConnectionAt DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model TenantBusinessHour {
@@ -303,30 +315,36 @@ model ClubPlan {
 }
 
 model ClubSubscription {
-  id                     String                 @id @default(cuid())
+  id                     String                    @id @default(cuid())
   tenantId               String
   clientId               String
   planId                 String
   provider               ClubPaymentProvider
-  status                 ClubSubscriptionStatus @default(PENDING)
+  status                 ClubSubscriptionStatus    @default(PENDING)
   providerCustomerId     String?
   providerSubscriptionId String?
   providerPaymentId      String?
   providerCheckoutUrl    String?
+  providerStatusRaw      String?
+  providerReference      String?
+  lastProviderSyncAt     DateTime?
+  lastWebhookAt          DateTime?
   currentPeriodStart     DateTime?
   currentPeriodEnd       DateTime?
   canceledAt             DateTime?
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
-  tenant                 Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  client                 Client                 @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  plan                   ClubPlan               @relation(fields: [planId], references: [id])
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
+  tenant                 Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client                 Client                    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  plan                   ClubPlan                  @relation(fields: [planId], references: [id])
   usages                 ClubBenefitUsage[]
   appointments           Appointment[]
+  billingWebhookEvents   ClubBillingWebhookEvent[]
 
   @@index([tenantId, clientId])
   @@index([tenantId, status])
   @@index([provider, providerSubscriptionId])
+  @@index([provider, providerReference])
 }
 
 model ClubBenefitUsage {
@@ -351,6 +369,32 @@ model ClubBenefitUsage {
   @@index([tenantId, subscriptionId, periodKey])
   @@index([tenantId, clientId])
   @@index([appointmentId])
+}
+
+model ClubBillingWebhookEvent {
+  id                String              @id @default(cuid())
+  provider          ClubPaymentProvider
+  externalEventId   String?
+  topic             String?
+  action            String?
+  resourceId        String?
+  providerReference String?
+  tenantId          String?
+  subscriptionId    String?
+  payload           Json
+  processed         Boolean             @default(false)
+  processedAt       DateTime?
+  error             String?
+  createdAt         DateTime            @default(now())
+
+  tenant       Tenant?           @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  subscription ClubSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, externalEventId])
+  @@index([provider, createdAt])
+  @@index([provider, resourceId])
+  @@index([tenantId, createdAt])
+  @@index([subscriptionId, createdAt])
 }
 
 model ClientPhoneVerification {
@@ -419,6 +463,11 @@ enum ClientPhoneVerificationPurpose {
 }
 
 enum ClubAsaasEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+enum ClubMercadoPagoEnvironment {
   SANDBOX
   PRODUCTION
 }

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { formatInTimeZone } from "date-fns-tz";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { sendTenantWhatsAppMessage } from "@/lib/whatsapp";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import { Prisma } from "@prisma/client";
@@ -13,7 +13,10 @@ function getClientSessionSecret() {
     process.env.AUTH_SECRET ||
     "dev-only-client-session-secret";
 
-  if (process.env.NODE_ENV === "production" && secret === "dev-only-client-session-secret") {
+  if (
+    process.env.NODE_ENV === "production" &&
+    secret === "dev-only-client-session-secret"
+  ) {
     throw new Error("CLIENT_SESSION_SECRET não configurado.");
   }
 
@@ -27,7 +30,10 @@ function formatCurrencyBR(valueInCents: number) {
   }).format(valueInCents / 100);
 }
 
-function calculateClubDiscount(originalPrice: number, discountPercent: number | null) {
+function calculateClubDiscount(
+  originalPrice: number,
+  discountPercent: number | null
+) {
   const safeOriginalPrice = Math.max(0, originalPrice || 0);
   const safePercent =
     typeof discountPercent === "number"
@@ -50,39 +56,109 @@ function getBenefitPeriodKey(date: Date) {
   return `${year}-${month}`;
 }
 
-function calculateFreeServicePrice(originalPrice: number) {
-  const safeOriginalPrice = Math.max(0, originalPrice || 0);
-  return {
-    originalPrice: safeOriginalPrice,
-    discountAmount: safeOriginalPrice,
-    finalPrice: 0,
-  };
+function getBaseUrl(req: Request) {
+  return (
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXTAUTH_URL ||
+    new URL(req.url).origin
+  ).replace(/\/$/, "");
 }
 
-export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
+async function safeSendWhatsApp(
+  label: string,
+  payload: {
+    tenantId: string;
+    clientId?: string | null;
+    to: string;
+    text: string;
+    replyToMessageId?: string;
+  }
+) {
+  try {
+    const result = await sendTenantWhatsAppMessage(payload);
+
+    if (!result.success) {
+      console.error(label, result.reason, result.data);
+    }
+  } catch (error) {
+    console.error(label, error);
+  }
+}
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ slug: string }> }
+) {
   try {
     const { slug } = await params;
-    const body = await req.json();
-    const { serviceId, professionalId, startAt, clientName, clientPhoneE164, notes, useClubBenefit } = body;
 
-    // VALIDAÇÃO DE SEGURANÇA
+    console.error("[APPOINTMENT_ROUTE_HIT]", {
+      slug,
+      time: new Date().toISOString(),
+      url: req.url,
+    });
+
+    const body = await req.json();
+    const {
+      serviceId,
+      professionalId,
+      startAt,
+      clientName,
+      clientPhoneE164,
+      notes,
+      useClubBenefit,
+    } = body;
+
     if (!clientName || clientName.trim().length < 3) {
-      return NextResponse.json({ error: "Nome inválido ou muito curto." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Nome inválido ou muito curto." },
+        { status: 400 }
+      );
     }
+
     if (!clientPhoneE164 || clientPhoneE164.trim().length < 12) {
-      return NextResponse.json({ error: "Número de WhatsApp inválido." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Número de WhatsApp inválido." },
+        { status: 400 }
+      );
     }
 
     const tenant = await prisma.tenant.findUnique({ where: { slug } });
     const service = await prisma.service.findUnique({ where: { id: serviceId } });
-    const professional = await prisma.professional.findUnique({ where: { id: professionalId } });
+    const professional = await prisma.professional.findUnique({
+      where: { id: professionalId },
+    });
 
     if (!tenant || !service || !professional) {
-      return NextResponse.json({ error: "Dados do agendamento inválidos." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Dados do agendamento inválidos." },
+        { status: 400 }
+      );
+    }
+
+    if (
+      service.tenantId !== tenant.id ||
+      professional.tenantId !== tenant.id
+    ) {
+      return NextResponse.json(
+        { error: "Serviço ou profissional inválido para este tenant." },
+        { status: 400 }
+      );
+    }
+
+    if (tenant.subscriptionStatus === "CANCELED") {
+      return NextResponse.json(
+        {
+          error:
+            "Agendamentos temporariamente indisponíveis para este estabelecimento.",
+        },
+        { status: 403 }
+      );
     }
 
     let subscriptionData: Prisma.ClubSubscriptionGetPayload<{
-      include: { plan: true; client: true }
+      include: { plan: true; client: true };
     }> | null = null;
 
     if (useClubBenefit === true) {
@@ -90,13 +166,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       const sessionToken = cookieStore.get("club_benefit_session")?.value;
 
       if (!sessionToken) {
-        return NextResponse.json({ error: "Valide sua assinatura do clube para usar o benefício." }, { status: 401 });
+        return NextResponse.json(
+          { error: "Valide sua assinatura do clube para usar o benefício." },
+          { status: 401 }
+        );
       }
 
       try {
-        const { payload } = await jwtVerify(sessionToken, getClientSessionSecret());
-        
-        const isValid = 
+        const { payload } = await jwtVerify(
+          sessionToken,
+          getClientSessionSecret()
+        );
+
+        const isValid =
           payload.purpose === "CLUB_USE_BENEFIT" &&
           payload.tenantId === tenant.id &&
           payload.slug === tenant.slug &&
@@ -104,7 +186,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
           !!payload.subscriptionId;
 
         if (!isValid) {
-          return NextResponse.json({ error: "Sessão do clube inválida. Valide seu WhatsApp novamente." }, { status: 401 });
+          return NextResponse.json(
+            {
+              error:
+                "Sessão do clube inválida. Valide seu WhatsApp novamente.",
+            },
+            { status: 401 }
+          );
         }
 
         const subscription = await prisma.clubSubscription.findFirst({
@@ -112,38 +200,48 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
             id: payload.subscriptionId as string,
             tenantId: tenant.id,
             status: "ACTIVE",
-            currentPeriodEnd: { gte: new Date() }
+            currentPeriodEnd: { gte: new Date() },
           },
           include: {
             plan: true,
-            client: true
-          }
+            client: true,
+          },
         });
 
-        if (!subscription || !subscription.plan || subscription.client.phoneE164 !== clientPhoneE164) {
-          return NextResponse.json({ error: "Assinatura do clube não está ativa." }, { status: 400 });
+        if (
+          !subscription ||
+          !subscription.plan ||
+          subscription.client.phoneE164 !== clientPhoneE164
+        ) {
+          return NextResponse.json(
+            { error: "Assinatura do clube não está ativa." },
+            { status: 400 }
+          );
         }
 
         subscriptionData = subscription;
-      } catch (err) {
-        return NextResponse.json({ error: "Sessão do clube inválida. Valide seu WhatsApp novamente." }, { status: 401 });
+      } catch {
+        return NextResponse.json(
+          {
+            error:
+              "Sessão do clube inválida. Valide seu WhatsApp novamente.",
+          },
+          { status: 401 }
+        );
       }
     }
 
     const TZ = "America/Sao_Paulo";
-
-    // 1. A MÁGICA: O front-end já envia a data certinha em UTC. 
-    // Basta criar o objeto Date direto, sem quebrar o texto.
     const startUtc = new Date(startAt);
 
-    // Se a data for inválida, barramos aqui
     if (isNaN(startUtc.getTime())) {
-      return NextResponse.json({ error: "Data de agendamento inválida." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Data de agendamento inválida." },
+        { status: 400 }
+      );
     }
 
     const endUtc = new Date(startUtc.getTime() + service.durationMin * 60000);
-
-    // 2. Extraindo a hora e data local (Brasil) para salvar os minutos e o businessDate no banco
     const localTimeString = formatInTimeZone(startUtc, TZ, "HH:mm");
     const localDateString = formatInTimeZone(startUtc, TZ, "yyyy-MM-dd");
 
@@ -153,68 +251,91 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
 
     const appointment = await prisma.$transaction(async (tx) => {
       const clientRecord = await tx.client.upsert({
-        where: { tenantId_phoneE164: { tenantId: tenant.id, phoneE164: clientPhoneE164 } },
-        update: { name: clientName.trim() },
-        create: { tenantId: tenant.id, name: clientName.trim(), phoneE164: clientPhoneE164 }
+        where: {
+          tenantId_phoneE164: {
+            tenantId: tenant.id,
+            phoneE164: clientPhoneE164,
+          },
+        },
+        update: {
+          name: clientName.trim(),
+        },
+        create: {
+          tenantId: tenant.id,
+          name: clientName.trim(),
+          phoneE164: clientPhoneE164,
+        },
       });
 
-      let appliedClubMode: "NONE" | "INCLUDED_FREE_SERVICE" | "PERCENT_DISCOUNT" = "NONE";
+      let appliedClubMode:
+        | "NORMAL_PRICE"
+        | "PERCENT_DISCOUNT"
+        | "INCLUDED_FREE_SERVICE" = "NORMAL_PRICE";
       let clubSubscriptionId: string | null = null;
       let clubPlanName: string | null = null;
       let clubOriginalPrice: number | null = null;
       let clubDiscountAmount: number | null = null;
       let clubFinalPrice: number | null = null;
-      let periodKey = ""; // Used for usage tracking
+      let periodKey = "";
 
       if (subscriptionData && subscriptionData.plan) {
         const plan = subscriptionData.plan;
-
-        // Inicializa estado base do clube (Caso NORMAL_PRICE com assinatura válida) para persistência
         clubSubscriptionId = subscriptionData.id;
         clubPlanName = plan.name;
-        clubOriginalPrice = service.price || 0;
-        clubDiscountAmount = 0;
-        clubFinalPrice = service.price || 0;
 
-        // 1. Tentar Benefício Incluso (Grátis)
         const isEligibleForFree =
           plan.includedBenefitType === "FREE_SERVICE" &&
           (plan.includedUsesPerPeriod ?? 0) > 0;
 
         if (isEligibleForFree) {
           periodKey = getBenefitPeriodKey(startUtc);
+
           const usedCount = await tx.clubBenefitUsage.count({
             where: {
               tenantId: tenant.id,
               subscriptionId: subscriptionData.id,
               serviceId: service.id,
-              periodKey: periodKey,
+              periodKey,
               benefitType: "FREE_SERVICE",
             },
           });
 
           if (usedCount < (plan.includedUsesPerPeriod ?? 0)) {
-            const prices = calculateFreeServicePrice(service.price || 0);
-            clubOriginalPrice = prices.originalPrice;
-            clubDiscountAmount = prices.discountAmount;
-            clubFinalPrice = prices.finalPrice;
             appliedClubMode = "INCLUDED_FREE_SERVICE";
+            clubOriginalPrice = service.price || 0;
+            clubDiscountAmount = service.price || 0;
+            clubFinalPrice = 0;
           }
         }
 
-        // 2. Fallback para Desconto Percentual se não aplicou grátis
-        if (appliedClubMode === "NONE" && (plan.discountPercent ?? 0) > 0) {
-          const prices = calculateClubDiscount(service.price || 0, plan.discountPercent);
+        if (
+          appliedClubMode === "NORMAL_PRICE" &&
+          (plan.discountPercent ?? 0) > 0
+        ) {
+          const prices = calculateClubDiscount(
+            service.price || 0,
+            plan.discountPercent
+          );
+          appliedClubMode = "PERCENT_DISCOUNT";
           clubOriginalPrice = prices.originalPrice;
           clubDiscountAmount = prices.discountAmount;
           clubFinalPrice = prices.finalPrice;
-          appliedClubMode = "PERCENT_DISCOUNT";
+        } else if (appliedClubMode === "NORMAL_PRICE") {
+          clubOriginalPrice = service.price || 0;
+          clubDiscountAmount = 0;
+          clubFinalPrice = service.price || 0;
         }
-
-        // Se appliedClubMode continuar "NONE", os valores base inicializados acima (NORMAL_PRICE) serão persistidos.
       }
 
-      // 3. Criar o agendamento com os valores definidos acima
+      console.error("[APPOINTMENT_CLUB_FIELDS_BEFORE_CREATE]", {
+        appliedClubMode,
+        clubSubscriptionId,
+        clubPlanName,
+        clubOriginalPrice,
+        clubDiscountAmount,
+        clubFinalPrice,
+      });
+
       const newAppointment = await tx.appointment.create({
         data: {
           tenantId: tenant.id,
@@ -225,7 +346,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
           startMinutes,
           endMinutes,
           timeZone: TZ,
-          startAt: startUtc, // Salva a data cravada
+          startAt: startUtc,
           clubSubscriptionId,
           clubPlanName,
           clubOriginalPrice,
@@ -235,10 +356,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
           notes,
           status: "CONFIRMED",
         },
-        include: { professional: true, service: true, tenant: true, client: true }
+        include: {
+          professional: true,
+          service: true,
+          tenant: true,
+          client: true,
+        },
       });
 
-      // 4. Registrar uso do benefício apenas se foi INCLUDED_FREE_SERVICE
+      console.error("[APPOINTMENT_CLUB_FIELDS_AFTER_CREATE]", {
+        appointmentId: newAppointment.id,
+        clubSubscriptionId: newAppointment.clubSubscriptionId,
+        clubPlanName: newAppointment.clubPlanName,
+        clubOriginalPrice: newAppointment.clubOriginalPrice,
+        clubDiscountAmount: newAppointment.clubDiscountAmount,
+        clubFinalPrice: newAppointment.clubFinalPrice,
+      });
+
       if (appliedClubMode === "INCLUDED_FREE_SERVICE" && subscriptionData) {
         await tx.clubBenefitUsage.create({
           data: {
@@ -250,34 +384,57 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
             serviceId: service.id,
             periodKey,
             benefitType: "FREE_SERVICE",
-          }
+          },
+        });
+
+        console.error("[CLUB_BOOKING_USAGE_CREATED]", {
+          subscriptionId: subscriptionData.id,
+          serviceId: service.id,
+          periodKey,
         });
       }
 
       return newAppointment;
     });
 
-    // WhatsApp Notification
     const currentStatus = appointment.tenant?.subscriptionStatus;
 
-    if (currentStatus && currentStatus !== "CANCELED") {
+    console.error("[APPOINTMENT_DEBUG] subscriptionStatus:", currentStatus);
+    console.error("[APPOINTMENT_DEBUG] tenantId:", tenant.id);
+    console.error("[APPOINTMENT_DEBUG] clientPhone:", appointment.client?.phoneE164);
+    console.error(
+      "[APPOINTMENT_DEBUG] professionalPhone:",
+      appointment.professional?.phoneE164
+    );
+
+    if (currentStatus !== "CANCELED") {
       const dateLabel = formatInTimeZone(appointment.startAt, TZ, "dd/MM/yyyy");
       const timeLabel = formatInTimeZone(appointment.startAt, TZ, "HH:mm");
+      const baseUrl = getBaseUrl(req);
+      const manageLink = `${baseUrl}/s/${slug}/a/${appointment.id}`;
 
       const clubMessage =
-        appointment.clubSubscriptionId && appointment.clubPlanName && appointment.clubOriginalPrice !== null && appointment.clubDiscountAmount !== null && appointment.clubFinalPrice !== null
+        appointment.clubSubscriptionId &&
+        appointment.clubPlanName &&
+        appointment.clubOriginalPrice !== null &&
+        appointment.clubDiscountAmount !== null &&
+        appointment.clubFinalPrice !== null
           ? [
               "",
               `Clube aplicado: ${appointment.clubPlanName}`,
               `Valor original: ${formatCurrencyBR(appointment.clubOriginalPrice)}`,
-              `Desconto do clube: -${formatCurrencyBR(appointment.clubDiscountAmount)}`,
-              `Valor final: ${formatCurrencyBR(appointment.clubFinalPrice)}`
+              `Desconto do clube: -${formatCurrencyBR(
+                appointment.clubDiscountAmount
+              )}`,
+              `Valor final: ${formatCurrencyBR(appointment.clubFinalPrice)}`,
             ].join("\n")
           : "";
 
-      // NOTIFICAR BARBEIRO
       if (appointment.professional?.phoneE164) {
-        const msgBarbeiro = `🚨 *Novo Cliente na área!*\n\n` +
+        console.error("[APPOINTMENT_DEBUG] enviando barbeiro");
+
+        const msgBarbeiro =
+          `🚨 *Novo Cliente na área!*\n\n` +
           `Fala, *${appointment.professional.name}*, você tem um novo agendamento:\n\n` +
           `👤 *Cliente:* ${appointment.client?.name}\n` +
           `💈 *Serviço:* ${appointment.service?.name}\n` +
@@ -285,17 +442,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
           `🕒 *Hora:* ${timeLabel}${clubMessage}\n\n` +
           `Dá uma olhada na sua agenda completa no painel do TratoMarcado.`;
 
-        await sendWhatsAppMessage(appointment.professional.phoneE164, msgBarbeiro);
+        await safeSendWhatsApp("[APPOINTMENT_WHATSAPP_PROFESSIONAL_FAILURE]", {
+          tenantId: tenant.id,
+          clientId: appointment.clientId,
+          to: appointment.professional.phoneE164,
+          text: msgBarbeiro,
+        });
       }
 
-      // NOTIFICAR CLIENTE
-      // NOTIFICAR CLIENTE
       if (appointment.client?.phoneE164) {
-        // Geramos o link do recibo/gestão
-        // Certifique-se de que a base da URL (tratomarcado.com) está correta para o seu domínio
-        const manageLink = `https://tratomarcado.tech/s/${slug}/a/${appointment.id}`;
+        console.error("[APPOINTMENT_DEBUG] enviando cliente");
 
-        const msgCliente = `Fala, *${appointment.client.name}*! ✂️\n\n` +
+        const msgCliente =
+          `Fala, *${appointment.client.name}*! ✂️\n\n` +
           `Seu trato tá oficialmente marcado na *${appointment.tenant?.name}*.\n\n` +
           `📅 *Data:* ${dateLabel}\n` +
           `🕒 *Hora:* ${timeLabel}\n` +
@@ -303,13 +462,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
           `📄 *Recibo e Cancelamento:* ${manageLink}\n\n` +
           `Dica: Se precisar desmarcar, use o link acima ou nos avise com antecedência. Nos vemos em breve! 👊`;
 
-        await sendWhatsAppMessage(appointment.client.phoneE164, msgCliente);
+        await safeSendWhatsApp("[APPOINTMENT_WHATSAPP_CLIENT_FAILURE]", {
+          tenantId: tenant.id,
+          clientId: appointment.clientId,
+          to: appointment.client.phoneE164,
+          text: msgCliente,
+        });
       }
+    } else {
+      console.error(
+        `[APPOINTMENT_DEBUG] envio bloqueado por subscriptionStatus=${currentStatus}`
+      );
     }
 
     return NextResponse.json(appointment);
-  } catch (error: any) {
-    console.error(error);
+  } catch (error: unknown) {
+    console.error("[APPOINTMENT_POST_ERROR]", error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }

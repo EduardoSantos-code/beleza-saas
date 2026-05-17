@@ -52,6 +52,7 @@ export default function AdminLayout({
     { name: "Horários", href: `/admin/${slug}/hours`, icon: "⏰" },
     { name: "Bloqueios", href: `/admin/${slug}/blocks`, icon: "🔒" },
     { name: "Branding", href: `/admin/${slug}/branding`, icon: "🎨" },
+    { name: "Whatsapp", href: `/admin/${slug}/whatsapp`, icon: "✉️" },
   ];
 
   if (!slug) return <>{children}</>;

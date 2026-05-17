@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { requireTenantAccess } from "@/lib/auth";
 
 export async function GET(
   request: Request,
@@ -7,17 +8,22 @@ export async function GET(
 ) {
   const { slug } = await params;
 
-  // 1. Pegamos a data que vem na URL (?date=2026-05-03)
-  const { searchParams } = new URL(request.url);
-  const date = searchParams.get("date");
-
   try {
+    await requireTenantAccess(slug);
+
+    // 1. Pegamos a data que vem na URL (?date=2026-05-03)
+    const { searchParams } = new URL(request.url);
+    const date = searchParams.get("date");
+
     // 2. Buscamos o salão (Tenant)
     const tenant = await prisma.tenant.findUnique({
       where: { slug },
       select: { 
         id: true, 
-        name: true
+        name: true,
+        slug: true,
+        primaryColor: true,
+        logoUrl: true,
       }
     });
 
@@ -32,7 +38,7 @@ export async function GET(
       select: { content: true } // Só precisamos do texto
     });
 
-    // 1. Buscamos os agendamentos
+    // 4. Buscamos os agendamentos
     const appointments = await prisma.appointment.findMany({
       where: {
         tenantId: tenant.id,
@@ -44,15 +50,44 @@ export async function GET(
         professional: true,
         service: true,
       },
-      // Nota: Campos de clube (clubSubscriptionId, clubPlanName, clubOriginalPrice, 
-      // clubDiscountAmount, clubFinalPrice) são incluídos automaticamente por serem
-      // campos escalares do modelo Appointment e não haver 'select' restritivo.
       orderBy: {
         startAt: "asc",
       },
     });
 
-    // 2. Buscamos todos os serviços (Necessário para o Modal de Agendamento Manual)
+    // Mapeamento para garantir consistência de nomes e campos do clube
+    const formattedAppointments = appointments.map((appointment) => {
+      return {
+        id: appointment.id,
+        status: appointment.status,
+        startAt: appointment.startAt,
+        startsAt: appointment.startAt, // Padronização para o front-end
+        endAt: appointment.endAt,
+        notes: appointment.notes,
+        clubSubscriptionId: appointment.clubSubscriptionId,
+        clubPlanName: appointment.clubPlanName,
+        clubOriginalPrice: appointment.clubOriginalPrice,
+        clubDiscountAmount: appointment.clubDiscountAmount,
+        clubFinalPrice: appointment.clubFinalPrice,
+        client: appointment.client ? {
+          id: appointment.client.id,
+          name: appointment.client.name,
+          phoneE164: appointment.client.phoneE164,
+        } : null,
+        professional: appointment.professional ? {
+          id: appointment.professional.id,
+          name: appointment.professional.name,
+        } : null,
+        service: appointment.service ? {
+          id: appointment.service.id,
+          name: appointment.service.name,
+          price: appointment.service.price,
+          durationMin: appointment.service.durationMin,
+        } : null,
+      };
+    });
+
+    // 5. Buscamos todos os serviços (Necessário para o Modal de Agendamento Manual)
     const services = await prisma.service.findMany({
       where: {
         tenantId: tenant.id,
@@ -62,10 +97,11 @@ export async function GET(
         id: true,
         name: true,
         price: true,
-        durationMin: true, // No schema do seed.ts o campo é durationMin
+        durationMin: true,
       }
     });
 
+    // 6. Buscamos profissionais
     const professionals = await prisma.professional.findMany({
       where: {
         tenantId: tenant.id,
@@ -73,10 +109,10 @@ export async function GET(
       },
     });
 
-    // 5. RETORNO COMPLETO
+    // 7. RETORNO COMPLETO
     return NextResponse.json({
       tenant,
-      appointments,
+      appointments: formattedAppointments,
       professionals,
       services, // Enviando a lista para o barbeiro escolher no modal
       announcement

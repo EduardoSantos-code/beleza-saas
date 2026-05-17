@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentMembershipBySlug } from "@/lib/auth";
-import { sendWhatsAppText } from "@/lib/whatsapp";
+import { sendTenantWhatsAppMessage } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -14,7 +14,6 @@ export async function POST(
 ) {
   try {
     const { slug } = await params;
-
     const membership = await getCurrentMembershipBySlug(slug);
 
     if (!membership) {
@@ -32,29 +31,36 @@ export async function POST(
     }
 
     const config = await prisma.whatsappConfig.findUnique({
-      where: {
-        tenantId: membership.tenantId,
-      },
+      where: { tenantId: membership.tenantId },
     });
 
-    if (!config) {
+    if (!config?.instanceName) {
       return NextResponse.json(
         { error: "WhatsApp ainda não configurado" },
         { status: 400 }
       );
     }
 
-    await sendWhatsAppText({
-      phoneNumberId: config.phoneNumberId,
-      accessToken: config.accessToken,
+    const result = await sendTenantWhatsAppMessage({
+      tenantId: membership.tenantId,
       to: parsed.data.to,
-      text: `Mensagem de teste do ${membership.tenant.name}. Sua integração com WhatsApp está funcionando.`,
+      text: `Mensagem de teste da ${membership.tenant.name}. Sua integração com WhatsApp está funcionando.`,
     });
 
-    return NextResponse.json({ ok: true });
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          error: "Falha ao enviar mensagem de teste",
+          reason: result.reason,
+          details: result.data,
+        },
+        { status: result.status || 500 }
+      );
+    }
+
+    return NextResponse.json({ ok: true, result });
   } catch (error: any) {
     console.error("Erro em POST /api/admin/[slug]/whatsapp/test:", error);
-
     return NextResponse.json(
       { error: error?.message || "Erro interno ao testar WhatsApp" },
       { status: 500 }

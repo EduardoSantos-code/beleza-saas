@@ -1,42 +1,78 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { jwtVerify, type JWTPayload } from "jose";
 
-export function middleware(req: NextRequest) {
-  // Pega o caminho da URL que o usuário está tentando acessar
-  const pathname = req.nextUrl.pathname;
+type SessionPayload = JWTPayload & {
+  userId: string;
+  email: string;
+  name: string;
+  role?: string;
+};
 
-  // Só aplica a barreira de senha na rota /master
-  if (pathname.startsWith('/master')) {
-    const basicAuth = req.headers.get('authorization');
+const secret = process.env.SESSION_SECRET;
+const encodedKey = secret ? new TextEncoder().encode(secret) : null;
 
-    if (basicAuth) {
-      const authValue = basicAuth.split(' ')[1];
-      const [user, pwd] = atob(authValue).split(':');
+async function getSessionFromRequest(
+  req: NextRequest
+): Promise<SessionPayload | null> {
+  if (!encodedKey) return null;
 
-      // ==========================================
-      // DEFINA SEU USUÁRIO E SENHA AQUI
-      // ==========================================
-      const validUser = 'Eduardo';
-      const validPass = '2032Edu';
+  const token = req.cookies.get("session")?.value;
+  if (!token) return null;
 
-      if (user === validUser && pwd === validPass) {
-        return NextResponse.next(); // Senha correta, deixa passar!
-      }
+  try {
+    const { payload } = await jwtVerify(token, encodedKey, {
+      algorithms: ["HS256"],
+    });
+
+    return payload as SessionPayload;
+  } catch {
+    return null;
+  }
+}
+
+export async function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
+  const isMasterRoute = pathname.startsWith("/master");
+  const isLoginRoute = pathname === "/login";
+
+  if (!secret || !encodedKey) {
+    return new NextResponse("SESSION_SECRET não definida", { status: 500 });
+  }
+
+  const session = await getSessionFromRequest(req);
+
+  // Protege a área master pela sessão real do sistema
+  if (isMasterRoute) {
+    if (!session?.userId) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("next", `${pathname}${search}`);
+      return NextResponse.redirect(loginUrl);
     }
 
-    // Se não colocou senha ou errou, mostra o pop-up nativo do navegador pedindo a senha
-    return new NextResponse('Acesso restrito.', {
-      status: 401,
-      headers: {
-        'WWW-Authenticate': 'Basic realm="Painel Master TratoMarcado"',
-      },
-    });
+    if (session.role !== "MASTER") {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+  }
+
+  // Se já estiver logado, evita abrir /login à toa
+  if (isLoginRoute && session?.userId) {
+    const next = req.nextUrl.searchParams.get("next");
+
+    if (next) {
+      return NextResponse.next();
+    }
+
+    if (session.role === "MASTER") {
+      return NextResponse.redirect(new URL("/master", req.url));
+    }
+
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   return NextResponse.next();
 }
 
-// Essa configuração diz ao Next.js para rodar esse arquivo apenas na rota master, deixando o resto do site rápido
 export const config = {
-  matcher: ['/master/:path*'],
+  matcher: ["/master/:path*", "/login"],
 };

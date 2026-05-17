@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendWhatsAppText } from "@/lib/whatsapp";
+import { sendTenantWhatsAppMessage } from "@/lib/whatsapp";
 import crypto from "crypto";
 
 export async function POST(
@@ -11,37 +11,58 @@ export async function POST(
     const { slug } = await params;
     const { phoneE164 } = await req.json();
 
-    // 1. Validar phoneE164
     const phoneRegex = /^\+55\d{11}$/;
+
     if (!phoneE164 || !phoneRegex.test(phoneE164)) {
-      return NextResponse.json({ error: "Telefone inválido." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Telefone inválido." },
+        { status: 400 }
+      );
     }
 
-    // 2. Buscar tenant
     const tenant = await prisma.tenant.findUnique({
       where: { slug },
-      select: { id: true, slug: true, name: true, clubEnabled: true },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        clubEnabled: true,
+        subscriptionStatus: true,
+      },
     });
 
     if (!tenant) {
-      return NextResponse.json({ error: "Estabelecimento não encontrado." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Estabelecimento não encontrado." },
+        { status: 404 }
+      );
     }
 
-    // 3. Verificar se clube está ativo
     if (!tenant.clubEnabled) {
-      return NextResponse.json({ error: "Clube indisponível." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Clube indisponível." },
+        { status: 400 }
+      );
     }
 
-    // 4. Buscar Cliente
+    if (tenant.subscriptionStatus === "CANCELED") {
+      return NextResponse.json(
+        { error: "Estabelecimento indisponível no momento." },
+        { status: 403 }
+      );
+    }
+
     const client = await prisma.client.findFirst({
       where: { tenantId: tenant.id, phoneE164 },
     });
 
     if (!client) {
-      return NextResponse.json({ error: "Nenhuma assinatura ativa encontrada." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Nenhuma assinatura ativa encontrada." },
+        { status: 404 }
+      );
     }
 
-    // 5 & 6. Buscar Assinatura Ativa
     const subscription = await prisma.clubSubscription.findFirst({
       where: {
         tenantId: tenant.id,
@@ -52,25 +73,26 @@ export async function POST(
     });
 
     if (!subscription) {
-      return NextResponse.json({ error: "Nenhuma assinatura ativa encontrada." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Nenhuma assinatura ativa encontrada." },
+        { status: 404 }
+      );
     }
 
-    // 7. Gerar código
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const purpose = "CLUB_USE_BENEFIT";
 
-    // 8. Hash SHA-256
-    const secret = process.env.CLIENT_OTP_SECRET || 
-                   process.env.JWT_SECRET || 
-                   process.env.AUTH_SECRET || 
-                   "dev-only-client-otp-secret";
-    
+    const secret =
+      process.env.CLIENT_OTP_SECRET ||
+      process.env.JWT_SECRET ||
+      process.env.AUTH_SECRET ||
+      "dev-only-client-otp-secret";
+
     const codeHash = crypto
       .createHash("sha256")
       .update(`${phoneE164}${code}${purpose}${secret}`)
       .digest("hex");
 
-    // 9. Invalidar códigos antigos
     await prisma.clientPhoneVerification.updateMany({
       where: {
         phoneE164,
@@ -80,8 +102,8 @@ export async function POST(
       data: { usedAt: new Date() },
     });
 
-    // 10. Criar verificação
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
     await prisma.clientPhoneVerification.create({
       data: {
         tenantId: tenant.id,
@@ -92,27 +114,45 @@ export async function POST(
       },
     });
 
-    // 11. Enviar WhatsApp
     const message = `Seu código para usar o benefício do clube é: ${code}. Ele expira em 10 minutos.`;
-    const sent = await sendWhatsAppText(phoneE164, message);
 
-    // 12. Tratamento de falha no envio
-    if (!sent) {
-      if (process.env.NODE_ENV === "production") {
-        return NextResponse.json({ error: "Erro ao enviar código via WhatsApp." }, { status: 500 });
+    try {
+      const waResult = await sendTenantWhatsAppMessage({
+        tenantId: tenant.id,
+        to: phoneE164,
+        text: message,
+      });
+
+      if (!waResult.success) {
+        console.error(
+          "[CLUB_USE_BENEFIT_WHATSAPP_FAILURE]",
+          waResult.reason,
+          waResult.data
+        );
+
+        return NextResponse.json(
+          { error: "Erro ao enviar código via WhatsApp." },
+          { status: waResult.status || 502 }
+        );
       }
+
       return NextResponse.json({
         ok: true,
         expiresInMinutes: 10,
-        devCode: code,
       });
-    }
+    } catch (error) {
+      console.error("[CLUB_USE_BENEFIT_WHATSAPP_FAILURE]", error);
 
-    return NextResponse.json({
-      ok: true,
-      expiresInMinutes: 10,
-    });
+      return NextResponse.json(
+        { error: "Erro ao enviar código via WhatsApp." },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    return NextResponse.json({ error: "Erro interno no servidor." }, { status: 500 });
+    console.error("[CLUB_USE_BENEFIT_SEND_CODE_ERROR]", error);
+    return NextResponse.json(
+      { error: "Erro interno no servidor." },
+      { status: 500 }
+    );
   }
 }

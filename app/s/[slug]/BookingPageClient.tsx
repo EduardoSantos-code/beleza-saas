@@ -1,5 +1,4 @@
 "use client";
-import { prisma } from "@/lib/prisma";
 import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { formatBR } from "@/lib/date";
@@ -164,7 +163,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
         const parsed = data as CatalogResponse;
         setCatalog(parsed);
 
-        if (parsed.professionals?.length > 0) setProfessionalId(parsed.professionals[0].id);
+        if (parsed.professionals && parsed.professionals.length > 0) setProfessionalId(parsed.professionals[0].id);
 
         const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
         setDate(hoje);
@@ -172,7 +171,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
       } catch (err: any) {
         setErrorMessage(err.message || "Erro inesperado ao carregar catálogo");
       } finally {
-        setLoadingCatalog(false);
+        setLoadingCatalog(false); 
       }
     }
     if (slug) loadCatalog();
@@ -374,13 +373,6 @@ export default function BookingPageClient({ slug }: { slug: string }) {
     try {
       setSubmitting(true);
       setErrorMessage("");
-
-      console.log("[BOOKING_SUBMIT_DEBUG]", {
-        useClubBenefit: Boolean(activeClubMembership),
-        validatedClubPhone,
-        clientPhoneE164,
-        selectedServiceId: selectedService?.id ?? null,
-      });
 
       const res = await fetch(`/api/public/${slug}/appointments`, {
         method: "POST",
@@ -751,11 +743,11 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                       <CheckCircle size={20} />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-emerald-900 dark:text-emerald-100 uppercase tracking-tight">Assinatura Validada</h3>
+                      <h3 className="text-sm font-black text-emerald-900 dark:text-emerald-100 uppercase tracking-tight">Assinatura validada com sucesso.</h3>
                       <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
                         Plano: {activeClubMembership.planName}
                       </p>
-                      <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase mt-0.5">Verificando benefícios para o serviço...</p>
+                      <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase mt-0.5">Plano validado. Vamos verificar os benefícios para o serviço selecionado.</p>
                     </div>
                   </div>
                 )}
@@ -858,7 +850,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                             <Crown className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
                             <h4 className="text-xs font-black uppercase text-emerald-900 dark:text-emerald-100">Serviço Coberto</h4>
                           </div>
-                          <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Este agendamento será coberto pelo seu clube.</p>
+                          <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Este serviço será coberto pelo seu clube.</p>
                           <p className="text-[10px] font-black text-emerald-600 uppercase mt-1">Uso disponível: {benefitUsage.remaining} de {benefitUsage.total}</p>
                         </div>
                       )}
@@ -872,7 +864,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                           </div>
                           <p className="text-xs font-bold text-amber-700 dark:text-amber-400">Seu benefício incluído para este serviço já foi utilizado neste período.</p>
                           {membershipDiscountPercent && membershipDiscountPercent > 0 ? (
-                            <p className="text-[10px] font-black text-amber-600 uppercase mt-1">Seu plano ainda aplica {membershipDiscountPercent}% de desconto.</p>
+                            <p className="text-[10px] font-black text-amber-600 uppercase mt-1">Seu plano ainda pode aplicar desconto de {membershipDiscountPercent}% neste agendamento.</p>
                           ) : (
                             <p className="text-[10px] font-black text-amber-600 uppercase mt-1">Este agendamento seguirá com preço normal.</p>
                           )}
@@ -887,7 +879,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                             <h4 className="text-xs font-black uppercase text-blue-900 dark:text-blue-100">Desconto VIP</h4>
                           </div>
                           <p className="text-xs font-bold text-blue-700 dark:text-blue-400">Este serviço não faz parte do benefício incluso do seu plano.</p>
-                          <p className="text-[10px] font-black text-blue-600 uppercase mt-1">Seu plano aplica {membershipDiscountPercent}% de desconto neste agendamento.</p>
+                          <p className="text-[10px] font-black text-blue-600 uppercase mt-1">Seu plano pode aplicar desconto de {membershipDiscountPercent}% neste agendamento.</p>
                         </div>
                       )}
 

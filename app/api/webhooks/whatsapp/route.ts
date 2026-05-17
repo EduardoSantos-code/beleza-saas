@@ -1,292 +1,254 @@
-import { prisma } from "@/lib/prisma";
-import { sendWhatsAppText } from "@/lib/whatsapp";
-import { logWhatsAppOutboundMessage } from "@/lib/whatsapp-log";
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import {
+  extractPairingCode,
+  extractQrCodeBase64,
+  extractQrCodeText,
+  resolveConnectionStatus,
+} from "@/lib/evolution";
 
-type WhatsAppWebhookPayload = {
-  object?: string;
-  entry?: Array<{
-    changes?: Array<{
-      field?: string;
-      value?: {
-        metadata?: {
-          phone_number_id?: string;
-          display_phone_number?: string;
-        };
-        contacts?: Array<{
-          wa_id?: string;
-          profile?: {
-            name?: string;
-          };
-        }>;
-        messages?: Array<{
-          id?: string;
-          from?: string;
-          timestamp?: string;
-          type?: string;
-          text?: {
-            body?: string;
-          };
-        }>;
-        statuses?: Array<{
-          id?: string;
-          status?: string;
-          recipient_id?: string;
-        }>;
-      };
-    }>;
-  }>;
-};
+function normalizePhoneFromJid(jid?: string | null) {
+  if (!jid) return null;
 
-function normalizePhoneToE164(value?: string | null) {
-  if (!value) return null;
-  const digits = value.replace(/\D/g, "");
+  const digits = jid.split("@")[0]?.replace(/\D/g, "");
   if (!digits) return null;
+
   return `+${digits}`;
 }
 
-function mapMessageType(type?: string) {
-  switch (type) {
-    case "text":
-      return "TEXT";
-    case "image":
-      return "IMAGE";
-    case "audio":
-      return "AUDIO";
-    case "video":
-      return "VIDEO";
-    case "document":
-      return "DOCUMENT";
-    case "sticker":
-      return "STICKER";
-    case "location":
-      return "LOCATION";
-    case "contacts":
-      return "CONTACTS";
-    case "interactive":
-      return "INTERACTIVE";
-    case "button":
-      return "BUTTON";
-    case "order":
-      return "ORDER";
-    case "reaction":
-      return "REACTION";
-    default:
-      return "UNKNOWN";
-  }
+function normalizePhone(value?: string | null) {
+  if (!value) return null;
+
+  const digits = String(value).replace(/\D/g, "");
+  if (!digits) return null;
+
+  return `+${digits}`;
 }
 
-function verifySignature(rawBody: string, signatureHeader: string | null) {
-  const appSecret = process.env.WHATSAPP_APP_SECRET;
-
-  if (!appSecret) {
-    throw new Error("WHATSAPP_APP_SECRET não definida");
-  }
-
-  if (!signatureHeader?.startsWith("sha256=")) {
-    return false;
-  }
-
-  const expected = createHmac("sha256", appSecret)
-    .update(rawBody)
-    .digest("hex");
-
-  const received = signatureHeader.replace("sha256=", "");
-
-  const expectedBuffer = Buffer.from(expected, "hex");
-  const receivedBuffer = Buffer.from(received, "hex");
-
-  if (expectedBuffer.length !== receivedBuffer.length) {
-    return false;
-  }
-
-  return timingSafeEqual(expectedBuffer, receivedBuffer);
+function normalizeEventName(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/[.\-\s]+/g, "_")
+    .toUpperCase();
 }
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
+function extractMessageText(message: any): string | null {
+  return (
+    message?.conversation ||
+    message?.extendedTextMessage?.text ||
+    message?.imageMessage?.caption ||
+    message?.videoMessage?.caption ||
+    message?.documentMessage?.caption ||
+    null
+  );
+}
 
-  const mode = searchParams.get("hub.mode");
-  const token = searchParams.get("hub.verify_token");
-  const challenge = searchParams.get("hub.challenge");
+function detectMessageType(
+  message: any
+):
+  | "TEXT"
+  | "IMAGE"
+  | "AUDIO"
+  | "VIDEO"
+  | "DOCUMENT"
+  | "STICKER"
+  | "LOCATION"
+  | "CONTACTS"
+  | "UNKNOWN" {
+  if (!message) return "UNKNOWN";
+  if (message.conversation || message.extendedTextMessage) return "TEXT";
+  if (message.imageMessage) return "IMAGE";
+  if (message.audioMessage) return "AUDIO";
+  if (message.videoMessage) return "VIDEO";
+  if (message.documentMessage) return "DOCUMENT";
+  if (message.stickerMessage) return "STICKER";
+  if (message.locationMessage) return "LOCATION";
+  if (message.contactMessage || message.contactsArrayMessage) return "CONTACTS";
+  return "UNKNOWN";
+}
 
-  const verifyToken = process.env.WHATSAPP_VERIFY_TOKEN;
+function collectMessages(body: any): any[] {
+  if (Array.isArray(body?.data?.messages)) return body.data.messages;
+  if (Array.isArray(body?.messages)) return body.messages;
+  if (Array.isArray(body?.data)) return body.data;
+  if (body?.data?.key || body?.key) return [body?.data || body];
+  return [];
+}
 
-  if (!verifyToken) {
-    return NextResponse.json(
-      { error: "WHATSAPP_VERIFY_TOKEN não definida" },
-      { status: 500 }
-    );
-  }
+function extractInstanceName(body: any) {
+  return String(
+    body?.instance ??
+      body?.instanceName ??
+      body?.data?.instance ??
+      body?.data?.instanceName ??
+      ""
+  ).trim();
+}
 
-  if (mode === "subscribe" && token === verifyToken) {
-    return new Response(challenge ?? "", {
-      status: 200,
-      headers: {
-        "Content-Type": "text/plain",
-      },
-    });
-  }
-
-  return NextResponse.json({ error: "Token inválido" }, { status: 403 });
+export async function GET() {
+  return NextResponse.json({ ok: true, provider: "EVOLUTION" });
 }
 
 export async function POST(req: Request) {
   try {
-    const signature = req.headers.get("x-hub-signature-256");
-    const rawBody = await req.text();
+    const body = await req.json().catch(() => null);
 
-    const validSignature = verifySignature(rawBody, signature);
-
-    if (!validSignature) {
-      return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
+    if (!body) {
+      return NextResponse.json({ ok: true, ignored: "empty-body" });
     }
 
-    const body = JSON.parse(rawBody) as WhatsAppWebhookPayload;
+    const instanceName = extractInstanceName(body);
+    const event = normalizeEventName(body?.event);
 
-    if (body.object !== "whatsapp_business_account") {
-      return NextResponse.json({ ok: true, ignored: true });
+    console.log(
+      "[WA_WEBHOOK_EVENT]",
+      JSON.stringify({
+        event,
+        instanceName,
+      })
+    );
+
+    if (!instanceName) {
+      return NextResponse.json({ ok: true, ignored: "missing-instance" });
     }
 
-    for (const entry of body.entry ?? []) {
-      for (const change of entry.changes ?? []) {
-        if (change.field !== "messages" || !change.value) continue;
+    const config = await prisma.whatsappConfig.findUnique({
+      where: { instanceName },
+    });
 
-        const value = change.value;
-        const phoneNumberId = value.metadata?.phone_number_id;
+    if (!config) {
+      return NextResponse.json({ ok: true, ignored: "instance-not-found" });
+    }
 
-        if (!phoneNumberId) continue;
+    if (event === "QRCODE_UPDATED") {
+      await prisma.whatsappConfig.update({
+        where: { id: config.id },
+        data: {
+          status: "CONNECTING",
+          qrCodeBase64: extractQrCodeBase64(body),
+          qrCodeText: extractQrCodeText(body),
+          pairingCode: extractPairingCode(body),
+        },
+      });
 
-        const tenant = await prisma.tenant.findFirst({
+      return NextResponse.json({ ok: true });
+    }
+
+    if (
+      event === "CONNECTION_UPDATE" ||
+      body?.state ||
+      body?.data?.state
+    ) {
+      const status = resolveConnectionStatus(body);
+
+      const connectedPhone =
+        normalizePhone(body?.data?.owner) ||
+        normalizePhone(body?.owner) ||
+        config.connectedPhone ||
+        null;
+
+      const profileName =
+        body?.data?.profileName ||
+        body?.profileName ||
+        config.profileName ||
+        null;
+
+      await prisma.whatsappConfig.update({
+        where: { id: config.id },
+        data: {
+          status,
+          connectedPhone,
+          profileName,
+          ...(status === "OPEN"
+            ? {
+                lastConnectionAt: new Date(),
+                qrCodeBase64: null,
+                qrCodeText: null,
+                pairingCode: null,
+              }
+            : {}),
+        },
+      });
+
+      return NextResponse.json({ ok: true });
+    }
+
+    if (event === "MESSAGES_UPSERT") {
+      const messages = collectMessages(body);
+
+      for (const item of messages) {
+        const key = item?.key || {};
+
+        if (key?.fromMe) continue;
+
+        const waMessageId = key?.id || item?.id;
+        const phoneE164 = normalizePhoneFromJid(
+          key?.remoteJid || item?.remoteJid
+        );
+
+        if (!waMessageId || !phoneE164) continue;
+
+        const fromName =
+          item?.pushName ||
+          item?.participantPushName ||
+          item?.senderName ||
+          null;
+
+        const message = item?.message || {};
+        const textBody = extractMessageText(message);
+        const type = detectMessageType(message);
+
+        const client = await prisma.client.upsert({
           where: {
-            whatsappConfig: {
-              phoneNumberId,
+            tenantId_phoneE164: {
+              tenantId: config.tenantId,
+              phoneE164,
             },
           },
-          include: {
-            whatsappConfig: true,
+          update: {
+            ...(fromName ? { name: fromName } : {}),
+          },
+          create: {
+            tenantId: config.tenantId,
+            phoneE164,
+            name: fromName || phoneE164,
           },
         });
 
-        if (!tenant || !tenant.whatsappConfig) {
-          console.warn("Webhook recebido para phoneNumberId sem tenant:", phoneNumberId);
-          continue;
-        }
-
-        const contactNameMap = new Map<string, string | undefined>();
-        for (const contact of value.contacts ?? []) {
-          if (contact.wa_id) {
-            contactNameMap.set(contact.wa_id, contact.profile?.name);
-          }
-        }
-
-        for (const message of value.messages ?? []) {
-          if (!message.id || !message.from) continue;
-
-          const existing = await prisma.whatsAppInboundMessage.findUnique({
-            where: { waMessageId: message.id },
-            select: { id: true },
-          });
-
-          if (existing) {
-            continue;
-          }
-
-          const fromPhoneE164 = normalizePhoneToE164(message.from);
-          if (!fromPhoneE164) continue;
-
-          const fromName = contactNameMap.get(message.from) || null;
-
-          const client = await prisma.client.upsert({
-            where: {
-              tenantId_phoneE164: {
-                tenantId: tenant.id,
-                phoneE164: fromPhoneE164,
-              },
-            },
-            create: {
-              tenantId: tenant.id,
-              phoneE164: fromPhoneE164,
-              name: fromName || fromPhoneE164,
-            },
-            update: {
-              name: fromName || undefined,
-            },
-          });
-
-          await prisma.whatsAppInboundMessage.create({
-            data: {
-              tenantId: tenant.id,
-              clientId: client.id,
-              waMessageId: message.id,
-              phoneNumberId,
-              fromPhoneE164,
-              fromName,
-              type: mapMessageType(message.type) as any,
-              textBody: message.text?.body || null,
-              rawJson: message as any,
-            },
-          });
-
-          // Auto reply básico apenas para texto
-          if (message.type === "text") {
-            const incomingText = (message.text?.body || "").trim().toLowerCase();
-
-            let reply =
-              `Olá, ${client.name}! Recebemos sua mensagem no ${tenant.name}.\n\n` +
-              `Em breve alguém do salão responde por aqui.`;
-
-            if (
-              incomingText.includes("oi") ||
-              incomingText.includes("olá") ||
-              incomingText.includes("ola")
-            ) {
-              reply =
-                `Olá, ${client.name}! 👋\n\n` +
-                `Recebemos sua mensagem no ${tenant.name}.\n` +
-                `Se quiser, você pode agendar direto pela nossa página online ou aguardar que respondemos por aqui.`;
-            }
-
-            try {
-              const waResponse = await sendWhatsAppText({
-                phoneNumberId: tenant.whatsappConfig.phoneNumberId,
-                accessToken: tenant.whatsappConfig.accessToken,
-                to: fromPhoneE164,
-                text: reply,
-                replyToMessageId: message.id,
-              });
-
-              await logWhatsAppOutboundMessage({
-                tenantId: tenant.id,
-                clientId: client.id,
-                phoneNumberId: tenant.whatsappConfig.phoneNumberId,
-                toPhoneE164: fromPhoneE164,
-                textBody: reply,
-                waMessageId: waResponse?.messages?.[0]?.id ?? null,
-                rawJson: waResponse,
-              });
-            } catch (replyError) {
-              console.error("Erro ao enviar auto-reply:", replyError);
-            }
-          }
-        }
-
-        // Statuses: por enquanto só loga
-        for (const status of value.statuses ?? []) {
-          console.log("Status webhook:", {
-            tenantId: tenant.id,
-            waMessageId: status.id,
-            status: status.status,
-            recipientId: status.recipient_id,
-          });
-        }
+        await prisma.whatsAppInboundMessage.upsert({
+          where: {
+            waMessageId,
+          },
+          update: {
+            tenantId: config.tenantId,
+            clientId: client.id,
+            phoneNumberId: instanceName,
+            fromPhoneE164: phoneE164,
+            fromName,
+            type,
+            textBody,
+            rawJson: item,
+          },
+          create: {
+            tenantId: config.tenantId,
+            clientId: client.id,
+            waMessageId,
+            phoneNumberId: instanceName,
+            fromPhoneE164: phoneE164,
+            fromName,
+            type,
+            textBody,
+            rawJson: item,
+          },
+        });
       }
+
+      return NextResponse.json({ ok: true });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, ignored: "event-not-used-yet" });
   } catch (error) {
-    console.error("Erro no webhook WhatsApp:", error);
-    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+    console.error("[WA_WEBHOOK_ERROR]", error);
+    return NextResponse.json({ ok: true });
   }
 }

@@ -25,7 +25,11 @@ export async function GET(
     const limitParam = parseInt(searchParams.get("limit") || "20");
     const limit = Math.min(Math.max(limitParam, 1), 100);
 
-    const where: { tenantId: string; subscriptionId?: string; clientId?: string } = {
+    const where: {
+      tenantId: string;
+      subscriptionId?: string;
+      clientId?: string;
+    } = {
       tenantId: tenant.id,
     };
 
@@ -95,7 +99,7 @@ export async function GET(
       benefitUsages: formattedUsages,
     });
   } catch (error) {
-    console.error("[CLUB_BENEFIT_USAGES_GET]", error);
+    // Erro capturado silenciosamente para evitar logs excessivos em produção, mas mantendo a estrutura de erro
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentMembershipBySlug } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-const ASAAS_URL = process.env.ASAAS_API_URL || "https://sandbox.asaas.com/api/v3";
+const ASAAS_URL = process.env.ASAAS_API_URL || "https://www.asaas.com/api/v3";
 const ASAAS_KEY = process.env.ASAAS_API_KEY;
 
 export async function POST(
@@ -12,6 +12,10 @@ export async function POST(
 ) {
   try {
     const { slug } = await params;
+
+    // 💡 LOG DE VERIFICAÇÃO (Adicione esta linha aqui)
+    console.log(`[CHECKOUT] Iniciando checkout para ${slug}. URL do Asaas: ${ASAAS_URL}`);
+
     const membership = await getCurrentMembershipBySlug(slug);
 
     if (!membership) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });

@@ -1,18 +1,57 @@
 "use client";
 
-import React, { useState } from "react";
-import { ArrowLeft, CheckCircle2, Loader2, Smartphone, CreditCard } from "lucide-react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Calendar,
+  CalendarPlus,
+  CheckCircle2,
+  Clock,
+  Crown,
+  CreditCard,
+  Phone,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
 
-type TenantInfo = {
-  id: string;
+export type TenantInfo = {
   name: string;
   logoUrl: string | null;
   primaryColor: string | null;
   clubPaymentProvider: "ASAAS" | "MERCADO_PAGO" | null;
 };
 
-type PlanInfo = {
+export type PortalSubscription = {
+  id: string;
+  status: "PENDING" | "ACTIVE" | "OVERDUE" | "CANCELED" | "EXPIRED";
+  provider: "ASAAS" | "MERCADO_PAGO";
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
+  canceledAt: string | null;
+  createdAt: string;
+  plan: {
+    id: string;
+    name: string;
+    description: string | null;
+    terms: string | null;
+    priceInCents: number;
+    billingCycle: "MONTHLY" | "QUARTERLY" | "SEMIANNUAL" | "YEARLY";
+    discountPercent: number | null;
+  };
+};
+
+export type PortalData = {
+  tenant: TenantInfo;
+  client: {
+    name: string;
+    phoneE164: string;
+  };
+  subscriptions: PortalSubscription[];
+};
+
+export type PlanInfo = {
   id: string;
   name: string;
   description: string | null;
@@ -27,347 +66,545 @@ type Props = {
   tenant: TenantInfo;
   plan: PlanInfo;
 };
-
-const formatCurrency = (cents: number) => {
-  return (cents / 100).toLocaleString("pt-BR", {
+function formatCurrencyFromCents(cents: number) {
+  return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
-  });
-};
+  }).format(cents / 100);
+}
 
-const formatCycle = (cycle: string) => {
-  const map: Record<string, string> = {
+function formatCycle(cycle: string) {
+  const cycles: Record<string, string> = {
     MONTHLY: "Mensal",
     QUARTERLY: "Trimestral",
     SEMIANNUAL: "Semestral",
     YEARLY: "Anual",
   };
-  return map[cycle] || cycle;
-};
+  return cycles[cycle] || cycle;
+}
 
-const sanitizePhone = (val: string) => val.replace(/[^\d+]/g, "");
+function formatDateBR(dateStr: string | null) {
+  if (!dateStr) return "-";
+  const date = new Date(dateStr);
+  return new Intl.DateTimeFormat("pt-BR").format(date);
+}
 
-const getCpfCnpjDigits = (val: string) => val.replace(/\D/g, "");
+function formatStatus(status: PortalSubscription["status"]) {
+  const labels: Record<PortalSubscription["status"], string> = {
+    PENDING: "Pendente",
+    ACTIVE: "Ativa",
+    OVERDUE: "Inadimplente",
+    CANCELED: "Cancelada",
+    EXPIRED: "Expirada",
+  };
+  return labels[status] || status;
+}
 
-const formatCpfCnpj = (val: string) => {
-  const digits = getCpfCnpjDigits(val).slice(0, 14);
-  if (digits.length <= 11) {
-    return digits
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+function statusBadgeClass(status: PortalSubscription["status"]) {
+  switch (status) {
+    case "ACTIVE":
+      return "border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-400";
+    case "PENDING":
+      return "border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-900 dark:bg-amber-500/15 dark:text-amber-400";
+    case "OVERDUE":
+      return "border-red-200 bg-red-100 text-red-700 dark:border-red-900 dark:bg-red-500/15 dark:text-red-400";
+    case "CANCELED":
+    case "EXPIRED":
+      return "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400";
+    default:
+      return "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400";
   }
-  return digits
-    .replace(/^(\d{2})(\d)/, "$1.$2")
-    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1/$2")
-    .replace(/(\d{4})(\d)/, "$1-$2");
-};
+}
+
+function StatusIcon({ status }: { status: PortalSubscription["status"] }) {
+  switch (status) {
+    case "ACTIVE":
+      return <CheckCircle2 size={14} className="mr-1" />;
+    case "PENDING":
+      return <Clock size={14} className="mr-1" />;
+    case "OVERDUE":
+      return <AlertCircle size={14} className="mr-1" />;
+    case "CANCELED":
+    case "EXPIRED":
+      return <XCircle size={14} className="mr-1" />;
+    default:
+      return null;
+  }
+}
+
+const labelClass =
+  "text-[10px] font-black uppercase tracking-widest text-zinc-500";
+
+const shellCardClass =
+  "rounded-3xl sm:rounded-[2rem] border border-zinc-200 bg-white shadow-xl shadow-zinc-200/50 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none";
+
+const innerCardClass =
+  "rounded-[1.75rem] border border-zinc-200 bg-white shadow-xl shadow-zinc-200/40 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none";
+
+const inputWithIconClass =
+  "h-12 w-full rounded-2xl border border-zinc-200 bg-zinc-100 pl-11 pr-4 text-sm font-bold text-zinc-900 outline-none transition-all placeholder:text-zinc-500 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white dark:focus:bg-zinc-950";
 
 export default function SubscribeClubClient({ slug, tenant, plan }: Props) {
-  const [step, setStep] = useState<"FORM" | "CODE" | "VERIFIED">("FORM");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("+55");
-  
-  // Verification
+  const [step, setStep] = useState<"PHONE" | "CODE" | "PORTAL">("PHONE");
+  const [phoneE164, setPhoneE164] = useState("+55");
   const [code, setCode] = useState("");
-  const [devCode, setDevCode] = useState<string | null>(null);
-  
-  // Subscription
-  const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
-  
-  // Payment
-  const [cpfCnpj, setCpfCnpj] = useState("");
-  const [paymentLoading, setPaymentLoading] = useState(false);
-  const [paymentError, setPaymentError] = useState<string | null>(null);
-
-  // UI States
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [portalData, setPortalData] = useState<PortalData | null>(null);
 
+  const primaryColor = tenant.primaryColor || "#10b981";
 
-  const handleSendCode = async (e: React.FormEvent) => {
+  const handlePhoneChange = (e: ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/[^\d+]/g, "");
+    if (!value.startsWith("+55")) {
+      value = "+55" + value.replace(/\D/g, "");
+    }
+    value = value.trim();
+    if (value.length <= 14) {
+      setPhoneE164(value);
+    }
+  };
+
+  const handleCodeChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, "");
+    if (value.length <= 6) {
+      setCode(value);
+    }
+  };
+
+  const handleSendCode = async (e: FormEvent) => {
     e.preventDefault();
-    setError(null);
 
-    if (name.trim().length < 2) {
-      setError("Por favor, insira seu nome completo.");
+    if (phoneE164.length !== 14) {
+      setError("Informe um WhatsApp válido com DDD.");
       return;
     }
 
-    const phoneRegex = /^\+55\d{11}$/;
-    if (!phoneRegex.test(phone)) {
-      setError("WhatsApp inválido. Use o formato +55 DDD + Número.");
-      return;
-    }
-
-    setLoading(true);
     try {
-      const res = await fetch(`/api/public/${slug}/club/auth/send-code`, {
+      setLoading(true);
+      setError("");
+      setMessage("");
+
+      const res = await fetch(`/api/public/${slug}/club/portal/send-code`, {
         method: "POST",
-        body: JSON.stringify({ phoneE164: phone, planId: plan.id, name }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneE164 }),
       });
+
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || "Erro ao enviar código.");
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao enviar o código.");
+      }
 
-      if (data.devCode) setDevCode(data.devCode);
+      setMessage("Código de acesso enviado para o seu WhatsApp.");
       setStep("CODE");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Ocorreu um erro inesperado."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerifyCode = async (e: React.FormEvent) => {
+  const loadPortalData = async () => {
+    try {
+      const res = await fetch(`/api/public/${slug}/club/portal/me`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao carregar os dados.");
+      }
+
+      setPortalData(data);
+      setStep("PORTAL");
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Falha ao carregar assinatura."
+      );
+      setStep("PHONE");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: FormEvent) => {
     e.preventDefault();
-    setError(null);
 
     if (code.length !== 6) {
       setError("O código deve ter 6 dígitos.");
       return;
     }
 
-    setLoading(true);
     try {
-      const res = await fetch(`/api/public/${slug}/club/auth/verify-code`, {
+      setLoading(true);
+      setError("");
+      setMessage("");
+
+      const res = await fetch(`/api/public/${slug}/club/portal/verify-code`, {
         method: "POST",
-        body: JSON.stringify({ phoneE164: phone, code }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneE164, code }),
       });
+
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || "Código inválido.");
+      if (!res.ok) {
+        throw new Error(data.error || "Código inválido.");
+      }
 
-      // Create the pending subscription
-      const subRes = await fetch(`/api/public/${slug}/club/subscribe`, {
-        method: "POST",
-        body: JSON.stringify({ phoneE164: phone, planId: plan.id, name }),
-      });
-      const subData = await subRes.json();
-      if (!subRes.ok) throw new Error(subData.error || "Erro ao criar assinatura.");
-
-      setSubscriptionId(subData.subscription.id);
-      setStep("VERIFIED");
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+      await loadPortalData();
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Código inválido ou expirado."
+      );
       setLoading(false);
     }
   };
 
-  const handleGoToPayment = async () => {
-    setPaymentError(null);
-    const digits = getCpfCnpjDigits(cpfCnpj);
-    
-    if (digits.length !== 11 && digits.length !== 14) {
-      setPaymentError("CPF deve ter 11 dígitos ou CNPJ 14 dígitos.");
-      return;
-    }
+  const hasActiveSubscription = Boolean(
+    portalData?.subscriptions.some((sub) => sub.status === "ACTIVE")
+  );
 
-    if (!subscriptionId) {
-      setPaymentError("Assinatura não encontrada.");
-      return;
-    }
-
-    setPaymentLoading(true);
-    try {
-      const res = await fetch(`/api/public/${slug}/club/subscriptions/${subscriptionId}/checkout`, {
-        method: "POST",
-        body: JSON.stringify({ cpfCnpj: digits }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || "Erro ao gerar checkout.");
-
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
-      }
-    } catch (err: any) {
-      setPaymentError(err.message);
-    } finally {
-      setPaymentLoading(false);
-    }
-  };
-
-  const primaryBg = tenant.primaryColor || "#000";
+  const clientDisplayName =
+    portalData?.client.name?.trim() || portalData?.client.phoneE164 || "Cliente";
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 pb-10">
-      {/* Header */}
-      <header className="p-4 flex items-center gap-4 border-b dark:border-zinc-800 bg-white dark:bg-zinc-900 sticky top-0 z-10">
-        <Link href={`/s/${slug}/clube`} className="p-2 -ml-2">
-          <ArrowLeft className="w-6 h-6" />
-        </Link>
-        <div>
-          <h1 className="font-bold text-lg leading-tight">Assinar Clube</h1>
-          <p className="text-xs text-zinc-500">{tenant.name}</p>
-        </div>
-      </header>
+    <div className="relative min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      <div className="pointer-events-none fixed top-0 left-1/2 h-[500px] w-full -translate-x-1/2 bg-emerald-500/5 blur-[120px]" />
 
-      <main className="max-w-md mx-auto p-4 space-y-6">
-        {/* Plan Summary Card */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm border dark:border-zinc-800">
-          <div className="flex justify-between items-start mb-2">
-            <h2 className="text-xl font-bold">{plan.name}</h2>
-            <span className="text-xs font-medium px-2 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800">
-              {formatCycle(plan.billingCycle)}
-            </span>
-          </div>
-          <div className="text-2xl font-black mb-1" style={{ color: primaryBg }}>
-            {formatCurrency(plan.priceInCents)}
-          </div>
-          {plan.discountPercent && (
-            <p className="text-green-600 dark:text-green-400 text-sm font-medium mb-3">
-              {plan.discountPercent}% de desconto incluso
-            </p>
-          )}
-          {plan.description && (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">{plan.description}</p>
-          )}
-          {plan.terms && (
-            <div className="text-[10px] text-zinc-400 uppercase tracking-wider border-t dark:border-zinc-800 pt-3">
-              Condições: {plan.terms}
-            </div>
-          )}
-        </div>
+      <div className="relative mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mb-6 sm:mb-8">
+          <Link
+            href={`/s/${slug}/clube`}
+            className="mb-5 inline-flex items-center gap-2 text-sm font-black text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-300"
+          >
+            <ArrowLeft size={16} />
+            Voltar para o clube
+          </Link>
 
-        {/* Step 1: Form */}
-        {step === "FORM" && (
-          <form onSubmit={handleSendCode} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Seu Nome</label>
-              <input
-                required
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: João Silva"
-                className="w-full p-3 rounded-xl border dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-2 outline-none"
-                style={{ "--tw-ring-color": primaryBg } as React.CSSProperties}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">WhatsApp</label>
-              <input
-                required
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                maxLength={14}
-                value={phone}
-                onChange={(e) => setPhone(sanitizePhone(e.target.value))}
-                className="w-full p-3 rounded-xl border dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-2 outline-none"
-                style={{ "--tw-ring-color": primaryBg } as React.CSSProperties}
-              />
-              <p className="text-[10px] text-zinc-500">Formato: +5511999999999</p>
-            </div>
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <button
-              disabled={loading}
-              className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-70"
-              style={{ backgroundColor: primaryBg }}
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Receber código no WhatsApp"}
-            </button>
-          </form>
-        )}
+          <div className={`${shellCardClass} overflow-hidden`}>
+            <div className="border-b border-zinc-200 bg-gradient-to-br from-emerald-500/[0.08] via-transparent to-transparent px-5 py-6 dark:border-zinc-800 sm:px-8 sm:py-8">
+              <div className="flex items-center gap-4">
+                <div
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg"
+                  style={{
+                    backgroundColor: primaryColor,
+                    boxShadow: `0 12px 30px ${primaryColor}33`,
+                  }}
+                >
+                  <Crown size={26} />
+                </div>
 
-        {/* Step 2: Code Verification */}
-        {step === "CODE" && (
-          <form onSubmit={handleVerifyCode} className="space-y-4">
-            <div className="text-center space-y-2 mb-6">
-              <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto">
-                <Smartphone className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold">Verifique seu WhatsApp</h3>
-              <p className="text-sm text-zinc-500">Enviamos um código de 6 dígitos para {phone}</p>
-            </div>
-            <input
-              required
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="000000"
-              className="w-full p-4 text-center text-2xl tracking-[1em] font-mono rounded-xl border dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-2 outline-none"
-              style={{ "--tw-ring-color": primaryBg } as React.CSSProperties}
-            />
-            {devCode && (
-              <div className="p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-700 dark:text-amber-400 text-center">
-                Código de teste: <strong>{devCode}</strong>
-              </div>
-            )}
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-            <button
-              disabled={loading}
-              className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-70"
-              style={{ backgroundColor: primaryBg }}
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Validar código"}
-            </button>
-            <button type="button" onClick={() => setStep("FORM")} className="w-full text-sm text-zinc-500">
-              Alterar número
-            </button>
-          </form>
-        )}
-
-        {/* Step 3: Verified */}
-        {step === "VERIFIED" && (
-          <div className="text-center space-y-6 py-8">
-            <div className="space-y-4">
-              <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold">Pré-assinatura criada</h3>
-                <p className="text-sm text-zinc-500">Status: Pendente de pagamento</p>
-              </div>
-            </div>
-
-            {tenant.clubPaymentProvider === "ASAAS" ? (
-              <div className="space-y-4 text-left">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">CPF ou CNPJ para cobrança</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    value={cpfCnpj}
-                    onChange={(e) => setCpfCnpj(formatCpfCnpj(e.target.value))}
-                    placeholder="000.000.000-00"
-                    className="w-full p-3 rounded-xl border dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:ring-2 outline-none"
-                    style={{ "--tw-ring-color": primaryBg } as React.CSSProperties}
-                  />
-                  <p className="text-[10px] text-zinc-500">
-                    Usado apenas para gerar a cobrança no Asaas da barbearia.
+                <div>
+                  <p className={labelClass}>Portal do assinante</p>
+                  <h1 className="mt-2 text-[1.75rem] leading-[1.05] font-black italic tracking-tighter text-zinc-900 dark:text-white sm:text-4xl">
+                    Minha assinatura
+                  </h1>
+                  <p className="mt-2 text-[13px] leading-5 font-bold text-zinc-500">
+                    {tenant.name}
                   </p>
                 </div>
-                {paymentError && <p className="text-red-500 text-sm text-center">{paymentError}</p>}
-                <button
-                  onClick={handleGoToPayment}
-                  disabled={paymentLoading}
-                  className="w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-70"
-                  style={{ backgroundColor: primaryBg }}
-                >
-                  {paymentLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CreditCard className="w-5 h-5" /> Ir para pagamento</>}
-                </button>
               </div>
-            ) : tenant.clubPaymentProvider === "MERCADO_PAGO" ? (
-              <div className="space-y-4">
-                <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-100 dark:border-amber-800">
-                  Pagamento via Mercado Pago será liberado em uma próxima etapa.
-                </p>
-                <button disabled className="w-full py-4 rounded-xl font-bold bg-zinc-200 dark:bg-zinc-800 text-zinc-500">
-                  Aguarde liberação
-                </button>
-              </div>
-            ) : (
-              <p className="text-sm text-zinc-500">Gateway de pagamento não configurado.</p>
-            )}
+            </div>
+          </div>
+        </div>
 
+        {error && (
+          <div className="mb-5 rounded-3xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+            {error}
           </div>
         )}
-      </main>
+
+        {message && (
+          <div className="mb-5 rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+            {message}
+          </div>
+        )}
+
+        {step === "PHONE" && (
+          <section className={`${shellCardClass} p-5 sm:p-6`}>
+            <p className={labelClass}>Acesso por WhatsApp</p>
+            <h2 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+              Consulte sua assinatura
+            </h2>
+            <p className="mt-2 text-sm font-bold text-zinc-500">
+              Informe seu WhatsApp para consultar os dados da sua assinatura do
+              clube.
+            </p>
+
+            <form onSubmit={handleSendCode} className="mt-6 space-y-4">
+              <div className="relative">
+                <Phone
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
+                  size={18}
+                />
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  maxLength={14}
+                  value={phoneE164}
+                  onChange={handlePhoneChange}
+                  placeholder="+5511999998888"
+                  className={inputWithIconClass}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-50"
+                style={{
+                  backgroundColor: primaryColor,
+                  boxShadow: `0 14px 30px ${primaryColor}33`,
+                }}
+              >
+                {loading ? "Processando..." : "Receber código"}
+              </button>
+            </form>
+          </section>
+        )}
+
+        {step === "CODE" && (
+          <section className={`${shellCardClass} p-5 sm:p-6`}>
+            <p className={labelClass}>Validação</p>
+            <h2 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+              Digite o código
+            </h2>
+            <p className="mt-2 text-sm font-bold text-zinc-500">
+              Enviamos um código de 6 dígitos para o WhatsApp{" "}
+              <span className="text-zinc-900 dark:text-white">{phoneE164}</span>.
+            </p>
+
+            <form onSubmit={handleVerifyCode} className="mt-6 space-y-4">
+              <div className="relative">
+                <ShieldCheck
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
+                  size={18}
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={code}
+                  onChange={handleCodeChange}
+                  placeholder="000000"
+                  className="h-14 w-full rounded-2xl border border-zinc-200 bg-zinc-100 pl-12 pr-4 text-center text-2xl font-black tracking-[0.45em] text-zinc-900 outline-none transition-all placeholder:text-zinc-500 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white dark:focus:bg-zinc-950"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || code.length < 6}
+                className="inline-flex h-12 w-full items-center justify-center rounded-2xl px-5 text-sm font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-50"
+                style={{
+                  backgroundColor: primaryColor,
+                  boxShadow: `0 14px 30px ${primaryColor}33`,
+                }}
+              >
+                {loading ? "Validando..." : "Validar código"}
+              </button>
+            </form>
+          </section>
+        )}
+
+        {step === "PORTAL" && portalData && (
+          <div className="space-y-5">
+            <section className={`${shellCardClass} p-5 sm:p-6`}>
+              <p className={labelClass}>Cliente</p>
+              <h2 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                {clientDisplayName}
+              </h2>
+              <p className="mt-2 text-sm font-bold text-zinc-500">
+                WhatsApp: {portalData.client.phoneE164}
+              </p>
+            </section>
+
+            {portalData.subscriptions.length === 0 ? (
+              <section className={`${shellCardClass} px-6 py-12 text-center`}>
+                <p className="text-sm font-bold text-zinc-500">
+                  Você não possui assinaturas vinculadas a este número.
+                </p>
+                <Link
+                  href={`/s/${slug}/clube`}
+                  className="mt-5 inline-flex items-center justify-center rounded-2xl px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95"
+                  style={{
+                    backgroundColor: primaryColor,
+                    boxShadow: `0 14px 30px ${primaryColor}33`,
+                  }}
+                >
+                  Ver planos do clube
+                </Link>
+              </section>
+            ) : (
+              <section className="space-y-4">
+                <div>
+                  <p className={labelClass}>Assinaturas</p>
+                  <h3 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                    Suas assinaturas
+                  </h3>
+                </div>
+
+                {portalData.subscriptions.map((sub) => (
+                  <article
+                    key={sub.id}
+                    className={`${shellCardClass} overflow-hidden`}
+                  >
+                    <div className="px-5 py-5 sm:px-6">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className={labelClass}>Plano</p>
+                          <h4 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                            {sub.plan.name}
+                          </h4>
+                          <p className="mt-3 text-3xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                            {formatCurrencyFromCents(sub.plan.priceInCents)}
+                            <span className="ml-2 text-sm font-bold not-italic text-zinc-500">
+                              /{formatCycle(sub.plan.billingCycle).toLowerCase()}
+                            </span>
+                          </p>
+                        </div>
+
+                        <span
+                          className={`inline-flex items-center self-start rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusBadgeClass(
+                            sub.status
+                          )}`}
+                        >
+                          <StatusIcon status={sub.status} />
+                          {formatStatus(sub.status)}
+                        </span>
+                      </div>
+
+                      <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                        <div className={`${innerCardClass} p-4`}>
+                          <div className="flex items-start gap-3">
+                            <div className="rounded-2xl bg-emerald-500/10 p-2 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                              <CreditCard size={16} />
+                            </div>
+                            <div>
+                              <p className={labelClass}>Gateway</p>
+                              <p className="mt-1 text-sm font-black text-zinc-900 dark:text-white">
+                                {sub.provider === "MERCADO_PAGO"
+                                  ? "Mercado Pago"
+                                  : "Asaas"}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={`${innerCardClass} p-4`}>
+                          <div className="flex items-start gap-3">
+                            <div className="rounded-2xl bg-zinc-100 p-2 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                              <Calendar size={16} />
+                            </div>
+                            <div>
+                              <p className={labelClass}>Próxima renovação</p>
+                              <p className="mt-1 text-sm font-black text-zinc-900 dark:text-white">
+                                {formatDateBR(sub.currentPeriodEnd)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {typeof sub.plan.discountPercent === "number" &&
+                          sub.plan.discountPercent > 0 && (
+                            <div className={`${innerCardClass} p-4 sm:col-span-2`}>
+                              <div className="flex items-start gap-3">
+                                <div className="rounded-2xl bg-amber-500/10 p-2 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400">
+                                  <Crown size={16} />
+                                </div>
+                                <div>
+                                  <p className={labelClass}>Benefício</p>
+                                  <p className="mt-1 text-sm font-black text-zinc-900 dark:text-white">
+                                    {sub.plan.discountPercent}% de desconto
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                        {sub.status === "CANCELED" && sub.canceledAt && (
+                          <div className={`${innerCardClass} p-4 sm:col-span-2`}>
+                            <div className="flex items-start gap-3">
+                              <div className="rounded-2xl bg-red-500/10 p-2 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+                                <XCircle size={16} />
+                              </div>
+                              <div>
+                                <p className={labelClass}>Cancelada em</p>
+                                <p className="mt-1 text-sm font-black text-zinc-900 dark:text-white">
+                                  {formatDateBR(sub.canceledAt)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {sub.plan.description && (
+                        <div className="mt-5 rounded-3xl border border-zinc-200 bg-zinc-100/80 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                          <p className={labelClass}>Descrição</p>
+                          <p className="mt-2 whitespace-pre-line text-sm font-bold text-zinc-500">
+                            {sub.plan.description}
+                          </p>
+                        </div>
+                      )}
+
+                      {sub.plan.terms && (
+                        <div className="mt-4 rounded-3xl border border-zinc-200 bg-zinc-100/80 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                          <p className={labelClass}>Termos</p>
+                          <p className="mt-2 whitespace-pre-line text-sm font-bold text-zinc-500">
+                            {sub.plan.terms}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {sub.status === "ACTIVE" && (
+                      <div className="border-t border-zinc-200 bg-zinc-50 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-950/60 sm:px-6">
+                        <Link
+                          href={`/s/${slug}`}
+                          className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-5 text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95"
+                          style={{
+                            backgroundColor: primaryColor,
+                            boxShadow: `0 14px 30px ${primaryColor}33`,
+                          }}
+                        >
+                          <CalendarPlus size={16} />
+                          Agendar usando benefício
+                        </Link>
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </section>
+            )}
+
+            {!hasActiveSubscription && portalData.subscriptions.length > 0 && (
+              <section className={`${shellCardClass} px-6 py-8 text-center`}>
+                <p className="text-sm font-bold text-zinc-500">
+                  Você não possui assinatura ativa no momento.
+                </p>
+                <Link
+                  href={`/s/${slug}/clube`}
+                  className="mt-5 inline-flex items-center gap-2 rounded-2xl px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition-all active:scale-95"
+                  style={{
+                    backgroundColor: primaryColor,
+                    boxShadow: `0 14px 30px ${primaryColor}33`,
+                  }}
+                >
+                  <Crown size={16} />
+                  Ver planos
+                </Link>
+              </section>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

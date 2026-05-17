@@ -1,32 +1,34 @@
 import { prisma } from "@/lib/prisma";
-import { sendZap } from "@/lib/whatsapp";
+import { sendTenantWhatsAppMessage } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
-import { addHours, startOfMinute } from "date-fns";
+import { addHours } from "date-fns";
 
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
   try {
-    // 1. Segurança
     const { searchParams } = new URL(req.url);
     const cronKey = searchParams.get("key");
+
     if (cronKey !== process.env.CRON_SECRET) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    // 2. Definir a janela de tempo
     const agora = new Date();
     const daquiADuasHoras = addHours(agora, 2);
 
-    // 3. Buscar no Prisma com filtro de tempo
     const appointmentsToRemind = await prisma.appointment.findMany({
       where: {
         status: "CONFIRMED",
         reminderSent: false,
-        // O segredo está aqui:
         startAt: {
-          gte: agora,           // O agendamento ainda não começou
-          lte: daquiADuasHoras, // O agendamento começa em no máximo 2 horas
+          gte: agora,
+          lte: daquiADuasHoras,
+        },
+        tenant: {
+          subscriptionStatus: {
+            not: "CANCELED",
+          },
         },
       },
       include: {
@@ -35,37 +37,74 @@ export async function GET(req: Request) {
       },
     });
 
-    console.log(`[Reminders] Encontrados ${appointmentsToRemind.length} lembretes para enviar.`);
+    console.log(
+      `[Reminders] Encontrados ${appointmentsToRemind.length} lembretes para enviar.`
+    );
 
-    // 4. Disparar as mensagens
+    let sentCount = 0;
+    let failedCount = 0;
+    let skippedCount = 0;
+
     for (const app of appointmentsToRemind) {
-      if (app.client?.phoneE164) {
-        const timeLabel = app.startAt.toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: app.timeZone || "America/Sao_Paulo"
+      if (!app.client?.phoneE164) {
+        skippedCount++;
+        console.error("[REMINDER_WHATSAPP_TEMPORARY_FAILURE]", "CLIENT_WITHOUT_PHONE", {
+          appointmentId: app.id,
+          clientId: app.clientId,
+        });
+        continue;
+      }
+
+      const timeLabel = app.startAt.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: app.timeZone || "America/Sao_Paulo",
+      });
+
+      const clientName = app.client.name || "cliente";
+
+      const msgLembrete =
+        `E aí, *${clientName}*! Passando pra lembrar que seu trato é **hoje**! ⏳\n\n` +
+        `🕒 Às **${timeLabel}** na *${app.tenant?.name || "Barbearia"}*.\n\n` +
+        `*Já estamos preparando tudo. Não se atrase!* 👊🔥`;
+
+      try {
+        const result = await sendTenantWhatsAppMessage({
+          tenantId: app.tenantId,
+          clientId: app.clientId,
+          to: app.client.phoneE164,
+          text: msgLembrete,
         });
 
-        const msgLembrete = 
-          `E aí, *${app.client.name}*! Passando pra lembrar que seu trato é **hoje**! ⏳\n\n` +
-          `🕒 Às **${timeLabel}** na *${app.tenant?.name || 'Barbearia'}*.\n\n` +
-          `*Já estamos preparando tudo. Não se atrase!* 👊🔥`;
+        if (!result.success) {
+          failedCount++;
+          console.error(
+            "[REMINDER_WHATSAPP_TEMPORARY_FAILURE]",
+            result.reason,
+            result.data
+          );
+          continue;
+        }
 
-        await sendZap(app.client.phoneE164, msgLembrete);
-
-        // 5. Marcar como enviado
         await prisma.appointment.update({
           where: { id: app.id },
           data: { reminderSent: true },
         });
+
+        sentCount++;
+      } catch (waError) {
+        failedCount++;
+        console.error("[REMINDER_WHATSAPP_TEMPORARY_FAILURE]", waError);
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      sent: appointmentsToRemind.length 
+    return NextResponse.json({
+      success: true,
+      found: appointmentsToRemind.length,
+      sent: sentCount,
+      failed: failedCount,
+      skipped: skippedCount,
     });
-
   } catch (error) {
     console.error("Erro no Cron de Lembretes:", error);
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });

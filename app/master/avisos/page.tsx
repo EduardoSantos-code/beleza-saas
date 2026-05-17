@@ -4,57 +4,111 @@ import { revalidatePath } from "next/cache";
 
 export default async function AvisosMasterPage() {
   const announcements = await prisma.announcement.findMany({
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: "desc" },
   });
 
   async function createAnnouncement(formData: FormData) {
     "use server";
-    const content = formData.get("content") as string;
-    await prisma.announcement.create({ data: { content } });
+
+    const content = String(formData.get("content") || "").trim();
+
+    if (!content) {
+      return;
+    }
+
+    await prisma.announcement.create({
+      data: { content },
+    });
+
     revalidatePath("/master/avisos");
   }
 
   async function deleteAnnouncement(id: string) {
     "use server";
+
     await prisma.announcement.delete({ where: { id } });
     revalidatePath("/master/avisos");
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
-        <h2 className="text-3xl font-bold text-white">Avisos Globais</h2>
-        <p className="text-zinc-400 mt-1">Mande mensagens para todos os barbeiros da plataforma.</p>
+        <h2 className="text-2xl font-bold text-white sm:text-3xl">
+          Avisos Globais
+        </h2>
+        <p className="mt-1 text-sm text-zinc-400 sm:text-base">
+          Mande mensagens para todos os barbeiros da plataforma.
+        </p>
       </div>
 
       {/* Formulário de Criação */}
-      <form action={createAnnouncement} className="bg-zinc-900 p-6 rounded-xl border border-zinc-800 space-y-4">
-        <textarea 
+      <form
+        action={createAnnouncement}
+        className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-6"
+      >
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-zinc-800 p-2 text-emerald-400">
+            <Megaphone size={18} />
+          </div>
+          <h3 className="text-base font-semibold text-white sm:text-lg">
+            Novo aviso
+          </h3>
+        </div>
+
+        <textarea
           name="content"
           placeholder="Digite o aviso aqui... (Ex: Nova funcionalidade de estoque liberada!)"
-          className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-white focus:ring-2 focus:ring-emerald-500 outline-none"
-          rows={3}
+          className="min-h-[120px] w-full rounded-lg border border-zinc-800 bg-zinc-950 p-4 text-sm text-white outline-none transition focus:ring-2 focus:ring-emerald-500 sm:text-base"
+          rows={4}
         />
-        <button className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg font-medium transition-colors">
-          Publicar Aviso
-        </button>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-zinc-500 sm:text-sm">
+            O aviso ficará visível para os barbeiros na plataforma.
+          </p>
+
+          <button className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-500 sm:w-auto">
+            Publicar Aviso
+          </button>
+        </div>
       </form>
 
       {/* Lista de Avisos Ativos */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-white">Histórico de Avisos</h3>
-        {announcements.map(aviso => (
-          <div key={aviso.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-lg flex justify-between items-center">
-            <div className="flex-1">
-              <p className="text-zinc-300">{aviso.content}</p>
-              <span className="text-xs text-zinc-500">{new Date(aviso.createdAt).toLocaleDateString('pt-BR')}</span>
+        <h3 className="text-base font-semibold text-white sm:text-lg">
+          Histórico de Avisos
+        </h3>
+
+        {announcements.length === 0 && (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center text-zinc-500">
+            Nenhum aviso publicado ainda.
+          </div>
+        )}
+
+        {announcements.map((aviso) => (
+          <div
+            key={aviso.id}
+            className="flex flex-col gap-4 rounded-lg border border-zinc-800 bg-zinc-900 p-4 sm:flex-row sm:items-start sm:justify-between"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="break-words text-sm text-zinc-300 sm:text-base">
+                {aviso.content}
+              </p>
+              <span className="mt-2 block text-xs text-zinc-500">
+                {new Date(aviso.createdAt).toLocaleDateString("pt-BR")}
+              </span>
             </div>
-            <form>
-              <button 
-                formAction={async () => { "use server"; await deleteAnnouncement(aviso.id); }}
-                className="text-red-500 hover:text-red-400 p-2"
+
+            <form className="sm:shrink-0">
+              <button
+                formAction={async () => {
+                  "use server";
+                  await deleteAnnouncement(aviso.id);
+                }}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/20 sm:w-auto"
               >
-                <Trash2 size={18} />
+                <Trash2 size={16} />
+                Excluir
               </button>
             </form>
           </div>

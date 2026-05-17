@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTenantAccess } from "@/lib/auth";
 import { decryptSecret } from "@/lib/crypto";
-import { deleteAsaasSubscription, ClubAsaasEnvironment } from "@/lib/asaas-club";
+import { getClubBillingProviderFromTenant } from "@/lib/club-billing";
 
 export async function POST(
   request: Request,
@@ -17,13 +17,21 @@ export async function POST(
       where: { slug },
       select: {
         id: true,
+        name: true,
+        slug: true,
         clubAsaasApiKeyEnc: true,
         clubAsaasEnvironment: true,
+        clubMercadoPagoAccessTokenEnc: true,
+        clubMercadoPagoPublicKey: true,
+        clubMercadoPagoEnvironment: true,
       },
     });
 
     if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Tenant não encontrado." },
+        { status: 404 }
+      );
     }
 
     const subscription = await prisma.clubSubscription.findFirst({
@@ -38,7 +46,10 @@ export async function POST(
     });
 
     if (!subscription) {
-      return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Assinatura não encontrada." },
+        { status: 404 }
+      );
     }
 
     if (subscription.status === "CANCELED") {
@@ -49,6 +60,7 @@ export async function POST(
           id: subscription.id,
           status: subscription.status,
           canceledAt: subscription.canceledAt,
+          provider: subscription.provider,
           client: {
             name: subscription.client.name,
             phoneE164: subscription.client.phoneE164,
@@ -61,34 +73,70 @@ export async function POST(
     }
 
     let gatewayCanceled = false;
+    let providerStatusRaw: string | null = subscription.providerStatusRaw ?? null;
+    let canceledAt = new Date();
 
-    if (subscription.provider === "MERCADO_PAGO") {
-      return NextResponse.json(
-        { error: "Cancelamento via Mercado Pago ainda não implementado." },
-        { status: 400 }
-      );
-    }
+    if (subscription.providerSubscriptionId) {
+      let providerSetup:
+        | ReturnType<typeof getClubBillingProviderFromTenant>
+        | undefined;
 
-    if (subscription.provider === "ASAAS" && subscription.providerSubscriptionId) {
-      if (!tenant.clubAsaasApiKeyEnc) {
+      try {
+        providerSetup = getClubBillingProviderFromTenant(
+          {
+            id: tenant.id,
+            name: tenant.name,
+            slug: tenant.slug,
+            clubPaymentProvider: subscription.provider,
+            clubAsaasEnvironment: tenant.clubAsaasEnvironment,
+            clubMercadoPagoEnvironment: tenant.clubMercadoPagoEnvironment,
+          },
+          {
+            asaasApiKey: tenant.clubAsaasApiKeyEnc
+              ? decryptSecret(tenant.clubAsaasApiKeyEnc)
+              : null,
+            mercadoPagoAccessToken: tenant.clubMercadoPagoAccessTokenEnc
+              ? decryptSecret(tenant.clubMercadoPagoAccessTokenEnc)
+              : null,
+            mercadoPagoPublicKey: tenant.clubMercadoPagoPublicKey,
+          }
+        );
+      } catch (error) {
         return NextResponse.json(
-          { error: "Chave Asaas do clube não configurada. Não foi possível cancelar no gateway." },
+          {
+            error:
+              error instanceof Error
+                ? error.message
+                : "Configuração do gateway inválida.",
+          },
           { status: 400 }
         );
       }
 
       try {
-        const apiKey = decryptSecret(tenant.clubAsaasApiKeyEnc);
-        await deleteAsaasSubscription({
-          apiKey,
-          environment: tenant.clubAsaasEnvironment as ClubAsaasEnvironment,
-          subscriptionId: subscription.providerSubscriptionId,
+        const cancelResult = await providerSetup.adapter.cancelSubscription({
+          providerConfig: providerSetup.config,
+          providerSubscriptionId: subscription.providerSubscriptionId,
+          reason: "Cancelado pelo administrador do tenant.",
         });
-        gatewayCanceled = true;
-      } catch (asaasError) {
-        console.error("[ASAAS_CANCEL_ERROR]", asaasError instanceof Error ? asaasError.message : String(asaasError));
+
+        gatewayCanceled = cancelResult.canceled;
+        providerStatusRaw =
+          cancelResult.providerStatusRaw ?? providerStatusRaw ?? null;
+        canceledAt = cancelResult.canceledAt ?? canceledAt;
+      } catch (gatewayError) {
+        console.error(
+          "[CLUB_PROVIDER_CANCEL_ERROR]",
+          gatewayError instanceof Error
+            ? gatewayError.message
+            : String(gatewayError)
+        );
+
         return NextResponse.json(
-          { error: "Não foi possível cancelar a assinatura no Asaas. Tente novamente ou verifique a configuração da chave." },
+          {
+            error:
+              "Não foi possível cancelar a assinatura no gateway. Verifique a configuração e tente novamente.",
+          },
           { status: 400 }
         );
       }
@@ -98,7 +146,9 @@ export async function POST(
       where: { id: subscriptionId },
       data: {
         status: "CANCELED",
-        canceledAt: new Date(),
+        canceledAt,
+        providerStatusRaw,
+        lastProviderSyncAt: new Date(),
       },
       include: {
         client: true,
@@ -113,6 +163,7 @@ export async function POST(
         id: updatedSubscription.id,
         status: updatedSubscription.status,
         canceledAt: updatedSubscription.canceledAt,
+        provider: updatedSubscription.provider,
         client: {
           name: updatedSubscription.client.name,
           phoneE164: updatedSubscription.client.phoneE164,
@@ -124,6 +175,9 @@ export async function POST(
     });
   } catch (error) {
     console.error("[CANCEL_SUBSCRIPTION_ERROR]", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erro interno no servidor." },
+      { status: 500 }
+    );
   }
 }

@@ -24,6 +24,13 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.findUnique({
       where: { email: parsed.data.email },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        passwordHash: true,
+      },
     });
 
     if (!user) {
@@ -60,6 +67,8 @@ export async function POST(req: Request) {
     const redirectTo =
       parsed.data.next && parsed.data.next.startsWith("/admin/")
         ? parsed.data.next
+        : user.role === "MASTER"
+        ? "/master"
         : memberships[0]
         ? `/admin/${memberships[0].tenant.slug}`
         : "/";
@@ -68,6 +77,7 @@ export async function POST(req: Request) {
       userId: user.id,
       email: user.email,
       name: user.name,
+      role: user.role,
     });
 
     return NextResponse.json({

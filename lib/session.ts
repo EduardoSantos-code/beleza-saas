@@ -25,7 +25,7 @@ export async function encrypt(payload: SessionPayload) {
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime("14d")
     .sign(encodedKey);
 }
 
@@ -44,7 +44,7 @@ export async function decrypt(token?: string) {
 }
 
 export async function createSession(payload: SessionPayload) {
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
   const session = await encrypt(payload);
 
   const cookieStore = await cookies();

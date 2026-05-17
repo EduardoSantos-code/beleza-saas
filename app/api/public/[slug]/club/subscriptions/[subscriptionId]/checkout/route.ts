@@ -1,26 +1,81 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
+import { jwtVerify, type JWTPayload } from "jose";
+import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
-import {
-  createAsaasCustomer,
-  createAsaasSubscription,
-  listAsaasSubscriptionPayments,
-  ClubAsaasEnvironment,
-} from "@/lib/asaas-club";
+import { getClubBillingProviderFromTenant } from "@/lib/club-billing";
+
+type RouteParams = {
+  slug: string;
+  subscriptionId: string;
+};
+
+type CheckoutBody = {
+  cpfCnpj?: unknown;
+};
+
+type ClubClientSessionPayload = JWTPayload & {
+  tenantId?: string;
+  slug?: string;
+  phoneE164?: string;
+  purpose?: string;
+};
+
+function nonEmptyString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function onlyDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+function buildPortalReturnUrl(request: Request, slug: string): string {
+  const requestUrl = new URL(request.url);
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    requestUrl.origin;
+
+  return `${baseUrl}/s/${slug}/clube/minha-assinatura`;
+}
+
+function buildNotificationUrl(
+  request: Request,
+  provider: "ASAAS" | "MERCADO_PAGO"
+): string {
+  const requestUrl = new URL(request.url);
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    requestUrl.origin;
+
+  if (provider === "ASAAS") {
+    return `${baseUrl}/api/webhooks/asaas/club`;
+  }
+
+  return `${baseUrl}/api/webhooks/mercadopago`;
+}
+
+function getSessionSecret(): string {
+  return (
+    process.env.CLIENT_SESSION_SECRET ||
+    process.env.JWT_SECRET ||
+    process.env.AUTH_SECRET ||
+    "dev-only-client-session-secret"
+  );
+}
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string; subscriptionId: string }> }
+  { params }: { params: Promise<RouteParams> }
 ) {
   try {
     const { slug, subscriptionId } = await params;
-    const body = await request.json();
-    const { cpfCnpj } = body;
+    const body = (await request.json()) as CheckoutBody;
 
-    // 1. Validar cpfCnpj
-    const cleanCpfCnpj = (cpfCnpj || "").replace(/\D/g, "");
+    const cleanCpfCnpj = onlyDigits(nonEmptyString(body.cpfCnpj) || "");
     if (cleanCpfCnpj.length !== 11 && cleanCpfCnpj.length !== 14) {
       return NextResponse.json(
         { error: "Informe um CPF ou CNPJ válido." },
@@ -28,7 +83,6 @@ export async function POST(
       );
     }
 
-    // 2. Buscar tenant
     const tenant = await prisma.tenant.findUnique({
       where: { slug },
       select: {
@@ -39,68 +93,78 @@ export async function POST(
         clubPaymentProvider: true,
         clubAsaasApiKeyEnc: true,
         clubAsaasEnvironment: true,
+        clubMercadoPagoAccessTokenEnc: true,
+        clubMercadoPagoPublicKey: true,
+        clubMercadoPagoEnvironment: true,
       },
     });
 
     if (!tenant) {
-      return NextResponse.json({ error: "Barbearia não encontrada." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Barbearia não encontrada." },
+        { status: 404 }
+      );
     }
 
-    // 3. Validar configurações do clube
-    if (
-      !tenant.clubEnabled ||
-      tenant.clubPaymentProvider !== "ASAAS" ||
-      !tenant.clubAsaasApiKeyEnc
-    ) {
+    if (!tenant.clubEnabled) {
       return NextResponse.json(
-        { error: "Pagamento do clube ainda não configurado pela barbearia." },
+        { error: "Clube indisponível." },
         { status: 400 }
       );
     }
 
-    // 4. Validar cookie de sessão do cliente
     const cookieStore = await cookies();
     const token = cookieStore.get("club_client_session")?.value;
 
     if (!token) {
-      return NextResponse.json({ error: "Sessão expirada ou inválida." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Sessão expirada ou inválida." },
+        { status: 401 }
+      );
     }
 
-    const secret =
-      process.env.CLIENT_SESSION_SECRET ||
-      process.env.JWT_SECRET ||
-      process.env.AUTH_SECRET ||
-      "dev-only-client-session-secret";
+    const sessionSecret = getSessionSecret();
 
-    if (process.env.NODE_ENV === "production" && secret === "dev-only-client-session-secret") {
-      return NextResponse.json({ error: "Erro interno de configuração." }, { status: 500 });
+    if (
+      process.env.NODE_ENV === "production" &&
+      sessionSecret === "dev-only-client-session-secret"
+    ) {
+      return NextResponse.json(
+        { error: "Erro interno de configuração." },
+        { status: 500 }
+      );
     }
 
-    const encodedSecret = new TextEncoder().encode(secret);
-    let payload;
+    let payload: ClubClientSessionPayload;
+
     try {
-      const verified = await jwtVerify(token, encodedSecret);
-      payload = verified.payload as {
-        tenantId: string;
-        slug: string;
-        phoneE164: string;
-        purpose: string;
-      };
+      const verified = await jwtVerify(
+        token,
+        new TextEncoder().encode(sessionSecret)
+      );
+      payload = verified.payload as ClubClientSessionPayload;
     } catch {
-      return NextResponse.json({ error: "Sessão inválida." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Sessão inválida." },
+        { status: 401 }
+      );
     }
 
     const phoneRegex = /^\+55\d{11}$/;
+
     if (
       payload.tenantId !== tenant.id ||
       payload.slug !== tenant.slug ||
       payload.purpose !== "CLUB_SUBSCRIBE" ||
+      !payload.phoneE164 ||
       !phoneRegex.test(payload.phoneE164)
     ) {
-      return NextResponse.json({ error: "Acesso não autorizado." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Acesso não autorizado." },
+        { status: 401 }
+      );
     }
 
-    // 5. Buscar ClubSubscription
     const subscription = await prisma.clubSubscription.findFirst({
       where: {
         id: subscriptionId,
@@ -113,12 +177,17 @@ export async function POST(
     });
 
     if (!subscription) {
-      return NextResponse.json({ error: "Assinatura não encontrada." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Assinatura não encontrada." },
+        { status: 404 }
+      );
     }
 
-    // 6. Validar status e cliente
     if (subscription.client.phoneE164 !== payload.phoneE164) {
-      return NextResponse.json({ error: "Cliente não corresponde à sessão." }, { status: 401 });
+      return NextResponse.json(
+        { error: "Cliente não corresponde à sessão." },
+        { status: 401 }
+      );
     }
 
     if (subscription.status === "ACTIVE") {
@@ -126,6 +195,7 @@ export async function POST(
         ok: true,
         message: "Assinatura já está ativa.",
         subscriptionId: subscription.id,
+        provider: subscription.provider,
       });
     }
 
@@ -136,96 +206,137 @@ export async function POST(
       );
     }
 
-    // 7. Se já tiver checkoutUrl, retornar
     if (subscription.providerCheckoutUrl) {
       return NextResponse.json({
         ok: true,
         checkoutUrl: subscription.providerCheckoutUrl,
         subscriptionId: subscription.id,
+        provider: subscription.provider,
         alreadyCreated: true,
       });
     }
 
-    // 8. Descriptografar chave
-    const apiKey = decryptSecret(tenant.clubAsaasApiKeyEnc);
-    const environment = tenant.clubAsaasEnvironment as ClubAsaasEnvironment;
+    let providerSetup:
+      | ReturnType<typeof getClubBillingProviderFromTenant>
+      | undefined;
 
-    // 9. Criar customer no Asaas
-    const asaasCustomer = await createAsaasCustomer({
-      apiKey,
-      environment,
-      name: subscription.client.name,
-      cpfCnpj: cleanCpfCnpj,
-      phoneE164: subscription.client.phoneE164,
-      externalReference: `club_client:${tenant.id}:${subscription.clientId}`,
-    });
-
-    // 10. Criar assinatura no Asaas
-    const asaasSubscription = await createAsaasSubscription({
-      apiKey,
-      environment,
-      customerId: asaasCustomer.id,
-      valueInCents: subscription.plan.priceInCents,
-      cycle: subscription.plan.billingCycle as any,
-      description: `Clube ${subscription.plan.name} - ${tenant.name}`,
-      externalReference: `club_subscription:${subscription.id}`,
-    });
-
-    // 11. Buscar cobranças
-    const payments = await listAsaasSubscriptionPayments({
-      apiKey,
-      environment,
-      subscriptionId: asaasSubscription.id,
-    });
-
-    // 12. Pegar a primeira cobrança
-    const firstPayment = payments.data?.[0];
-    if (!firstPayment) {
-      throw new Error("Nenhuma cobrança gerada para a assinatura.");
+    try {
+      providerSetup = getClubBillingProviderFromTenant(
+        {
+          id: tenant.id,
+          name: tenant.name,
+          slug: tenant.slug,
+          clubPaymentProvider: subscription.provider,
+          clubAsaasEnvironment: tenant.clubAsaasEnvironment,
+          clubMercadoPagoEnvironment: tenant.clubMercadoPagoEnvironment,
+        },
+        {
+          asaasApiKey: tenant.clubAsaasApiKeyEnc
+            ? decryptSecret(tenant.clubAsaasApiKeyEnc)
+            : null,
+          mercadoPagoAccessToken: tenant.clubMercadoPagoAccessTokenEnc
+            ? decryptSecret(tenant.clubMercadoPagoAccessTokenEnc)
+            : null,
+          mercadoPagoPublicKey: tenant.clubMercadoPagoPublicKey,
+        }
+      );
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : "Pagamento do clube não configurado corretamente.",
+        },
+        { status: 400 }
+      );
     }
 
-    // 13. Definir checkoutUrl
-    const checkoutUrl = firstPayment.invoiceUrl || firstPayment.bankSlipUrl;
-    if (!checkoutUrl) {
+    if (
+      subscription.providerSubscriptionId &&
+      !subscription.providerCheckoutUrl &&
+      providerSetup.provider === subscription.provider
+    ) {
       return NextResponse.json(
-        { error: "Assinatura criada, mas não foi possível localizar o link de pagamento." },
+        {
+          error:
+            "Esta assinatura já foi iniciada no gateway, mas o link de pagamento não está disponível. Verifique o estado no painel administrativo.",
+        },
+        { status: 409 }
+      );
+    }
+
+    const externalReference =
+      subscription.providerReference || `clubsub:${tenant.id}:${subscription.id}`;
+
+    const providerResult = await providerSetup.adapter.createSubscription({
+      providerConfig: providerSetup.config,
+      planId: subscription.plan.id,
+      planName: subscription.plan.name,
+      priceInCents: subscription.plan.priceInCents,
+      billingCycle: subscription.plan.billingCycle,
+      customer: {
+        clientId: subscription.client.id,
+        name: subscription.client.name,
+        phoneE164: subscription.client.phoneE164,
+        email: subscription.client.email,
+        cpfCnpj: cleanCpfCnpj,
+      },
+      externalReference,
+      returnUrl: buildPortalReturnUrl(request, slug),
+      notificationUrl: buildNotificationUrl(request, providerSetup.provider),
+      description: `Clube ${subscription.plan.name} - ${tenant.name}`,
+    });
+
+    const updatedSubscription = await prisma.clubSubscription.update({
+      where: { id: subscription.id },
+      data: {
+        provider: providerResult.provider,
+        providerCustomerId: providerResult.providerCustomerId ?? null,
+        providerSubscriptionId: providerResult.providerSubscriptionId ?? null,
+        providerPaymentId: providerResult.providerPaymentId ?? null,
+        providerCheckoutUrl: providerResult.providerCheckoutUrl ?? null,
+        providerStatusRaw: providerResult.providerStatusRaw ?? null,
+        providerReference:
+          providerResult.providerReference ?? externalReference,
+        lastProviderSyncAt: new Date(),
+      },
+      select: {
+        id: true,
+        provider: true,
+        providerSubscriptionId: true,
+        providerPaymentId: true,
+        providerCheckoutUrl: true,
+      },
+    });
+
+    if (!updatedSubscription.providerCheckoutUrl) {
+      return NextResponse.json(
+        {
+          error:
+            "Assinatura criada, mas não foi possível localizar o link de pagamento.",
+        },
         { status: 500 }
       );
     }
 
-    // 14. Atualizar ClubSubscription
-    await prisma.clubSubscription.update({
-      where: { id: subscription.id },
-      data: {
-        providerCustomerId: asaasCustomer.id,
-        providerSubscriptionId: asaasSubscription.id,
-        providerPaymentId: firstPayment.id,
-        providerCheckoutUrl: checkoutUrl,
-        provider: "ASAAS",
-      },
-    });
-
     return NextResponse.json({
       ok: true,
-      checkoutUrl,
-      subscriptionId: subscription.id,
-      providerSubscriptionId: asaasSubscription.id,
+      checkoutUrl: updatedSubscription.providerCheckoutUrl,
+      subscriptionId: updatedSubscription.id,
+      provider: updatedSubscription.provider,
+      providerSubscriptionId: updatedSubscription.providerSubscriptionId,
+      providerPaymentId: updatedSubscription.providerPaymentId,
     });
   } catch (error) {
-    console.error("[CLUB_CHECKOUT_ERROR]", error instanceof Error ? error.message : error);
+    console.error(
+      "[CLUB_CHECKOUT_ERROR]",
+      error instanceof Error ? error.message : error
+    );
 
-    if (error instanceof Error) {
-      const msg = error.message.toLowerCase();
-      if (
-        msg.includes("chave de api") ||
-        msg.includes("access_token") ||
-        msg.includes("401") ||
-        msg.includes("ambiente")
-      ) {
-        return NextResponse.json({ error: "Pagamento do clube não configurado corretamente. Verifique a chave Asaas e o ambiente." }, { status: 400 });
-      }
-    }
-
-    return NextResponse.json({ error: "Erro ao processar checkout." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erro ao processar checkout." },
+      { status: 500 }
+    );
   }
 }
