@@ -8,11 +8,31 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const requestId = crypto.randomUUID();
+
   try {
     const { slug } = await params;
-    const { phoneE164, code } = await req.json();
 
-    // 1. Validar phoneE164
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Body inválido." },
+        { status: 400 }
+      );
+    }
+
+    const { phoneE164, code } = (body ?? {}) as {
+      phoneE164?: string;
+      code?: string;
+    };
+
+    console.log(`[CLUB_PORTAL_VERIFY_CODE][${requestId}] start`, {
+      slug,
+      phoneE164,
+    });
+
     if (!phoneE164 || !/^\+55\d{11}$/.test(phoneE164)) {
       return NextResponse.json(
         { error: "Telefone inválido." },
@@ -20,7 +40,6 @@ export async function POST(
       );
     }
 
-    // 2. Validar code
     if (!code || !/^\d{6}$/.test(code)) {
       return NextResponse.json(
         { error: "Código inválido. Devem ser 6 dígitos." },
@@ -28,19 +47,24 @@ export async function POST(
       );
     }
 
-    // 3. Buscar tenant
     const tenant = await prisma.tenant.findUnique({
       where: { slug },
       select: { id: true, slug: true },
     });
 
     if (!tenant) {
-      return NextResponse.json({ error: "Tenant não encontrado" }, { status: 404 });
+      console.warn(`[CLUB_PORTAL_VERIFY_CODE][${requestId}] tenant not found`, {
+        slug,
+      });
+
+      return NextResponse.json(
+        { error: "Tenant não encontrado." },
+        { status: 404 }
+      );
     }
 
     const purpose = ClientPhoneVerificationPurpose.CLUB_PORTAL;
 
-    // 4. Buscar código mais recente
     const verification = await prisma.clientPhoneVerification.findFirst({
       where: {
         tenantId: tenant.id,
@@ -50,21 +74,41 @@ export async function POST(
         expiresAt: { gt: new Date() },
       },
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        codeHash: true,
+        createdAt: true,
+        expiresAt: true,
+      },
     });
 
     if (!verification) {
+      console.warn(`[CLUB_PORTAL_VERIFY_CODE][${requestId}] verification not found`, {
+        tenantId: tenant.id,
+        phoneE164,
+      });
+
       return NextResponse.json(
         { error: "Código inválido ou expirado." },
         { status: 400 }
       );
     }
 
-    // 5. Recalcular hash
     const otpSecret =
       process.env.CLIENT_OTP_SECRET ||
       process.env.JWT_SECRET ||
       process.env.AUTH_SECRET ||
-      "dev-only-client-otp-secret";
+      (process.env.NODE_ENV !== "production"
+        ? "dev-only-client-otp-secret"
+        : "");
+
+    if (!otpSecret) {
+      console.error(`[CLUB_PORTAL_VERIFY_CODE][${requestId}] missing otp secret`);
+      return NextResponse.json(
+        { error: "Erro de configuração de segurança." },
+        { status: 500 }
+      );
+    }
 
     const expectedHash = crypto
       .createHmac("sha256", otpSecret)
@@ -72,52 +116,113 @@ export async function POST(
       .digest("hex");
 
     if (verification.codeHash !== expectedHash) {
+      console.warn(`[CLUB_PORTAL_VERIFY_CODE][${requestId}] invalid code hash`, {
+        tenantId: tenant.id,
+        phoneE164,
+      });
+
       return NextResponse.json(
         { error: "Código inválido ou expirado." },
         { status: 400 }
       );
     }
 
-    // 7. Marcar usedAt
-    await prisma.clientPhoneVerification.update({
-      where: { id: verification.id },
-      data: { usedAt: new Date() },
-    });
-
-    // 8. Buscar Client
     const client = await prisma.client.findFirst({
-      where: { tenantId: tenant.id, phoneE164 },
+      where: {
+        tenantId: tenant.id,
+        phoneE164,
+      },
+      select: {
+        id: true,
+      },
     });
 
     if (!client) {
-      return NextResponse.json({ error: "Cliente não encontrado." }, { status: 404 });
+      console.warn(`[CLUB_PORTAL_VERIFY_CODE][${requestId}] client not found`, {
+        tenantId: tenant.id,
+        phoneE164,
+      });
+
+      return NextResponse.json(
+        { error: "Cliente não encontrado." },
+        { status: 404 }
+      );
     }
 
-    // 9. Criar JWT
     const sessionSecret =
       process.env.CLIENT_SESSION_SECRET ||
       process.env.JWT_SECRET ||
       process.env.AUTH_SECRET ||
-      "dev-only-client-session-secret";
+      (process.env.NODE_ENV !== "production"
+        ? "dev-only-client-session-secret"
+        : "");
 
-    if (process.env.NODE_ENV === "production" && sessionSecret === "dev-only-client-session-secret") {
-      return NextResponse.json({ error: "Erro de configuração de segurança" }, { status: 500 });
+    if (!sessionSecret) {
+      console.error(
+        `[CLUB_PORTAL_VERIFY_CODE][${requestId}] missing session secret`
+      );
+
+      return NextResponse.json(
+        { error: "Erro de configuração de segurança." },
+        { status: 500 }
+      );
     }
 
-    const token = await new SignJWT({
-      tenantId: tenant.id,
-      slug: tenant.slug,
-      phoneE164,
-      clientId: client.id,
-      purpose: "CLUB_PORTAL",
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("30m")
-      .sign(new TextEncoder().encode(sessionSecret));
+    let token: string;
 
-    // 12. Setar cookie
-    const response = NextResponse.json({ ok: true, verified: true });
+    try {
+      token = await new SignJWT({
+        tenantId: tenant.id,
+        slug: tenant.slug,
+        phoneE164,
+        clientId: client.id,
+        purpose,
+      })
+        .setProtectedHeader({ alg: "HS256" })
+        .setIssuedAt()
+        .setExpirationTime("30m")
+        .sign(new TextEncoder().encode(sessionSecret));
+    } catch (error) {
+      console.error(
+        `[CLUB_PORTAL_VERIFY_CODE][${requestId}] jwt sign error`,
+        error
+      );
+
+      return NextResponse.json(
+        { error: "Erro ao criar sessão." },
+        { status: 500 }
+      );
+    }
+
+    const markAsUsed = await prisma.clientPhoneVerification.updateMany({
+      where: {
+        id: verification.id,
+        usedAt: null,
+      },
+      data: {
+        usedAt: new Date(),
+      },
+    });
+
+    if (markAsUsed.count === 0) {
+      console.warn(
+        `[CLUB_PORTAL_VERIFY_CODE][${requestId}] verification already used`,
+        {
+          verificationId: verification.id,
+        }
+      );
+
+      return NextResponse.json(
+        { error: "Código inválido ou expirado." },
+        { status: 400 }
+      );
+    }
+
+    const response = NextResponse.json({
+      ok: true,
+      verified: true,
+    });
+
     response.cookies.set("club_portal_session", token, {
       httpOnly: true,
       sameSite: "lax",
@@ -126,9 +231,23 @@ export async function POST(
       maxAge: 60 * 30,
     });
 
+    console.log(`[CLUB_PORTAL_VERIFY_CODE][${requestId}] success`, {
+      tenantId: tenant.id,
+      clientId: client.id,
+      phoneE164,
+    });
+
     return response;
   } catch (error) {
-    console.error("[CLUB_PORTAL_VERIFY_CODE]", error);
-    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
+    console.error(`[CLUB_PORTAL_VERIFY_CODE][${requestId}] unhandled`, {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      error,
+    });
+
+    return NextResponse.json(
+      { error: "Erro interno do servidor" },
+      { status: 500 }
+    );
   }
 }

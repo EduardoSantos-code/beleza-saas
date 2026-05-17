@@ -2,30 +2,104 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { SignJWT } from "jose";
+import {
+  ClientPhoneVerificationPurpose,
+  ClubSubscriptionStatus,
+} from "@prisma/client";
+
+function endOfUtcDay(date: Date) {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      23,
+      59,
+      59,
+      999
+    )
+  );
+}
+
+function isSubscriptionUsableNow(
+  currentPeriodEnd: Date | null,
+  now = new Date()
+) {
+  if (!currentPeriodEnd) return true;
+  return endOfUtcDay(currentPeriodEnd) >= now;
+}
+
+function pickUsableActiveSubscription<
+  T extends {
+    id: string;
+    currentPeriodEnd: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    plan: {
+      id: string;
+      name: string;
+      discountPercent: number | null;
+    };
+  }
+>(subscriptions: T[], now = new Date()) {
+  const usable = subscriptions.filter((sub) =>
+    isSubscriptionUsableNow(sub.currentPeriodEnd, now)
+  );
+
+  usable.sort((a, b) => {
+    const aEnd = a.currentPeriodEnd
+      ? endOfUtcDay(a.currentPeriodEnd).getTime()
+      : Number.MAX_SAFE_INTEGER;
+
+    const bEnd = b.currentPeriodEnd
+      ? endOfUtcDay(b.currentPeriodEnd).getTime()
+      : Number.MAX_SAFE_INTEGER;
+
+    if (bEnd !== aEnd) return bEnd - aEnd;
+
+    const updatedDiff = b.updatedAt.getTime() - a.updatedAt.getTime();
+    if (updatedDiff !== 0) return updatedDiff;
+
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+
+  return usable[0] ?? null;
+}
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const requestId = crypto.randomUUID();
+
   try {
     const { slug } = await params;
-    const body = await req.json();
-    const { phoneE164, code } = body;
 
-    // 1 & 2. Validar
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Body inválido." }, { status: 400 });
+    }
+
+    const { phoneE164, code } = (body ?? {}) as {
+      phoneE164?: string;
+      code?: string;
+    };
+
     const phoneRegex = /^\+55\d{11}$/;
     const codeRegex = /^\d{6}$/;
 
     if (!phoneE164 || !phoneRegex.test(phoneE164)) {
       return NextResponse.json({ error: "Telefone inválido." }, { status: 400 });
     }
+
     if (!code || !codeRegex.test(code)) {
       return NextResponse.json({ error: "Código inválido." }, { status: 400 });
     }
 
-    const purpose = "CLUB_USE_BENEFIT";
+    const purpose = ClientPhoneVerificationPurpose.CLUB_USE_BENEFIT;
 
-    // 3. Buscar tenant por slug
     const tenant = await prisma.tenant.findUnique({
       where: { slug },
       select: { id: true, slug: true },
@@ -38,7 +112,6 @@ export async function POST(
       );
     }
 
-    // 4. Buscar código mais recente
     const verification = await prisma.clientPhoneVerification.findFirst({
       where: {
         tenantId: tenant.id,
@@ -48,9 +121,12 @@ export async function POST(
         expiresAt: { gt: new Date() },
       },
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        codeHash: true,
+      },
     });
 
-    // 6. Se inválido, retornar 400
     if (!verification) {
       return NextResponse.json(
         { error: "Código inválido ou expirado." },
@@ -58,19 +134,30 @@ export async function POST(
       );
     }
 
-    // 5. Recalcular hash
     const secret =
       process.env.CLIENT_OTP_SECRET ||
       process.env.JWT_SECRET ||
       process.env.AUTH_SECRET ||
-      "dev-only-client-otp-secret";
+      (process.env.NODE_ENV !== "production"
+        ? "dev-only-client-otp-secret"
+        : "");
+
+    if (!secret) {
+      console.error(
+        `[CLUB_BENEFIT_VERIFY_CODE][${requestId}] missing otp secret`
+      );
+
+      return NextResponse.json(
+        { error: "Erro de configuração de segurança." },
+        { status: 500 }
+      );
+    }
 
     const codeHash = crypto
       .createHash("sha256")
       .update(`${phoneE164}${code}${purpose}${secret}`)
       .digest("hex");
 
-    // 6. Validar comparação de hash
     if (codeHash !== verification.codeHash) {
       return NextResponse.json(
         { error: "Código inválido ou expirado." },
@@ -78,15 +165,9 @@ export async function POST(
       );
     }
 
-    // 7. Marcar como usado
-    await prisma.clientPhoneVerification.update({
-      where: { id: verification.id },
-      data: { usedAt: new Date() },
-    });
-
-    // 8. Buscar Client
     const client = await prisma.client.findFirst({
       where: { tenantId: tenant.id, phoneE164 },
+      select: { id: true },
     });
 
     if (!client) {
@@ -96,46 +177,103 @@ export async function POST(
       );
     }
 
-    // 9. Buscar ClubSubscription ACTIVE
-    const subscription = await prisma.clubSubscription.findFirst({
+    const activeSubscriptions = await prisma.clubSubscription.findMany({
       where: {
-        clientId: client.id,
         tenantId: tenant.id,
-        status: "ACTIVE",
-        currentPeriodEnd: { gte: new Date() },
+        clientId: client.id,
+        status: ClubSubscriptionStatus.ACTIVE,
       },
-      include: { plan: true },
+      include: {
+        plan: {
+          select: {
+            id: true,
+            name: true,
+            discountPercent: true,
+          },
+        },
+      },
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     });
 
-    // 10. Se não encontrar, retornar 404
+    const subscription = pickUsableActiveSubscription(activeSubscriptions);
+
     if (!subscription) {
+      console.warn(`[CLUB_BENEFIT_VERIFY_CODE][${requestId}] no usable subscription`, {
+        tenantId: tenant.id,
+        clientId: client.id,
+        phoneE164,
+        foundActiveCount: activeSubscriptions.length,
+      });
+
       return NextResponse.json(
         { error: "Nenhuma assinatura ativa encontrada." },
         { status: 404 }
       );
     }
 
-    // 11. Criar cookie HTTP-only
     const sessionSecret =
       process.env.CLIENT_SESSION_SECRET ||
       process.env.JWT_SECRET ||
       process.env.AUTH_SECRET ||
-      "dev-only-client-session-secret";
+      (process.env.NODE_ENV !== "production"
+        ? "dev-only-client-session-secret"
+        : "");
 
-    const token = await new SignJWT({
-      tenantId: tenant.id,
-      slug: tenant.slug,
-      phoneE164,
-      clientId: client.id,
-      subscriptionId: subscription.id,
-      purpose,
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("30m")
-      .sign(new TextEncoder().encode(sessionSecret));
+    if (!sessionSecret) {
+      console.error(
+        `[CLUB_BENEFIT_VERIFY_CODE][${requestId}] missing session secret`
+      );
 
-    // 12. Retornar resposta
+      return NextResponse.json(
+        { error: "Erro de configuração de segurança." },
+        { status: 500 }
+      );
+    }
+
+    let token: string;
+
+    try {
+      token = await new SignJWT({
+        tenantId: tenant.id,
+        slug: tenant.slug,
+        phoneE164,
+        clientId: client.id,
+        subscriptionId: subscription.id,
+        purpose,
+      })
+        .setProtectedHeader({ alg: "HS256" })
+        .setIssuedAt()
+        .setExpirationTime("30m")
+        .sign(new TextEncoder().encode(sessionSecret));
+    } catch (error) {
+      console.error(
+        `[CLUB_BENEFIT_VERIFY_CODE][${requestId}] jwt sign error`,
+        error
+      );
+
+      return NextResponse.json(
+        { error: "Erro ao criar sessão." },
+        { status: 500 }
+      );
+    }
+
+    const markAsUsed = await prisma.clientPhoneVerification.updateMany({
+      where: {
+        id: verification.id,
+        usedAt: null,
+      },
+      data: {
+        usedAt: new Date(),
+      },
+    });
+
+    if (markAsUsed.count === 0) {
+      return NextResponse.json(
+        { error: "Código inválido ou expirado." },
+        { status: 400 }
+      );
+    }
+
     const response = NextResponse.json({
       ok: true,
       membership: {
@@ -152,12 +290,13 @@ export async function POST(
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 30, // 30 minutos em segundos
+      maxAge: 60 * 30,
     });
 
     return response;
   } catch (error) {
-    console.error("[CLUB_BENEFIT_VERIFY_CODE_ERROR]", error);
+    console.error(`[CLUB_BENEFIT_VERIFY_CODE][${crypto.randomUUID()}] unhandled`, error);
+
     return NextResponse.json(
       { error: "Erro interno no servidor." },
       { status: 500 }

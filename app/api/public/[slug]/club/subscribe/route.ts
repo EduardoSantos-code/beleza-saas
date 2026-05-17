@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { jwtVerify, type JWTPayload } from "jose";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/crypto";
 import { getClubBillingProviderFromTenant } from "@/lib/club-billing";
+import { ClubSubscriptionStatus } from "@prisma/client";
 
 type SubscribeBody = {
   name?: unknown;
@@ -34,40 +36,90 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function buildPortalReturnUrl(request: Request, slug: string): string {
-  const requestUrl = new URL(request.url);
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_URL ||
-    requestUrl.origin;
-
-  return `${baseUrl}/s/${slug}/clube`;
+function getSessionSecret() {
+  return (
+    process.env.CLIENT_SESSION_SECRET ||
+    process.env.JWT_SECRET ||
+    process.env.AUTH_SECRET ||
+    (process.env.NODE_ENV !== "production"
+      ? "dev-only-client-session-secret"
+      : "")
+  );
 }
 
-function buildNotificationUrl(
-  request: Request,
-  provider: "ASAAS" | "MERCADO_PAGO"
-): string {
-  const requestUrl = new URL(request.url);
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_URL ||
-    requestUrl.origin;
+function endOfUtcDay(date: Date) {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      23,
+      59,
+      59,
+      999
+    )
+  );
+}
 
-  if (provider === "ASAAS") {
-    return `${baseUrl}/api/webhooks/asaas/club`;
+function isSubscriptionUsableNow(
+  currentPeriodEnd: Date | null,
+  now = new Date()
+) {
+  if (!currentPeriodEnd) return true;
+  return endOfUtcDay(currentPeriodEnd) >= now;
+}
+
+function pickUsableActiveSubscription<
+  T extends {
+    id: string;
+    currentPeriodEnd: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    plan: {
+      id: string;
+      name: string;
+    };
   }
+>(subscriptions: T[], now = new Date()) {
+  const usable = subscriptions.filter((sub) =>
+    isSubscriptionUsableNow(sub.currentPeriodEnd, now)
+  );
 
-  return `${baseUrl}/api/webhooks/mercadopago`;
+  usable.sort((a, b) => {
+    const aEnd = a.currentPeriodEnd
+      ? endOfUtcDay(a.currentPeriodEnd).getTime()
+      : Number.MAX_SAFE_INTEGER;
+
+    const bEnd = b.currentPeriodEnd
+      ? endOfUtcDay(b.currentPeriodEnd).getTime()
+      : Number.MAX_SAFE_INTEGER;
+
+    if (bEnd !== aEnd) return bEnd - aEnd;
+
+    const updatedDiff = b.updatedAt.getTime() - a.updatedAt.getTime();
+    if (updatedDiff !== 0) return updatedDiff;
+
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+
+  return usable[0] ?? null;
 }
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const requestId = crypto.randomUUID();
+
   try {
     const { slug } = await params;
-    const body = (await request.json()) as SubscribeBody;
+
+    let body: SubscribeBody;
+    try {
+      body = (await request.json()) as SubscribeBody;
+    } catch {
+      return NextResponse.json({ error: "Body inválido." }, { status: 400 });
+    }
 
     const name = nonEmptyString(body.name);
     const email = normalizeEmail(body.email);
@@ -81,10 +133,7 @@ export async function POST(
     }
 
     if (!email || !isValidEmail(email)) {
-      return NextResponse.json(
-        { error: "E-mail inválido." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "E-mail inválido." }, { status: 400 });
     }
 
     if (!planId) {
@@ -134,19 +183,12 @@ export async function POST(
       );
     }
 
-    const sessionSecret =
-      process.env.CLIENT_SESSION_SECRET ||
-      process.env.JWT_SECRET ||
-      process.env.AUTH_SECRET ||
-      "dev-only-client-session-secret";
+    const sessionSecret = getSessionSecret();
 
-    if (
-      process.env.NODE_ENV === "production" &&
-      sessionSecret === "dev-only-client-session-secret"
-    ) {
-      console.error("Missing CLIENT_SESSION_SECRET in production");
+    if (!sessionSecret) {
+      console.error(`[CLUB_SUBSCRIBE][${requestId}] missing session secret`);
       return NextResponse.json(
-        { error: "Erro interno no servidor." },
+        { error: "Erro interno de configuração." },
         { status: 500 }
       );
     }
@@ -175,10 +217,7 @@ export async function POST(
       !payload.phoneE164 ||
       !phoneRegex.test(payload.phoneE164)
     ) {
-      return NextResponse.json(
-        { error: "Sessão inválida." },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Sessão inválida." }, { status: 401 });
     }
 
     const plan = await prisma.clubPlan.findFirst({
@@ -201,6 +240,29 @@ export async function POST(
         { error: "Plano indisponível." },
         { status: 404 }
       );
+    }
+
+    let providerSetup:
+      | ReturnType<typeof getClubBillingProviderFromTenant>
+      | undefined;
+
+    try {
+      providerSetup = getClubBillingProviderFromTenant(tenant, {
+        asaasApiKey: tenant.clubAsaasApiKeyEnc
+          ? decryptSecret(tenant.clubAsaasApiKeyEnc)
+          : null,
+        mercadoPagoAccessToken: tenant.clubMercadoPagoAccessTokenEnc
+          ? decryptSecret(tenant.clubMercadoPagoAccessTokenEnc)
+          : null,
+        mercadoPagoPublicKey: tenant.clubMercadoPagoPublicKey,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Configuração de pagamento inválida.";
+
+      return NextResponse.json({ error: message }, { status: 400 });
     }
 
     const client = await prisma.client.upsert({
@@ -228,12 +290,11 @@ export async function POST(
       },
     });
 
-    const existingActiveSubscription = await prisma.clubSubscription.findFirst({
+    const activeSubscriptions = await prisma.clubSubscription.findMany({
       where: {
         tenantId: tenant.id,
         clientId: client.id,
-        planId: plan.id,
-        status: "ACTIVE",
+        status: ClubSubscriptionStatus.ACTIVE,
       },
       select: {
         id: true,
@@ -242,6 +303,9 @@ export async function POST(
         providerCheckoutUrl: true,
         providerSubscriptionId: true,
         providerReference: true,
+        currentPeriodEnd: true,
+        createdAt: true,
+        updatedAt: true,
         plan: {
           select: {
             id: true,
@@ -249,24 +313,40 @@ export async function POST(
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     });
 
-    if (existingActiveSubscription) {
-      return NextResponse.json({
-        ok: true,
-        subscription: {
-          id: existingActiveSubscription.id,
-          status: existingActiveSubscription.status,
-          provider: existingActiveSubscription.provider,
-          planId: existingActiveSubscription.plan.id,
-          planName: existingActiveSubscription.plan.name,
-          checkoutUrl: existingActiveSubscription.providerCheckoutUrl,
+    const activeSubscription = pickUsableActiveSubscription(activeSubscriptions);
+
+    if (activeSubscription) {
+      if (activeSubscription.plan.id === plan.id) {
+        return NextResponse.json({
+          ok: true,
+          subscription: {
+            id: activeSubscription.id,
+            status: activeSubscription.status,
+            provider: activeSubscription.provider,
+            planId: activeSubscription.plan.id,
+            planName: activeSubscription.plan.name,
+            checkoutUrl: activeSubscription.providerCheckoutUrl,
+          },
+          nextStep: "SUBSCRIPTION_ACTIVE",
+          message: "Você já possui uma assinatura ativa deste plano.",
+        });
+      }
+
+      return NextResponse.json(
+        {
+          error: `Você já possui uma assinatura ativa no clube (${activeSubscription.plan.name}). Cancele ou altere a assinatura atual antes de contratar outro plano.`,
+          currentSubscription: {
+            id: activeSubscription.id,
+            planId: activeSubscription.plan.id,
+            planName: activeSubscription.plan.name,
+            status: activeSubscription.status,
+          },
         },
-        nextStep: "SUBSCRIPTION_ACTIVE",
-      });
+        { status: 409 }
+      );
     }
 
     const pendingSubscription = await prisma.clubSubscription.findFirst({
@@ -274,7 +354,7 @@ export async function POST(
         tenantId: tenant.id,
         clientId: client.id,
         planId: plan.id,
-        status: "PENDING",
+        status: ClubSubscriptionStatus.PENDING,
       },
       select: {
         id: true,
@@ -283,44 +363,66 @@ export async function POST(
         providerSubscriptionId: true,
         providerPaymentId: true,
         providerReference: true,
+        createdAt: true,
+        updatedAt: true,
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     });
 
-    let providerSetup:
-      | ReturnType<typeof getClubBillingProviderFromTenant>
-      | undefined;
-
-    try {
-      providerSetup = getClubBillingProviderFromTenant(tenant, {
-        asaasApiKey: tenant.clubAsaasApiKeyEnc
-          ? decryptSecret(tenant.clubAsaasApiKeyEnc)
-          : null,
-        mercadoPagoAccessToken: tenant.clubMercadoPagoAccessTokenEnc
-          ? decryptSecret(tenant.clubMercadoPagoAccessTokenEnc)
-          : null,
-        mercadoPagoPublicKey: tenant.clubMercadoPagoPublicKey,
+    if (
+      pendingSubscription &&
+      pendingSubscription.providerCheckoutUrl &&
+      pendingSubscription.provider === providerSetup.provider
+    ) {
+      return NextResponse.json({
+        ok: true,
+        subscription: {
+          id: pendingSubscription.id,
+          status: "PENDING",
+          provider: pendingSubscription.provider,
+          planId: plan.id,
+          planName: plan.name,
+          checkoutUrl: pendingSubscription.providerCheckoutUrl,
+          providerSubscriptionId: pendingSubscription.providerSubscriptionId,
+          providerReference: pendingSubscription.providerReference,
+        },
+        nextStep: "REDIRECT_TO_CHECKOUT",
+        resumedPending: true,
       });
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Configuração de pagamento inválida.";
-      return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    let subscriptionId = pendingSubscription?.id;
+    if (
+      pendingSubscription &&
+      pendingSubscription.providerSubscriptionId &&
+      !pendingSubscription.providerCheckoutUrl &&
+      pendingSubscription.provider === providerSetup.provider
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Já existe uma assinatura pendente iniciada para este plano, mas o link de pagamento não está disponível. Verifique o estado no painel administrativo.",
+          subscription: {
+            id: pendingSubscription.id,
+            status: "PENDING",
+            provider: pendingSubscription.provider,
+            planId: plan.id,
+            planName: plan.name,
+          },
+        },
+        { status: 409 }
+      );
+    }
 
-    if (!subscriptionId) {
+    let subscriptionId: string;
+
+    if (!pendingSubscription) {
       const createdSubscription = await prisma.clubSubscription.create({
         data: {
           tenantId: tenant.id,
           clientId: client.id,
           planId: plan.id,
           provider: providerSetup.provider,
-          status: "PENDING",
+          status: ClubSubscriptionStatus.PENDING,
         },
         select: {
           id: true,
@@ -328,12 +430,12 @@ export async function POST(
       });
 
       subscriptionId = createdSubscription.id;
-    } else if (
-      pendingSubscription &&
-      pendingSubscription.provider !== providerSetup.provider
-    ) {
+    } else {
+      subscriptionId = pendingSubscription.id;
+
+      if (pendingSubscription.provider !== providerSetup.provider) {
       await prisma.clubSubscription.update({
-        where: { id: subscriptionId },
+          where: { id: pendingSubscription.id },
         data: {
           provider: providerSetup.provider,
           providerCustomerId: null,
@@ -346,49 +448,10 @@ export async function POST(
         },
       });
     }
+    }
 
-    const externalReference =
-      pendingSubscription?.providerReference ||
-      `clubsub:${tenant.id}:${subscriptionId}`;
-
-    const returnUrl = buildPortalReturnUrl(request, slug);
-    const notificationUrl = buildNotificationUrl(
-      request,
-      providerSetup.provider
-    );
-
-    const providerResult = await providerSetup.adapter.createSubscription({
-      providerConfig: providerSetup.config,
-      planId: plan.id,
-      planName: plan.name,
-      priceInCents: plan.priceInCents,
-      billingCycle: plan.billingCycle,
-      customer: {
-        clientId: client.id,
-        name: client.name,
-        phoneE164: client.phoneE164,
-        email: client.email,
-      },
-      externalReference,
-      returnUrl,
-      notificationUrl,
-      description: plan.description,
-    });
-
-    const updatedSubscription = await prisma.clubSubscription.update({
+    const subscription = await prisma.clubSubscription.findUnique({
       where: { id: subscriptionId },
-      data: {
-        provider: providerResult.provider,
-        status: "PENDING",
-        providerCustomerId: providerResult.providerCustomerId ?? null,
-        providerSubscriptionId: providerResult.providerSubscriptionId ?? null,
-        providerPaymentId: providerResult.providerPaymentId ?? null,
-        providerCheckoutUrl: providerResult.providerCheckoutUrl ?? null,
-        providerStatusRaw: providerResult.providerStatusRaw ?? null,
-        providerReference:
-          providerResult.providerReference ?? externalReference,
-        lastProviderSyncAt: new Date(),
-      },
       select: {
         id: true,
         status: true,
@@ -399,21 +462,38 @@ export async function POST(
       },
     });
 
+    if (!subscription) {
+      console.error(
+        `[CLUB_SUBSCRIBE][${requestId}] subscription missing after create/update`,
+        {
+          tenantId: tenant.id,
+          clientId: client.id,
+          planId: plan.id,
+          subscriptionId,
+        }
+      );
+
+      return NextResponse.json(
+        { error: "Não foi possível iniciar a assinatura." },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       ok: true,
       subscription: {
-        id: updatedSubscription.id,
-        status: updatedSubscription.status,
-        provider: updatedSubscription.provider,
+        id: subscription.id,
+        status: subscription.status,
+        provider: subscription.provider,
         planId: plan.id,
         planName: plan.name,
-        checkoutUrl: updatedSubscription.providerCheckoutUrl,
-        providerSubscriptionId: updatedSubscription.providerSubscriptionId,
-        providerReference: updatedSubscription.providerReference,
+        checkoutUrl: subscription.providerCheckoutUrl,
+        providerSubscriptionId: subscription.providerSubscriptionId,
+        providerReference: subscription.providerReference,
       },
-      nextStep: updatedSubscription.providerCheckoutUrl
+      nextStep: subscription.providerCheckoutUrl
         ? "REDIRECT_TO_CHECKOUT"
-        : "PAYMENT_PENDING",
+        : "CONTINUE_TO_CHECKOUT",
     });
   } catch (error) {
     console.error("[CLUB_SUBSCRIBE_ERROR]", error);

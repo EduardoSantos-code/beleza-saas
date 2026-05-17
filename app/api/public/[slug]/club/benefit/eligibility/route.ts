@@ -2,11 +2,38 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
+import {
+  ClientPhoneVerificationPurpose,
+  ClubBenefitType,
+  ClubSubscriptionStatus,
+} from "@prisma/client";
 
 function getBenefitPeriodKey(date: Date) {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   return `${year}-${month}`;
+}
+
+function endOfUtcDay(date: Date) {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      23,
+      59,
+      59,
+      999
+    )
+  );
+}
+
+function isSubscriptionUsableNow(
+  currentPeriodEnd: Date | null,
+  now = new Date()
+) {
+  if (!currentPeriodEnd) return true;
+  return endOfUtcDay(currentPeriodEnd) >= now;
 }
 
 export async function GET(
@@ -20,7 +47,10 @@ export async function GET(
     const dateParam = searchParams.get("date");
 
     if (!serviceId) {
-      return NextResponse.json({ error: "serviceId is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "serviceId is required" },
+        { status: 400 }
+      );
     }
 
     const tenant = await prisma.tenant.findUnique({
@@ -53,40 +83,55 @@ export async function GET(
       process.env.CLIENT_SESSION_SECRET ||
       process.env.JWT_SECRET ||
       process.env.AUTH_SECRET ||
-      "dev-only-client-session-secret";
+      (process.env.NODE_ENV !== "production"
+        ? "dev-only-client-session-secret"
+        : "");
 
-    if (process.env.NODE_ENV === "production" && secret === "dev-only-client-session-secret") {
-      return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    if (!secret) {
+      return NextResponse.json(
+        { error: "Internal Server Error" },
+        { status: 500 }
+      );
     }
 
     let payload: any;
+
     try {
       const encodedSecret = new TextEncoder().encode(secret);
-      const { payload: decoded } = await jwtVerify(sessionCookie.value, encodedSecret);
+      const { payload: decoded } = await jwtVerify(
+        sessionCookie.value,
+        encodedSecret
+      );
       payload = decoded;
-    } catch (err) {
-      return NextResponse.json({ ok: true, hasActiveMembership: false });
+    } catch {
+      return NextResponse.json({
+        ok: true,
+        hasActiveMembership: false,
+      });
     }
 
     const phoneRegex = /^\+55\d{11}$/;
+
     const isValidSession =
-      payload.purpose === "CLUB_USE_BENEFIT" &&
-      payload.tenantId === tenant.id &&
-      payload.slug === tenant.slug &&
-      typeof payload.phoneE164 === "string" &&
+      payload?.purpose === ClientPhoneVerificationPurpose.CLUB_USE_BENEFIT &&
+      payload?.tenantId === tenant.id &&
+      payload?.slug === tenant.slug &&
+      typeof payload?.phoneE164 === "string" &&
       phoneRegex.test(payload.phoneE164) &&
-      payload.subscriptionId;
+      typeof payload?.subscriptionId === "string";
 
     if (!isValidSession) {
-      return NextResponse.json({ ok: true, hasActiveMembership: false });
+      return NextResponse.json({
+        ok: true,
+        hasActiveMembership: false,
+      });
     }
 
     const subscription = await prisma.clubSubscription.findFirst({
       where: {
         id: payload.subscriptionId,
         tenantId: tenant.id,
-        status: "ACTIVE",
-        currentPeriodEnd: { gte: new Date() },
+        status: ClubSubscriptionStatus.ACTIVE,
       },
       include: {
         client: true,
@@ -94,8 +139,11 @@ export async function GET(
       },
     });
 
-    if (!subscription) {
-      return NextResponse.json({ ok: true, hasActiveMembership: false });
+    if (!subscription || !isSubscriptionUsableNow(subscription.currentPeriodEnd)) {
+      return NextResponse.json({
+        ok: true,
+        hasActiveMembership: false,
+      });
     }
 
     const service = await prisma.service.findFirst({
@@ -106,17 +154,22 @@ export async function GET(
     });
 
     if (!service) {
-      return NextResponse.json({ error: "Service not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Service not found" },
+        { status: 404 }
+      );
     }
 
     let referenceDate = new Date();
+
     if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
       referenceDate = new Date(`${dateParam}T12:00:00.000Z`);
     }
 
     const plan = subscription.plan;
+
     const hasIncludedBenefitConfigured =
-      plan.includedBenefitType === "FREE_SERVICE" &&
+      plan.includedBenefitType === ClubBenefitType.FREE_SERVICE &&
       plan.includedServiceId === service.id &&
       plan.includedUsesPerPeriod > 0;
 
@@ -124,6 +177,7 @@ export async function GET(
       subscriptionId: subscription.id,
       planName: plan.name,
       discountPercent: plan.discountPercent ?? null,
+      currentPeriodEnd: subscription.currentPeriodEnd,
     };
 
     if (!hasIncludedBenefitConfigured) {
@@ -149,7 +203,7 @@ export async function GET(
         subscriptionId: subscription.id,
         serviceId: service.id,
         periodKey,
-        benefitType: "FREE_SERVICE",
+        benefitType: ClubBenefitType.FREE_SERVICE,
       },
     });
 
@@ -169,14 +223,13 @@ export async function GET(
     });
   } catch (error) {
     console.error("[CLUB_BENEFIT_ELIGIBILITY_ERROR]", error);
+
     return NextResponse.json(
       {
         error: "Internal Server Error",
         ok: false,
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
