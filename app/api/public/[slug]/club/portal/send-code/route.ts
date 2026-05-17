@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
-import { sendWhatsAppMessage } from "@/lib/whatsapp";
+import { sendTenantWhatsAppMessage } from "@/lib/whatsapp";
 import { ClientPhoneVerificationPurpose } from "@prisma/client";
 
 export async function POST(
@@ -21,7 +21,12 @@ export async function POST(
 
     const tenant = await prisma.tenant.findUnique({
       where: { slug },
-      select: { id: true, slug: true, name: true, clubEnabled: true },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        clubEnabled: true,
+      },
     });
 
     if (!tenant) {
@@ -87,7 +92,9 @@ export async function POST(
         purpose,
         usedAt: null,
       },
-      data: { usedAt: new Date() },
+      data: {
+        usedAt: new Date(),
+      },
     });
 
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -104,11 +111,21 @@ export async function POST(
 
     const message = `Seu código para acessar sua assinatura do clube é: ${code}. Ele expira em 10 minutos.`;
 
-    const { success } = await sendWhatsAppMessage(phoneE164, message);
+    const result = await sendTenantWhatsAppMessage({
+      tenantId: tenant.id,
+      clientId: client.id,
+      to: phoneE164,
+      text: message,
+    });
 
-    if (!success) {
+    if (!result.success) {
+      console.error("[CLUB_PORTAL_SEND_CODE_WHATSAPP_ERROR]", result);
+
       return NextResponse.json(
-        { error: "Erro ao enviar WhatsApp" },
+        {
+          error: "Erro ao enviar WhatsApp",
+          reason: result.reason || "SEND_FAILED",
+        },
         { status: 500 }
       );
     }
@@ -119,6 +136,7 @@ export async function POST(
     });
   } catch (error) {
     console.error("[CLUB_PORTAL_SEND_CODE]", error);
+
     return NextResponse.json(
       { error: "Erro interno do servidor" },
       { status: 500 }
