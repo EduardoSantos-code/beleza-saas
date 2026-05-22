@@ -244,22 +244,44 @@ export async function POST(req: Request) {
         });
 
         const cleanText = textBody?.trim() || "";
+        console.log("[WA_WEBHOOK_CONFIRMATION_TEST]", { 
+          cleanText, 
+          phoneE164, 
+          clientId: client.id 
+        });
         
-        if (["1", "2", "3"].includes(cleanText)) {
+        const startsWith1 = cleanText.startsWith("1");
+        const startsWith2 = cleanText.startsWith("2");
+        const startsWith3 = cleanText.startsWith("3");
+        
+        if (startsWith1 || startsWith2 || startsWith3) {
           const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
           const upcomingApp = await prisma.appointment.findFirst({
             where: {
-              clientId: client.id,
               tenantId: config.tenantId,
               status: { in: ["PENDING", "CONFIRMED"] },
-              startAt: { gte: twelveHoursAgo }
+              startAt: { gte: twelveHoursAgo },
+              client: {
+                OR: [
+                  { id: client.id },
+                  { phoneE164: phoneE164 },
+                  { phoneE164: { endsWith: phoneE164.slice(-8) } }
+                ]
+              }
             },
             orderBy: { startAt: "asc" },
             include: { tenant: true, professional: true, client: true }
           });
 
+          console.log("[WA_WEBHOOK_CONFIRMATION_RESULT]", { 
+            found: !!upcomingApp,
+            appId: upcomingApp?.id,
+            startAt: upcomingApp?.startAt,
+            clientPhone: upcomingApp?.client?.phoneE164
+          });
+
           if (upcomingApp) {
-             if (cleanText === "1") {
+             if (startsWith1) {
                 await prisma.appointment.update({
                   where: { id: upcomingApp.id },
                   data: { presenceConfirmed: true }
@@ -269,7 +291,7 @@ export async function POST(req: Request) {
                   to: phoneE164,
                   text: "✅ Presença confirmada! Te esperamos no horário marcado. 👊"
                 });
-             } else if (cleanText === "2" || cleanText === "3") {
+             } else if (startsWith2 || startsWith3) {
                 await prisma.appointment.update({
                   where: { id: upcomingApp.id },
                   data: { status: "CANCELED" }
@@ -283,7 +305,7 @@ export async function POST(req: Request) {
                    });
                 }
                 
-                if (cleanText === "2") {
+                if (startsWith2) {
                    await sendTenantWhatsAppMessage({
                      tenantId: config.tenantId,
                      to: phoneE164,
