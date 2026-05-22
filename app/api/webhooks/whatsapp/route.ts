@@ -292,10 +292,22 @@ export async function POST(req: Request) {
                   text: "✅ Presença confirmada! Te esperamos no horário marcado. 👊"
                 });
              } else if (startsWith2 || startsWith3) {
-                await prisma.appointment.update({
-                  where: { id: upcomingApp.id },
-                  data: { status: "CANCELED" }
-                });
+                const timeDiffMs = upcomingApp.startAt.getTime() - Date.now();
+                // Considera cancelamento tardio se for menos de 30 minutos antes, ou até depois do horário
+                const isLateCancel = timeDiffMs < 30 * 60 * 1000;
+
+                await prisma.$transaction([
+                  prisma.appointment.update({
+                    where: { id: upcomingApp.id },
+                    data: { status: "CANCELED" }
+                  }),
+                  ...(isLateCancel ? [
+                    prisma.client.update({
+                      where: { id: upcomingApp.clientId },
+                      data: { lateCancelCount: { increment: 1 } }
+                    })
+                  ] : [])
+                ]);
                 
                 if (upcomingApp.professional?.phoneE164) {
                    await sendTenantWhatsAppMessage({

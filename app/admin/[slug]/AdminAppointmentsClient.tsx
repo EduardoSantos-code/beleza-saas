@@ -32,7 +32,13 @@ type Appointment = {
   endAt: string;
   status: "PENDING" | "CONFIRMED" | "CANCELED" | "COMPLETED";
   notes?: string | null;
-  client: { name: string; phoneE164: string };
+  client: { 
+    name: string; 
+    phoneE164: string;
+    noShowCount?: number;
+    lateCancelCount?: number;
+    completedCount?: number;
+  };
   service: { name: string; price: number; durationMin: number };
   professional: { id: string; name: string; userId?: string };
   clubSubscriptionId?: string | null;
@@ -594,6 +600,27 @@ export default function AdminAppointmentsClient({
                             </span>
                           )}
                         </h4>
+                        
+                        {/* Attendance Stats */}
+                        {(item.client.completedCount !== undefined) && (item.client.completedCount > 0 || item.client.noShowCount! > 0 || item.client.lateCancelCount! > 0) && (
+                          <div className="flex gap-2 text-[10px] uppercase font-bold tracking-widest mt-1">
+                            {item.client.completedCount! > 0 && (
+                              <span className="text-emerald-600 dark:text-emerald-400">
+                                {item.client.completedCount} idas
+                              </span>
+                            )}
+                            {item.client.noShowCount! > 0 && (
+                              <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
+                                • {item.client.noShowCount} faltas
+                              </span>
+                            )}
+                            {item.client.lateCancelCount! > 0 && (
+                              <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                • {item.client.lateCancelCount} canc. em cima da hora
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         {item.client.phoneE164 && (
                           <a
@@ -735,7 +762,7 @@ export default function AdminAppointmentsClient({
                       <button
                         disabled={updatingId === item.id}
                         onClick={() => handleStatusChange(item.id, "COMPLETED")}
-                        className="flex-1 rounded-2xl bg-emerald-500 px-4 py-3 text-[10px] font-black uppercase text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 active:scale-95 disabled:opacity-50 sm:py-4 sm:text-sm"
+                        className="flex-1 rounded-2xl bg-emerald-500 px-3 py-3 text-[10px] font-black uppercase text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 active:scale-95 disabled:opacity-50 sm:py-4 sm:text-sm"
                       >
                         <span className="flex items-center justify-center gap-1.5">
                           {updatingId === item.id ? (
@@ -749,20 +776,36 @@ export default function AdminAppointmentsClient({
                         </span>
                       </button>
 
-                      <button
-                        disabled={updatingId === item.id}
-                        onClick={() => {
-                          if (window.confirm("Deseja cancelar?")) {
-                            handleStatusChange(item.id, "CANCELED");
-                          }
-                        }}
-                        className="flex-1 rounded-2xl bg-red-50 px-4 py-3 text-[10px] font-black uppercase text-red-600 transition-all hover:bg-red-500 hover:text-white active:scale-95 disabled:opacity-50 dark:bg-red-500/10 dark:text-red-500 sm:py-4"
-                      >
-                        <span className="flex items-center justify-center gap-1.5">
-                          <XCircle size={14} className="sm:w-[16px]" />
-                          Cancelar
-                        </span>
-                      </button>
+                      <div className="flex gap-2 flex-1 lg:flex-col lg:gap-2 lg:flex-none">
+                        <button
+                          disabled={updatingId === item.id}
+                          onClick={() => {
+                            if (window.confirm("Deseja marcar como Falta (No-show)? O cliente não será notificado.")) {
+                              handleStatusChange(item.id, "NOSHOW");
+                            }
+                          }}
+                          className="flex-1 rounded-2xl bg-amber-50 px-2 py-3 text-[9px] font-black uppercase text-amber-600 transition-all hover:bg-amber-500 hover:text-white active:scale-95 disabled:opacity-50 dark:bg-amber-500/10 dark:text-amber-500 sm:py-3"
+                        >
+                          <span className="flex items-center justify-center gap-1">
+                            Falta
+                          </span>
+                        </button>
+
+                        <button
+                          disabled={updatingId === item.id}
+                          onClick={() => {
+                            if (window.confirm("Deseja cancelar?")) {
+                              handleStatusChange(item.id, "CANCELED");
+                            }
+                          }}
+                          className="flex-1 rounded-2xl bg-red-50 px-2 py-3 text-[9px] font-black uppercase text-red-600 transition-all hover:bg-red-500 hover:text-white active:scale-95 disabled:opacity-50 dark:bg-red-500/10 dark:text-red-500 sm:py-3"
+                        >
+                          <span className="flex items-center justify-center gap-1">
+                            <XCircle size={12} className="sm:w-[14px]" />
+                            Cancelar
+                          </span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </article>

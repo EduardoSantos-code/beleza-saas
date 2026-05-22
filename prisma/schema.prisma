@@ -113,6 +113,9 @@ model Client {
   phoneE164         String
   email             String?
   createdAt         DateTime                  @default(now())
+  noShowCount       Int                       @default(0)
+  lateCancelCount   Int                       @default(0)
+  completedCount    Int                       @default(0)
   appointments      Appointment[]
   clubSubscriptions ClubSubscription[]
   clubBenefitUsages ClubBenefitUsage[]
@@ -448,6 +451,7 @@ enum AppointmentStatus {
   CONFIRMED
   CANCELED
   COMPLETED
+  NOSHOW
 }
 
 enum ReminderStatus {

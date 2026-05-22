@@ -74,6 +74,9 @@ export async function GET(
           id: appointment.client.id,
           name: appointment.client.name,
           phoneE164: appointment.client.phoneE164,
+          noShowCount: appointment.client.noShowCount,
+          lateCancelCount: appointment.client.lateCancelCount,
+          completedCount: appointment.client.completedCount,
         } : null,
         professional: appointment.professional ? {
           id: appointment.professional.id,

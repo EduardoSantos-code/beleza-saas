@@ -21,12 +21,45 @@ export async function PATCH(
 
     const TZ = "America/Sao_Paulo";
 
-    // 2. ATUALIZANDO COM A VARIÁVEL CORRETA
-    const updatedApp = await prisma.appointment.update({
+    // 2. BUSCAR DADOS DO AGENDAMENTO ATUAL
+    const currentApp = await prisma.appointment.findUnique({
       where: { id: appointmentId },
-      data: { status: actionStatus }, // ✅ Agora ele usa o status do botão!
-      include: { professional: true, client: true, service: true, tenant: true },
+      include: { client: true }
     });
+
+    if (!currentApp) {
+      return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
+    }
+
+    // 3. ATUALIZAR AGENDAMENTO E CLIENTE COM TRANSAÇÃO
+    const timeDiffMs = currentApp.startAt.getTime() - Date.now();
+    const isLateCancel = timeDiffMs < 30 * 60 * 1000;
+
+    const [updatedApp] = await prisma.$transaction([
+      prisma.appointment.update({
+        where: { id: appointmentId },
+        data: { status: actionStatus },
+        include: { professional: true, client: true, service: true, tenant: true },
+      }),
+      ...(actionStatus === "COMPLETED" ? [
+        prisma.client.update({
+          where: { id: currentApp.clientId },
+          data: { completedCount: { increment: 1 } }
+        })
+      ] : []),
+      ...(actionStatus === "NOSHOW" ? [
+        prisma.client.update({
+          where: { id: currentApp.clientId },
+          data: { noShowCount: { increment: 1 } }
+        })
+      ] : []),
+      ...(actionStatus === "CANCELED" && isLateCancel ? [
+        prisma.client.update({
+          where: { id: currentApp.clientId },
+          data: { lateCancelCount: { increment: 1 } }
+        })
+      ] : [])
+    ]);
 
     const dateLabel = formatInTimeZone(updatedApp.startAt, TZ, "dd/MM/yyyy");
     const timeLabel = formatInTimeZone(updatedApp.startAt, TZ, "HH:mm");
