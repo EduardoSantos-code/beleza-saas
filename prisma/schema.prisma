@@ -141,6 +141,7 @@ model Appointment {
   startMinutes       Int
   timeZone           String             @default("America/Sao_Paulo")
   reminderSent       Boolean            @default(false)
+  presenceConfirmed  Boolean            @default(false)
   clubSubscriptionId String?
   clubPlanName       String?
   clubOriginalPrice  Int?

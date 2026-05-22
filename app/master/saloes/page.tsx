@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 import {
   Store,
   ExternalLink,

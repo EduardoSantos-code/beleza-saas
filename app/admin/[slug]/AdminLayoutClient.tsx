@@ -9,8 +9,10 @@ import LogoutButton from "./LogoutButton";
 
 export default function AdminLayout({
   children,
+  initialUser,
 }: {
   children: React.ReactNode;
+  initialUser: { name: string; role: string } | null;
 }) {
   const params = useParams();
   const pathname = usePathname();
@@ -18,25 +20,7 @@ export default function AdminLayout({
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
-  // --- NOVA PARTE: Estado para guardar o usuário ---
-  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
-
-  // --- NOVA PARTE: Busca o usuário logado ---
-  useEffect(() => {
-    async function fetchUser() {
-      try {
-        // Essa rota de API precisa existir para devolver seus dados
-        const res = await fetch('/api/auth/me'); 
-        if (res.ok) {
-          const userData = await res.json();
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error("Erro ao buscar usuário:", error);
-      }
-    }
-    fetchUser();
-  }, []);
+  const user = initialUser;
 
   // Pega a inicial do nome (Eduardo -> E)
   const initial = user?.name ? user.name.charAt(0).toUpperCase() : "U";

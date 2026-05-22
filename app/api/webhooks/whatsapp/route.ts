@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendTenantWhatsAppMessage } from "@/lib/whatsapp";
 import {
   extractPairingCode,
   extractQrCodeBase64,
@@ -241,6 +242,64 @@ export async function POST(req: Request) {
             rawJson: item,
           },
         });
+
+        const cleanText = textBody?.trim() || "";
+        
+        if (["1", "2", "3"].includes(cleanText)) {
+          const upcomingApp = await prisma.appointment.findFirst({
+            where: {
+              clientId: client.id,
+              tenantId: config.tenantId,
+              status: { in: ["PENDING", "CONFIRMED"] },
+              startAt: { gte: new Date() }
+            },
+            orderBy: { startAt: "asc" },
+            include: { tenant: true, professional: true, client: true }
+          });
+
+          if (upcomingApp) {
+             if (cleanText === "1") {
+                await prisma.appointment.update({
+                  where: { id: upcomingApp.id },
+                  data: { presenceConfirmed: true }
+                });
+                await sendTenantWhatsAppMessage({
+                  tenantId: config.tenantId,
+                  to: phoneE164,
+                  text: "✅ Presença confirmada! Te esperamos no horário marcado. 👊"
+                });
+             } else if (cleanText === "2" || cleanText === "3") {
+                await prisma.appointment.update({
+                  where: { id: upcomingApp.id },
+                  data: { status: "CANCELED" }
+                });
+                
+                if (upcomingApp.professional?.phoneE164) {
+                   await sendTenantWhatsAppMessage({
+                     tenantId: config.tenantId,
+                     to: upcomingApp.professional.phoneE164,
+                     text: `❌ *Cancelamento via WhatsApp*\nO cliente *${upcomingApp.client?.name}* acabou de cancelar o agendamento de hoje. O horário está livre novamente.`
+                   });
+                }
+                
+                if (cleanText === "2") {
+                   await sendTenantWhatsAppMessage({
+                     tenantId: config.tenantId,
+                     to: phoneE164,
+                     text: "❌ Seu agendamento foi cancelado com sucesso. Obrigado por avisar!"
+                   });
+                } else {
+                   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://tratomarcado.com.br";
+                   const manageLink = `${baseUrl}/s/${upcomingApp.tenant.slug}`;
+                   await sendTenantWhatsAppMessage({
+                     tenantId: config.tenantId,
+                     to: phoneE164,
+                     text: `🔄 Seu agendamento atual foi cancelado. Para remarcar um novo horário, acesse:\n${manageLink}`
+                   });
+                }
+             }
+          }
+        }
       }
 
       return NextResponse.json({ ok: true });

@@ -34,6 +34,7 @@ async function getSessionFromRequest(
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   const isMasterRoute = pathname.startsWith("/master");
+  const isAdminRoute = pathname.startsWith("/admin");
   const isLoginRoute = pathname === "/login";
 
   if (!secret || !encodedKey) {
@@ -42,7 +43,16 @@ export async function middleware(req: NextRequest) {
 
   const session = await getSessionFromRequest(req);
 
-  // Protege a área master pela sessão real do sistema
+  // 1. Protege a área admin pela sessão do sistema
+  if (isAdminRoute) {
+    if (!session?.userId) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("next", `${pathname}${search}`);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // 2. Protege a área master pela sessão real do sistema
   if (isMasterRoute) {
     if (!session?.userId) {
       const loginUrl = new URL("/login", req.url);
@@ -55,12 +65,18 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Se já estiver logado, evita abrir /login à toa
+  // 3. Se já estiver logado, evita abrir /login à toa e joga para o destino correto
   if (isLoginRoute && session?.userId) {
     const next = req.nextUrl.searchParams.get("next");
 
     if (next) {
-      return NextResponse.next();
+      // ✅ CORREÇÃO: Redireciona direto para a página que o usuário tentou acessar antes
+      try {
+        return NextResponse.redirect(new URL(next, req.url));
+      } catch {
+        // Fallback caso o parâmetro 'next' seja uma URL inválida ou malformada
+        return NextResponse.redirect(new URL("/", req.url));
+      }
     }
 
     if (session.role === "MASTER") {
@@ -74,5 +90,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/master/:path*", "/login"],
+  // Mantemos o matcher isolado para não atrapalhar requisições de API (/api) ou Webhooks
+  matcher: ["/admin/:path*", "/master/:path*", "/login"],
 };

@@ -40,6 +40,7 @@ type Appointment = {
   clubOriginalPrice?: number | null;
   clubDiscountAmount?: number | null;
   clubFinalPrice?: number | null;
+  presenceConfirmed?: boolean;
 };
 
 type Professional = { id: string; name: string; userId?: string };
@@ -585,8 +586,13 @@ export default function AdminAppointmentsClient({
 
                     <div className="flex-1 p-4 sm:p-6">
                       <div className="mb-3 flex items-start justify-between gap-3">
-                        <h4 className="truncate text-lg font-black uppercase tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
+                        <h4 className="truncate text-lg font-black uppercase tracking-tight text-zinc-900 dark:text-white sm:text-2xl flex items-center gap-2">
                           {clientDisplayName}
+                          {item.presenceConfirmed && (
+                            <span className="text-emerald-500 bg-emerald-500/10 p-1 rounded-full" title="Presença Confirmada via WhatsApp">
+                              <CheckCircle2 size={18} />
+                            </span>
+                          )}
                         </h4>
 
                         {item.client.phoneE164 && (

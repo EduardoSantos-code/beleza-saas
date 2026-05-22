@@ -66,7 +66,11 @@ export async function GET(req: Request) {
       const msgLembrete =
         `E aí, *${clientName}*! Passando pra lembrar que seu trato é **hoje**! ⏳\n\n` +
         `🕒 Às **${timeLabel}** na *${app.tenant?.name || "Barbearia"}*.\n\n` +
-        `*Já estamos preparando tudo. Não se atrase!* 👊🔥`;
+        `Por favor, nos confirme:\n` +
+        `*1* - Confirmar Presença ✅\n` +
+        `*2* - Cancelar Agendamento ❌\n` +
+        `*3* - Remarcar Horário 🔄\n\n` +
+        `*Responda com o número da opção.* 👊🔥`;
 
       try {
         const result = await sendTenantWhatsAppMessage({

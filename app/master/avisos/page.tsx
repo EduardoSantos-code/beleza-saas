@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Megaphone, Trash2 } from "lucide-react";
+
+export const dynamic = "force-dynamic";
 import { revalidatePath } from "next/cache";
 
 export default async function AvisosMasterPage() {

@@ -69,6 +69,7 @@ export async function GET(
         clubOriginalPrice: appointment.clubOriginalPrice,
         clubDiscountAmount: appointment.clubDiscountAmount,
         clubFinalPrice: appointment.clubFinalPrice,
+        presenceConfirmed: appointment.presenceConfirmed,
         client: appointment.client ? {
           id: appointment.client.id,
           name: appointment.client.name,
