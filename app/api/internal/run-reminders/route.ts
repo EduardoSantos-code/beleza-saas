@@ -46,6 +46,19 @@ export async function GET(req: Request) {
     let skippedCount = 0;
 
     for (const app of appointmentsToRemind) {
+      const advanceMinutes = (app.startAt.getTime() - app.createdAt.getTime()) / (1000 * 60);
+      
+      // Skip reminder if booked less than 2 hours in advance
+      if (advanceMinutes < 120) {
+        await prisma.appointment.update({
+          where: { id: app.id },
+          data: { reminderSent: true },
+        });
+        skippedCount++;
+        console.log(`[Reminders] Ignorado: agendamento ${app.id} criado muito em cima da hora.`);
+        continue;
+      }
+
       if (!app.client?.phoneE164) {
         skippedCount++;
         console.error("[REMINDER_WHATSAPP_TEMPORARY_FAILURE]", "CLIENT_WITHOUT_PHONE", {

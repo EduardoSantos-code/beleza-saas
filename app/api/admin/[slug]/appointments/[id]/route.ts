@@ -1,26 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { formatInTimeZone } from "date-fns-tz";
-
-const sendEvolutionMessage = async (to: string, text: string) => {
-  try {
-    const url = `${process.env.EVOLUTION_API_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE}`;
-    const apiKey = process.env.EVOLUTION_API_KEY;
-    if (!process.env.EVOLUTION_API_URL || !apiKey) return;
-
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "apikey": apiKey },
-      body: JSON.stringify({
-        number: to,
-        text: text,
-        delay: 1000,
-      }),
-    });
-  } catch (error) {
-    console.error("Erro ao enviar WhatsApp:", error);
-  }
-};
+import { sendTenantWhatsAppMessage } from "@/lib/whatsapp";
 
 export async function PATCH(
   req: Request,
@@ -55,12 +36,20 @@ export async function PATCH(
       // Notifica Barbeiro
       if (updatedApp.professional?.phoneE164) {
         const msgBarbeiro = `❌ *Agendamento Cancelado*\n\nO cliente *${updatedApp.client?.name}* cancelou o horário de ${timeLabel} no dia ${dateLabel}.\n\nO horário já está livre na sua agenda.`;
-        await sendEvolutionMessage(updatedApp.professional.phoneE164, msgBarbeiro);
+        await sendTenantWhatsAppMessage({
+          tenantId: updatedApp.tenantId,
+          to: updatedApp.professional.phoneE164,
+          text: msgBarbeiro
+        });
       }
       // Notifica Cliente
       if (updatedApp.client?.phoneE164) {
         const msgCliente = `❌ *Cancelamento Confirmado*\n\nOlá ${updatedApp.client?.name}, seu agendamento na *${updatedApp.tenant?.name}* para o dia ${dateLabel} às ${timeLabel} foi cancelado.`;
-        await sendEvolutionMessage(updatedApp.client.phoneE164, msgCliente);
+        await sendTenantWhatsAppMessage({
+          tenantId: updatedApp.tenantId,
+          to: updatedApp.client.phoneE164,
+          text: msgCliente
+        });
       }
     } else if (actionStatus === "COMPLETED") {
       // ✅ Se clicou em Finalizar (Mimo pro cliente!)
@@ -74,7 +63,11 @@ export async function PATCH(
             `${updatedApp.tenant.googleMapsLink}`;
         }
 
-        await sendEvolutionMessage(updatedApp.client.phoneE164, msgObrigado);
+        await sendTenantWhatsAppMessage({
+          tenantId: updatedApp.tenantId,
+          to: updatedApp.client.phoneE164,
+          text: msgObrigado
+        });
       }
     }
 
