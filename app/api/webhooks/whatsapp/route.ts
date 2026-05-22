@@ -246,12 +246,13 @@ export async function POST(req: Request) {
         const cleanText = textBody?.trim() || "";
         
         if (["1", "2", "3"].includes(cleanText)) {
+          const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
           const upcomingApp = await prisma.appointment.findFirst({
             where: {
               clientId: client.id,
               tenantId: config.tenantId,
               status: { in: ["PENDING", "CONFIRMED"] },
-              startAt: { gte: new Date() }
+              startAt: { gte: twelveHoursAgo }
             },
             orderBy: { startAt: "asc" },
             include: { tenant: true, professional: true, client: true }
