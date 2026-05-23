@@ -88,8 +88,8 @@ export async function PATCH(
 
     // Validações de Benefícios
     if (includedUsesPerPeriod !== undefined) {
-      if (!Number.isInteger(includedUsesPerPeriod) || includedUsesPerPeriod < 0) {
-        return NextResponse.json({ error: 'Usos inclusos deve ser um número inteiro >= 0' }, { status: 400 });
+      if (!Number.isInteger(includedUsesPerPeriod) || includedUsesPerPeriod < -1) {
+        return NextResponse.json({ error: 'Usos inclusos deve ser um número inteiro >= -1' }, { status: 400 });
       }
     }
 
@@ -102,12 +102,12 @@ export async function PATCH(
     let finalServiceId = includedServiceId !== undefined ? includedServiceId : plan.includedServiceId;
     let finalBenefitType = includedBenefitType !== undefined ? includedBenefitType : plan.includedBenefitType;
 
-    if (finalUses > 0) {
+    if (finalUses !== 0) {
       if (!finalServiceId) {
         return NextResponse.json({ error: 'Serviço incluso é obrigatório para benefícios' }, { status: 400 });
       }
       if (finalBenefitType !== 'FREE_SERVICE') {
-        return NextResponse.json({ error: 'Tipo de benefício deve ser FREE_SERVICE para usos > 0' }, { status: 400 });
+        return NextResponse.json({ error: 'Tipo de benefício deve ser FREE_SERVICE para usos ilimitados ou > 0' }, { status: 400 });
       }
     } else {
       finalServiceId = null;
@@ -125,8 +125,8 @@ export async function PATCH(
     }
 
     updateData.includedUsesPerPeriod = finalUses;
-    updateData.includedServiceId = finalUses > 0 ? finalServiceId : null;
-    updateData.includedBenefitType = (finalUses > 0 ? finalBenefitType : null) as Prisma.NullableEnumClubBenefitTypeFieldUpdateOperationsInput | "FREE_SERVICE" | null;
+    updateData.includedServiceId = finalUses !== 0 ? finalServiceId : null;
+    updateData.includedBenefitType = (finalUses !== 0 ? finalBenefitType : null) as Prisma.NullableEnumClubBenefitTypeFieldUpdateOperationsInput | "FREE_SERVICE" | null;
 
     const updatedPlan = await prisma.clubPlan.update({
       where: { id: planId },

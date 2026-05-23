@@ -8,6 +8,7 @@ const CreateProfessionalSchema = z.object({
   name: z.string().min(2).max(120),
   phoneE164: z.string().optional().nullable(), // Aceita o telefone vindo do front
   active: z.boolean().optional(),
+  commissionRate: z.number().min(0).max(100).optional(),
 });
 
 export async function GET(
@@ -72,13 +73,14 @@ export async function POST(
       );
     }
 
-    // 2. CORREÇÃO: Agora salvamos o phoneE164 no banco de dados
+    // 2. CORREÇÃO: Agora salvamos o phoneE164 no banco de dados e a taxa de comissão
     const professional = await prisma.professional.create({
       data: {
         tenantId: membership.tenantId,
         name: parsed.data.name,
         phoneE164: parsed.data.phoneE164, // Salva o telefone
         active: parsed.data.active ?? true,
+        commissionRate: parsed.data.commissionRate ?? 50,
       },
     });
 

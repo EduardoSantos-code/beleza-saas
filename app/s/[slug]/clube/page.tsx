@@ -181,7 +181,7 @@ export default async function ClubPublicPage({ params }: PageProps) {
                   </div>
                 )}
 
-                {plan.includedUsesPerPeriod > 0 && (
+                {plan.includedUsesPerPeriod !== 0 && (
                   <div className={innerCardClass}>
                     <div className="flex items-start gap-3">
                       <div className="rounded-2xl bg-emerald-500/10 p-2 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
@@ -190,7 +190,7 @@ export default async function ClubPublicPage({ params }: PageProps) {
                       <div>
                         <p className={labelClass}>Benefício Incluso</p>
                         <p className="mt-1 text-sm font-black text-zinc-900 dark:text-white">
-                          {plan.includedUsesPerPeriod}x serviços por ciclo
+                          {plan.includedUsesPerPeriod === -1 ? 'Serviços ilimitados por ciclo' : `${plan.includedUsesPerPeriod}x serviços por ciclo`}
                         </p>
                       </div>
                     </div>

@@ -171,7 +171,7 @@ export async function GET(
     const hasIncludedBenefitConfigured =
       plan.includedBenefitType === ClubBenefitType.FREE_SERVICE &&
       plan.includedServiceId === service.id &&
-      plan.includedUsesPerPeriod > 0;
+      plan.includedUsesPerPeriod !== 0;
 
     const membershipInfo = {
       subscriptionId: subscription.id,
@@ -207,7 +207,7 @@ export async function GET(
       },
     });
 
-    const available = usedCount < plan.includedUsesPerPeriod;
+    const available = plan.includedUsesPerPeriod === -1 || usedCount < plan.includedUsesPerPeriod;
 
     return NextResponse.json({
       ok: true,

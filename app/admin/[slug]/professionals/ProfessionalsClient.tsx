@@ -11,6 +11,7 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
 
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("+55");
+  const [newCommissionRate, setNewCommissionRate] = useState(50);
   const [creating, setCreating] = useState(false);
 
   async function load() {
@@ -22,7 +23,7 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
       
       const rows: any = {};
       json.professionals.forEach((p: any) => {
-        rows[p.id] = { name: p.name, phoneE164: p.phoneE164 || "+55", active: p.active };
+        rows[p.id] = { name: p.name, phoneE164: p.phoneE164 || "+55", active: p.active, commissionRate: p.commissionRate ?? 50 };
       });
       setEditRows(rows);
     } catch (err) {
@@ -43,12 +44,13 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
       const res = await fetch(`/api/admin/${slug}/professionals`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName, phoneE164: newPhone }),
+        body: JSON.stringify({ name: newName, phoneE164: newPhone, commissionRate: newCommissionRate }),
       });
 
       if (res.ok) {
         setNewName("");
         setNewPhone("+55");
+        setNewCommissionRate(50);
         load();
       } else {
         alert("Erro ao criar profissional");
@@ -102,7 +104,7 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
         </div>
         
         <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-          <div className="md:col-span-5">
+          <div className="md:col-span-4">
             <label className="text-xs text-zinc-700 dark:text-zinc-300 uppercase font-black mb-2 block">Nome Completo</label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
@@ -116,7 +118,7 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
             </div>
           </div>
           
-          <div className="md:col-span-4">
+          <div className="md:col-span-3">
             <label className="text-xs text-zinc-700 dark:text-zinc-300 uppercase font-black mb-2 block">WhatsApp</label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
@@ -125,6 +127,20 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
                 placeholder="+55..."
                 value={newPhone}
                 onChange={(e) => setNewPhone(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="text-xs text-zinc-700 dark:text-zinc-300 uppercase font-black mb-2 block">Comissão (%)</label>
+            <div className="relative">
+              <input 
+                type="number"
+                min="0"
+                max="100"
+                className="w-full bg-zinc-50 dark:bg-zinc-800 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:ring-2 ring-emerald-500 outline-none transition-all"
+                value={newCommissionRate}
+                onChange={(e) => setNewCommissionRate(Number(e.target.value))}
               />
             </div>
           </div>
@@ -153,7 +169,7 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
           {data?.professionals.map((p: any) => (
             <div key={p.id} className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col md:flex-row gap-6 items-center transition-all hover:border-emerald-500/30">
               
-              <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-black mb-1 block">Nome</label>
                   <input 
@@ -168,6 +184,17 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
                     className="w-full bg-zinc-50 dark:bg-zinc-800 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-700 text-zinc-900 dark:text-white font-medium focus:ring-1 ring-emerald-500 outline-none"
                     value={editRows[p.id]?.phoneE164}
                     onChange={(e) => setEditRows({...editRows, [p.id]: {...editRows[p.id], phoneE164: e.target.value}})}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-black mb-1 block">Comissão (%)</label>
+                  <input 
+                    type="number"
+                    min="0"
+                    max="100"
+                    className="w-full bg-zinc-50 dark:bg-zinc-800 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-700 text-zinc-900 dark:text-white font-medium focus:ring-1 ring-emerald-500 outline-none"
+                    value={editRows[p.id]?.commissionRate}
+                    onChange={(e) => setEditRows({...editRows, [p.id]: {...editRows[p.id], commissionRate: Number(e.target.value)}})}
                   />
                 </div>
               </div>

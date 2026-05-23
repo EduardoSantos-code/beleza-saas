@@ -10,7 +10,11 @@ import {
   Briefcase,
   PieChart,
   UserCheck,
-  ChevronDown
+  ChevronDown,
+  XCircle,
+  AlertCircle,
+  Crown,
+  Star
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -36,9 +40,13 @@ type MetricsData = {
     totalComissoes: number;
     lucroLiquido: number;
     totalClubDiscountInCents?: number;
+    cancellationRate: number;
+    noShowRate: number;
   };
   chartData: { date: string; faturamento: number }[];
   topServices: TopService[];
+  topClientsPeriod: { name: string; count: number }[];
+  topClientsAllTime: { name: string; completedCount: number; noShowCount: number; lateCancelCount: number }[];
   detalheProfissionais: Record<string, ProfessionalDetail>;
 };
 
@@ -129,7 +137,7 @@ export default function MetricsClient({ slug }: { slug: string }) {
       </div>
 
       {/* CARDS DE RESUMO */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6">
         <MetricCard
           title="Faturamento Bruto"
           value={formatCurrencyFromCents(data.summary.totalRevenue)}
@@ -157,6 +165,20 @@ export default function MetricsClient({ slug }: { slug: string }) {
           icon={Users}
           color="text-blue-500"
           trend="Base do período"
+        />
+        <MetricCard
+          title="Cancelamentos"
+          value={`${data.summary.cancellationRate?.toFixed(1) || "0.0"}%`}
+          icon={XCircle}
+          color="text-red-500"
+          trend="Taxa no período"
+        />
+        <MetricCard
+          title="Ausências"
+          value={`${data.summary.noShowRate?.toFixed(1) || "0.0"}%`}
+          icon={AlertCircle}
+          color="text-orange-500"
+          trend="Taxa de No-Show"
         />
       </div>
 
@@ -273,6 +295,70 @@ export default function MetricsClient({ slug }: { slug: string }) {
             {Object.keys((data as any).detalheProfissionais || {}).length === 0 && (
               <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
                 Nenhum dado detalhado para este período.
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-2 mt-8">
+        {/* TOP CLIENTES PERÍODO */}
+        <section className="rounded-3xl bg-white p-8 shadow-xl ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+          <h2 className="mb-8 text-sm font-black uppercase text-zinc-500 tracking-widest flex items-center gap-2">
+            <Star className="h-4 w-4 text-blue-500" /> Top Clientes (Período)
+          </h2>
+          <div className="space-y-6">
+            {data?.topClientsPeriod?.map((c, i) => (
+              <div key={i}>
+                <div className="mb-2 flex justify-between">
+                  <span className="font-black text-zinc-900 dark:text-white uppercase text-xs">{c.name}</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs">{c.count} cortes</span>
+                </div>
+                <div className="h-3 w-full rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 transition-all duration-500"
+                    style={{ width: `${Math.min(100, (c.count / (data?.topClientsPeriod[0]?.count || 1)) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+            {(!data?.topClientsPeriod || data.topClientsPeriod.length === 0) && (
+              <p className="py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">Nenhum cliente no período.</p>
+            )}
+          </div>
+        </section>
+
+        {/* TOP CLIENTES DESDE SEMPRE */}
+        <section className="rounded-3xl bg-white p-8 shadow-xl ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+          <h2 className="mb-8 text-sm font-black uppercase text-zinc-500 tracking-widest flex items-center gap-2">
+            <Crown className="h-4 w-4 text-amber-500" /> Clientes Mais Fiéis
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-zinc-100 dark:border-zinc-800">
+                  <th className="pb-4 text-[10px] font-black uppercase text-zinc-400">Nome</th>
+                  <th className="pb-4 text-[10px] font-black uppercase text-zinc-400 text-center">Cortes</th>
+                  <th className="pb-4 text-[10px] font-black uppercase text-red-500 text-right">No-Show / Canc.</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
+                {data?.topClientsAllTime?.map((c, i) => (
+                  <tr key={i} className="group">
+                    <td className="py-4 font-black text-zinc-900 dark:text-white uppercase text-xs flex items-center gap-2">
+                      {c.name} {i === 0 && <Crown className="h-3 w-3 text-amber-500" />}
+                    </td>
+                    <td className="py-4 text-center text-emerald-600 dark:text-emerald-400 font-bold">{c.completedCount}</td>
+                    <td className="py-4 text-right font-black text-zinc-500 dark:text-zinc-400">
+                      {c.noShowCount} / {c.lateCancelCount}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {(!data?.topClientsAllTime || data.topClientsAllTime.length === 0) && (
+              <p className="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+                Nenhum dado detalhado.
               </p>
             )}
           </div>

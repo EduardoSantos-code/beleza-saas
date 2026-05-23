@@ -278,6 +278,9 @@ export default function ClubPlansClient({
   const [cancelingSubscriptionId, setCancelingSubscriptionId] = useState<
     string | null
   >(null);
+  const [confirmingCancelId, setConfirmingCancelId] = useState<string | null>(
+    null
+  );
 
   const [summary, setSummary] = useState<ClubSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
@@ -305,7 +308,10 @@ export default function ClubPlansClient({
   });
 
   const includedUsesValue = useMemo(
-    () => parseInt(formData.includedUsesPerPeriod || "0", 10) || 0,
+    () => {
+      const parsed = parseInt(formData.includedUsesPerPeriod, 10);
+      return isNaN(parsed) ? 0 : parsed;
+    },
     [formData.includedUsesPerPeriod]
   );
 
@@ -421,12 +427,8 @@ export default function ClubPlansClient({
   }, [slug]);
 
   const cancelSubscription = async (subscriptionId: string) => {
-    const confirmed = window.confirm(
-      "Tem certeza que deseja cancelar esta assinatura? Esta ação não apaga o histórico e agendará o cancelamento para o fim do período de cobrança."
-    );
-    if (!confirmed) return;
-
     setCancelingSubscriptionId(subscriptionId);
+    setConfirmingCancelId(null);
     setMessage(null);
     setError(null);
 
@@ -455,10 +457,12 @@ export default function ClubPlansClient({
       } else {
         setMessage("Assinatura cancelada no TratoMarcado.");
       }
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: unknown) {
-      setError(
-        err instanceof Error ? err.message : "Ocorreu um erro desconhecido."
-      );
+      const msg = err instanceof Error ? err.message : "Ocorreu um erro desconhecido.";
+      setError(msg);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      alert("Erro ao cancelar: " + msg);
     } finally {
       setCancelingSubscriptionId(null);
     }
@@ -554,7 +558,7 @@ export default function ClubPlansClient({
       includedServiceId: formData.includedServiceId || null,
       includedUsesPerPeriod: includedUsesValue,
       includedBenefitType:
-        includedUsesValue > 0
+        includedUsesValue !== 0
           ? (formData.includedBenefitType || "FREE_SERVICE")
           : null,
     };
@@ -1148,19 +1152,36 @@ export default function ClubPlansClient({
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className={labelClass}>Descrição / benefícios</label>
-                <textarea
-                  className={textareaClass}
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                  placeholder="Descreva os benefícios do plano."
-                />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className={labelClass}>Descrição / benefícios</label>
+                  <textarea
+                    className={`${textareaClass} h-32`}
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    placeholder="Descreva os benefícios do plano."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className={labelClass}>Regras e Termos</label>
+                  <textarea
+                    className={`${textareaClass} h-32`}
+                    value={formData.terms}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        terms: e.target.value,
+                      }))
+                    }
+                    placeholder="Regras de uso, política de cancelamento, etc."
+                  />
+                </div>
               </div>
 
               <div className={`${mutedPanelClass} p-5`}>
@@ -1174,18 +1195,38 @@ export default function ClubPlansClient({
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2">
                     <label className={labelClass}>Quantidade por ciclo</label>
-                    <input
-                      type="number"
-                      min="0"
-                      className={inputClass}
-                      value={formData.includedUsesPerPeriod}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          includedUsesPerPeriod: e.target.value,
-                        }))
-                      }
-                    />
+                    <div className="flex gap-3">
+                      <input
+                        type="number"
+                        min="-1"
+                        className={`${inputClass} flex-1`}
+                        disabled={formData.includedUsesPerPeriod === "-1"}
+                        value={formData.includedUsesPerPeriod === "-1" ? "" : formData.includedUsesPerPeriod}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            includedUsesPerPeriod: e.target.value,
+                          }))
+                        }
+                        placeholder={formData.includedUsesPerPeriod === "-1" ? "Ilimitado" : "0"}
+                      />
+                      <label className="flex items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 cursor-pointer transition-colors hover:bg-emerald-50 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-emerald-900/20">
+                        <input
+                          type="checkbox"
+                          checked={formData.includedUsesPerPeriod === "-1"}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              includedUsesPerPeriod: e.target.checked ? "-1" : "1",
+                            }))
+                          }
+                          className="h-4 w-4 rounded border-zinc-300 text-emerald-500 focus:ring-emerald-500"
+                        />
+                        <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                          Ilimitado
+                        </span>
+                      </label>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -1199,7 +1240,7 @@ export default function ClubPlansClient({
                           includedServiceId: e.target.value,
                         }))
                       }
-                      required={includedUsesValue > 0}
+                      required={includedUsesValue !== 0}
                     >
                       <option value="">Nenhum serviço incluso</option>
                       {initialServices.map((service) => (
@@ -1221,7 +1262,7 @@ export default function ClubPlansClient({
                           includedBenefitType: e.target.value,
                         }))
                       }
-                      required={includedUsesValue > 0}
+                      required={includedUsesValue !== 0}
                     >
                       <option value="">Nenhum</option>
                       <option value="FREE_SERVICE">Serviço grátis</option>
@@ -1349,7 +1390,7 @@ export default function ClubPlansClient({
                       </div>
                     ) : null}
 
-                    {plan.includedUsesPerPeriod > 0 && plan.includedService && (
+                    {plan.includedUsesPerPeriod !== 0 && plan.includedService && (
                       <div className="rounded-3xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
                         <p className={labelClass}>Benefício incluso</p>
                         <div className="mt-2 flex items-start gap-3">
@@ -1358,7 +1399,7 @@ export default function ClubPlansClient({
                           </div>
                           <div>
                             <p className="text-sm font-black text-zinc-900 dark:text-white">
-                              {plan.includedUsesPerPeriod}x{" "}
+                              {plan.includedUsesPerPeriod === -1 ? 'Uso ilimitado' : `${plan.includedUsesPerPeriod}x`}{" "}
                               {plan.includedService.name}
                             </p>
                             <p className="mt-1 text-xs font-bold text-zinc-500">
@@ -1548,26 +1589,46 @@ export default function ClubPlansClient({
 
                         {sub.status !== "CANCELED" &&
                           sub.status !== "EXPIRED" && (
-                            <button
-                              onClick={() => cancelSubscription(sub.id)}
-                              disabled={cancelingSubscriptionId === sub.id}
-                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition-all hover:bg-red-100 active:scale-95 disabled:opacity-50 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300 dark:hover:bg-red-950/30"
-                            >
-                              {cancelingSubscriptionId === sub.id ? (
-                                <>
-                                  <Loader2
-                                    size={16}
-                                    className="animate-spin"
-                                  />
-                                  Cancelando...
-                                </>
+                            <div className="flex flex-col gap-2">
+                              {confirmingCancelId === sub.id ? (
+                                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+                                  <p className="mb-3 text-sm font-bold text-red-800 dark:text-red-300">
+                                    Tem certeza que deseja cancelar esta assinatura?
+                                  </p>
+                                  <div className="flex items-center gap-3">
+                                    <button
+                                      onClick={() => cancelSubscription(sub.id)}
+                                      disabled={cancelingSubscriptionId === sub.id}
+                                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white hover:bg-red-700 disabled:opacity-50"
+                                    >
+                                      {cancelingSubscriptionId === sub.id ? (
+                                        <>
+                                          <Loader2 size={14} className="animate-spin" />
+                                          Cancelando...
+                                        </>
+                                      ) : (
+                                        "Sim, cancelar"
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => setConfirmingCancelId(null)}
+                                      disabled={cancelingSubscriptionId === sub.id}
+                                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-black text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                                    >
+                                      Não
+                                    </button>
+                                  </div>
+                                </div>
                               ) : (
-                                <>
+                                <button
+                                  onClick={() => setConfirmingCancelId(sub.id)}
+                                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition-all hover:bg-red-100 active:scale-95 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300 dark:hover:bg-red-950/30"
+                                >
                                   <Ban size={16} />
                                   Cancelar assinatura
-                                </>
+                                </button>
                               )}
-                            </button>
+                            </div>
                           )}
                       </div>
                     </article>

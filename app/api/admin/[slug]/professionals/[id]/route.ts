@@ -8,14 +8,15 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const { name, phoneE164, active } = await req.json();
+    const { name, phoneE164, active, commissionRate } = await req.json();
 
     const updated = await prisma.professional.update({
       where: { id },
       data: { 
         name, 
         phoneE164, 
-        active: Boolean(active) 
+        active: Boolean(active),
+        commissionRate: commissionRate !== undefined ? Number(commissionRate) : undefined,
       },
     });
 

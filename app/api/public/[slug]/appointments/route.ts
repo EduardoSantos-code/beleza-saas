@@ -285,7 +285,7 @@ export async function POST(
 
         const isEligibleForFree =
           plan.includedBenefitType === "FREE_SERVICE" &&
-          (plan.includedUsesPerPeriod ?? 0) > 0;
+          (plan.includedUsesPerPeriod ?? 0) !== 0;
 
         if (isEligibleForFree) {
           periodKey = getBenefitPeriodKey(startUtc);
@@ -300,7 +300,7 @@ export async function POST(
             },
           });
 
-          if (usedCount < (plan.includedUsesPerPeriod ?? 0)) {
+          if (plan.includedUsesPerPeriod === -1 || usedCount < (plan.includedUsesPerPeriod ?? 0)) {
             appliedClubMode = "INCLUDED_FREE_SERVICE";
             clubOriginalPrice = service.price || 0;
             clubDiscountAmount = service.price || 0;

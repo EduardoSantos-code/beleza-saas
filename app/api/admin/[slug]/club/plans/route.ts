@@ -117,7 +117,7 @@ export async function POST(
     let finalIncludedBenefitType = includedBenefitType || null;
     let finalIncludedUsesPerPeriod = Number(includedUsesPerPeriod) || 0;
 
-    if (finalIncludedUsesPerPeriod > 0) {
+    if (finalIncludedUsesPerPeriod !== 0) {
       if (!finalIncludedServiceId) {
         return NextResponse.json({ error: 'Serviço incluso é obrigatório para benefícios' }, { status: 400 });
       }
