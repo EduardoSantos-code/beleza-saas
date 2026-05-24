@@ -110,7 +110,7 @@ model Client {
   id                String                    @id @default(cuid())
   tenantId          String
   name              String
-  phoneE164         String
+  phoneE164         String?
   email             String?
   createdAt         DateTime                  @default(now())
   noShowCount       Int                       @default(0)

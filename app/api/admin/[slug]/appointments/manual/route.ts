@@ -36,7 +36,9 @@ export async function POST(
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
-    const cleanPhone = clientPhone?.replace(/\D/g, "") || "00000000000";
+    const cleanPhone = clientPhone?.replace(/\D/g, "") || "";
+    const isPlaceholder = /^0+$/.test(cleanPhone);
+    const hasPhone = cleanPhone !== "" && !isPlaceholder;
 
     const startAt = new Date(`${date}T${time}:00-03:00`);
     const endAt = new Date(startAt.getTime() + service.durationMin * 60000);
@@ -44,20 +46,31 @@ export async function POST(
     const startMinutes = hours * 60 + minutes;
     const endMinutes = startMinutes + service.durationMin;
 
-    const client = await prisma.client.upsert({
-      where: {
-        tenantId_phoneE164: {
-          tenantId: tenant.id,
-          phoneE164: cleanPhone,
+    let client;
+    if (hasPhone) {
+      client = await prisma.client.upsert({
+        where: {
+          tenantId_phoneE164: {
+            tenantId: tenant.id,
+            phoneE164: cleanPhone,
+          },
         },
-      },
-      update: { name: clientName },
-      create: {
-        name: clientName,
-        phoneE164: cleanPhone,
-        tenantId: tenant.id,
-      },
-    });
+        update: { name: clientName },
+        create: {
+          name: clientName,
+          phoneE164: cleanPhone,
+          tenantId: tenant.id,
+        },
+      });
+    } else {
+      client = await prisma.client.create({
+        data: {
+          name: clientName,
+          phoneE164: null,
+          tenantId: tenant.id,
+        },
+      });
+    }
 
     const appointment = await prisma.appointment.create({
       data: {
@@ -74,7 +87,7 @@ export async function POST(
       },
     });
 
-    if (cleanPhone !== "00000000000" && cleanPhone.length >= 10) {
+    if (hasPhone && cleanPhone.length >= 10) {
       const [year, month, day] = date.split("-");
       const dateLabel = `${day}/${month}/${year}`;
       const timeLabel = time;
