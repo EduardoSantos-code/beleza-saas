@@ -21,6 +21,7 @@ export async function generateMetadata({
 
   return {
     title: title,
+    manifest: `/s/${slug}/manifest.webmanifest`,
     appleWebApp: {
       capable: true,
       title: title,
