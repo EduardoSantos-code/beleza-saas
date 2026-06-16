@@ -39,6 +39,7 @@ function isValidEmail(email: string): boolean {
 function getSessionSecret() {
   return (
     process.env.CLIENT_SESSION_SECRET ||
+    process.env.SESSION_SECRET ||
     process.env.JWT_SECRET ||
     process.env.AUTH_SECRET ||
     (process.env.NODE_ENV !== "production"

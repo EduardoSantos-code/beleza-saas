@@ -61,6 +61,7 @@ function buildNotificationUrl(
 function getSessionSecret(): string {
   return (
     process.env.CLIENT_SESSION_SECRET ||
+    process.env.SESSION_SECRET ||
     process.env.JWT_SECRET ||
     process.env.AUTH_SECRET ||
     "dev-only-client-session-secret"

@@ -80,6 +80,7 @@ export async function POST(
     // 9. Criar JWT
     const sessionSecret =
       process.env.CLIENT_SESSION_SECRET ||
+      process.env.SESSION_SECRET ||
       process.env.JWT_SECRET ||
       process.env.AUTH_SECRET ||
       "dev-only-client-session-secret";
