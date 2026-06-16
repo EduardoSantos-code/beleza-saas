@@ -113,13 +113,52 @@ export async function GET(
       },
     });
 
+    // 6.5. Buscamos as reservas de produtos criadas na data consultada (America/Sao_Paulo timezone)
+    let productReservations: any[] = [];
+    if (date) {
+      const start = new Date(`${date}T00:00:00-03:00`);
+      const end = new Date(`${date}T23:59:59.999-03:00`);
+
+      productReservations = await prisma.productReservation.findMany({
+        where: {
+          tenantId: tenant.id,
+          createdAt: {
+            gte: start,
+            lte: end,
+          },
+        },
+        include: {
+          client: {
+            select: {
+              name: true,
+              phoneE164: true,
+            },
+          },
+          items: {
+            include: {
+              product: {
+                select: {
+                  name: true,
+                  imageUrl: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+    }
+
     // 7. RETORNO COMPLETO
     return NextResponse.json({
       tenant,
       appointments: formattedAppointments,
       professionals,
       services, // Enviando a lista para o barbeiro escolher no modal
-      announcement
+      announcement,
+      productReservations,
     });
 
   } catch (error) {

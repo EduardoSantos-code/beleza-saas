@@ -24,6 +24,7 @@ import {
   UserPlus,
   X,
   XCircle,
+  ShoppingBag,
 } from "lucide-react";
 
 type Appointment = {
@@ -52,12 +53,34 @@ type Appointment = {
 type Professional = { id: string; name: string; userId?: string };
 type Service = { id: string; name: string; price: number; durationMin: number };
 
+type ReservationItem = {
+  id: string;
+  quantity: number;
+  priceAtReservation: number;
+  product: {
+    name: string;
+    imageUrl: string | null;
+  };
+};
+
+type ProductReservation = {
+  id: string;
+  status: "PENDING" | "CONFIRMED" | "CANCELED" | "PICKED_UP";
+  createdAt: string;
+  client: {
+    name: string;
+    phoneE164: string;
+  };
+  items: ReservationItem[];
+};
+
 type ResponseData = {
   tenant: { id: string; name: string };
   appointments: Appointment[];
   professionals: Professional[];
   services?: Service[];
   announcement?: { content: string } | null;
+  productReservations?: ProductReservation[];
 };
 
 type TimelineAppointmentItem = Appointment & { isFree: false };
@@ -78,6 +101,30 @@ function formatCurrency(valueInCents: number) {
     style: "currency",
     currency: "BRL",
   }).format(valueInCents / 100);
+}
+
+function reservationStatusBadgeClass(status: string) {
+  switch (status) {
+    case "CONFIRMED":
+    case "PICKED_UP":
+      return "border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-950 dark:bg-emerald-500/15 dark:text-emerald-400";
+    case "PENDING":
+      return "border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-950 dark:bg-amber-500/15 dark:text-amber-400";
+    case "CANCELED":
+      return "border-red-200 bg-red-100 text-red-700 dark:border-red-950 dark:bg-red-500/15 dark:text-red-400";
+    default:
+      return "border-zinc-200 bg-zinc-100 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400";
+  }
+}
+
+function translateReservationStatus(status: string) {
+  const dict: Record<string, string> = {
+    PENDING: "Pendente",
+    CONFIRMED: "Confirmada",
+    CANCELED: "Cancelada",
+    PICKED_UP: "Retirado / Entregue",
+  };
+  return dict[status] || status;
 }
 
 const generateTimeSlots = (
@@ -119,6 +166,7 @@ export default function AdminAppointmentsClient({
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [intervalMin, setIntervalMin] = useState<number>(30);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"appointments" | "reservations">("appointments");
 
   const [manualForm, setManualForm] = useState({
     clientName: "",
@@ -148,11 +196,31 @@ export default function AdminAppointmentsClient({
         appointments: Array.isArray(json.appointments) ? json.appointments : [],
         professionals: Array.isArray(json.professionals) ? json.professionals : [],
         services: Array.isArray(json.services) ? json.services : [],
+        productReservations: Array.isArray(json.productReservations) ? json.productReservations : [],
       });
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleUpdateReservationStatus(resId: string, newStatus: string) {
+    try {
+      const res = await fetch(`/api/admin/${slug}/products/reservations/${resId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error || "Erro ao atualizar status");
+      }
+
+      await loadAppointments();
+    } catch (err: any) {
+      window.alert(err.message || "Erro ao atualizar status da reserva.");
     }
   }
 
@@ -491,13 +559,38 @@ export default function AdminAppointmentsClient({
         ))}
       </div>
 
-      <section className="space-y-5">
-        <div className="flex items-center justify-between px-2">
-          <h3 className={labelClass}>Atendimentos na timeline</h3>
-          <span className="rounded-full bg-zinc-200 px-3 py-1 text-[10px] font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-            {visibleAppointmentsCount} na fila
-          </span>
-        </div>
+      {/* TABS MENU */}
+      <div className="flex border-b border-zinc-200 dark:border-zinc-800 gap-4 mb-4">
+        <button
+          onClick={() => setActiveTab("appointments")}
+          className={`pb-4 text-xs font-black uppercase tracking-wider border-b-2 cursor-pointer transition-all ${
+            activeTab === "appointments"
+              ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+              : "border-transparent text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200"
+          }`}
+        >
+          Atendimentos
+        </button>
+        <button
+          onClick={() => setActiveTab("reservations")}
+          className={`pb-4 text-xs font-black uppercase tracking-wider border-b-2 cursor-pointer transition-all ${
+            activeTab === "reservations"
+              ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
+              : "border-transparent text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200"
+          }`}
+        >
+          Reservas de Produtos ({(data?.productReservations || []).length})
+        </button>
+      </div>
+
+      {activeTab === "appointments" ? (
+        <section className="space-y-5">
+          <div className="flex items-center justify-between px-2">
+            <h3 className={labelClass}>Atendimentos na timeline</h3>
+            <span className="rounded-full bg-zinc-200 px-3 py-1 text-[10px] font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+              {visibleAppointmentsCount} na fila
+            </span>
+          </div>
 
         {timelineData.length > 0 ? (
           <div className="grid gap-4">
@@ -814,6 +907,123 @@ export default function AdminAppointmentsClient({
           </div>
         )}
       </section>
+      ) : (
+        <section className="space-y-5">
+          <div className="flex items-center justify-between px-2">
+            <h3 className={labelClass}>Reservas de Produtos</h3>
+            <span className="rounded-full bg-zinc-200 px-3 py-1 text-[10px] font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+              {(data?.productReservations || []).length} no total
+            </span>
+          </div>
+
+          {(data?.productReservations || []).length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-zinc-200 bg-white p-16 shadow-sm transition-colors dark:border-zinc-800 dark:bg-zinc-900">
+              <ShoppingBag className="mb-6 h-10 w-10 text-emerald-500" />
+              <h3 className="mb-2 text-xl font-black uppercase tracking-tight text-zinc-900 dark:text-white">
+                Sem Reservas
+              </h3>
+              <p className="text-sm font-bold uppercase tracking-widest text-zinc-400">
+                Nenhuma reserva de produto para hoje
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {(data?.productReservations || []).map((res) => {
+                const total = res.items.reduce((sum, item) => sum + item.priceAtReservation * item.quantity, 0);
+                
+                // Formatar link do WhatsApp
+                const cleanPhone = res.client.phoneE164?.replace(/\D/g, "");
+                const waUrl = cleanPhone 
+                  ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=Olá%20${encodeURIComponent(res.client.name)},%20estou%20entrando%20em%20contato%20sobre%20a%20sua%20reserva%20de%20produtos.`
+                  : null;
+
+                return (
+                  <div
+                    key={res.id}
+                    className={`${shellCardClass} overflow-hidden transition-all hover:border-emerald-500/50 p-5 sm:p-6 flex flex-col md:flex-row justify-between gap-6`}
+                  >
+                    {/* Info Cliente & Itens */}
+                    <div className="space-y-4 flex-1">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+                          Reserva: {res.id.slice(-8).toUpperCase()}
+                        </span>
+                        <span className="text-xs text-zinc-400 font-bold">•</span>
+                        <span className="text-xs text-zinc-400 font-bold">
+                          {new Date(res.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-black text-lg italic tracking-tight">
+                          <User size={18} className="text-emerald-500" />
+                          {res.client.name}
+                        </div>
+
+                        {res.client.phoneE164 && (
+                          <div className="flex items-center gap-2 text-zinc-500 font-bold text-xs">
+                            <Phone size={14} />
+                            {res.client.phoneE164}
+                            {waUrl && (
+                              <a
+                                href={waUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-emerald-500 hover:text-emerald-600 transition-colors ml-1 bg-emerald-500/10 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider"
+                              >
+                                <MessageCircle size={10} /> WhatsApp
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Lista de itens */}
+                      <div className="space-y-1.5 pl-6 border-l-2 border-emerald-500/20">
+                        {res.items.map((item) => (
+                          <div key={item.id} className="text-xs font-bold text-zinc-600 dark:text-zinc-300">
+                            {item.product.name} <span className="text-zinc-400">x{item.quantity}</span> — {formatCurrency(item.priceAtReservation)} /un
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Totais & Status Dropdown */}
+                    <div className="flex flex-col md:items-end justify-between shrink-0 gap-4">
+                      <div className="md:text-right">
+                        <span className="text-[10px] font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-widest">
+                          Total da Reserva
+                        </span>
+                        <h4 className="text-2xl font-black italic text-zinc-900 dark:text-white mt-1">
+                          {formatCurrency(total)}
+                        </h4>
+                      </div>
+
+                      <div className="space-y-2 w-full md:w-auto">
+                        <label className="block text-[10px] font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-widest">
+                          Status da Reserva
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={res.status}
+                            onChange={(e) => handleUpdateReservationStatus(res.id, e.target.value)}
+                            className={`w-full md:w-48 appearance-none rounded-xl border p-3.5 text-[11px] font-black uppercase tracking-wider text-center outline-none cursor-pointer transition-colors ${reservationStatusBadgeClass(res.status)}`}
+                          >
+                            <option value="PENDING">Pendente</option>
+                            <option value="CONFIRMED">Confirmada</option>
+                            <option value="PICKED_UP">Retirado / Entregue</option>
+                            <option value="CANCELED">Cancelada (Devolve Estoque)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/90 p-3 backdrop-blur-sm animate-in fade-in duration-300 sm:p-4">

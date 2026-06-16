@@ -29,6 +29,7 @@ export default function AdminLayout({
   const links = [
     { name: "Agenda", href: `/admin/${slug}`, icon: "📅" },
     { name: "Clube", href: `/admin/${slug}/club`, icon: <Crown size={18} className="text-amber-500" /> },
+    { name: "Estoque", href: `/admin/${slug}/products`, icon: "📦" },
     { name: "Assinatura", href: `/admin/${slug}/billing`, icon: "💳" },
     { name: "Métricas", href: `/admin/${slug}/metrics`, icon: "📊" },
     { name: "Serviços", href: `/admin/${slug}/services`, icon: "✂️" },

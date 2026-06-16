@@ -51,6 +51,8 @@ model Tenant {
   outboundMessages              WhatsAppOutboundMessage[]
   clientPhoneVerifications      ClientPhoneVerification[]
   whatsappConfig                WhatsappConfig?
+  products                      Product[]
+  productReservations           ProductReservation[]
 }
 
 model User {
@@ -119,9 +121,10 @@ model Client {
   appointments      Appointment[]
   clubSubscriptions ClubSubscription[]
   clubBenefitUsages ClubBenefitUsage[]
-  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  inboundMessages   WhatsAppInboundMessage[]
-  outboundMessages  WhatsAppOutboundMessage[]
+  tenant              Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inboundMessages     WhatsAppInboundMessage[]
+  outboundMessages    WhatsAppOutboundMessage[]
+  productReservations ProductReservation[]
 
   @@unique([tenantId, phoneE164])
   @@index([tenantId])
@@ -514,3 +517,56 @@ enum TenantSubscriptionStatus {
   UNPAID
   PAUSED
 }
+
+model Product {
+  id            String                   @id @default(cuid())
+  tenantId      String
+  name          String
+  description   String?
+  price         Int                      @default(0) // preço em centavos
+  imageUrl      String?
+  stockQuantity Int                      @default(0)
+  active        Boolean                  @default(true)
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservations  ProductReservationItem[]
+
+  @@index([tenantId, active])
+}
+
+model ProductReservation {
+  id        String                   @id @default(cuid())
+  tenantId  String
+  clientId  String
+  status    ProductReservationStatus @default(PENDING)
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+  tenant    Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client    Client                   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  items     ProductReservationItem[]
+
+  @@index([tenantId, status])
+  @@index([clientId, status])
+}
+
+model ProductReservationItem {
+  id                 String             @id @default(cuid())
+  reservationId      String
+  productId          String
+  quantity           Int
+  priceAtReservation Int // preço em centavos no momento da reserva
+  reservation        ProductReservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  product            Product            @relation(fields: [productId], references: [id])
+
+  @@index([reservationId])
+  @@index([productId])
+}
+
+enum ProductReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELED
+  PICKED_UP
+}
+

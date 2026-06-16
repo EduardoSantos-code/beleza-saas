@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { formatBR } from "@/lib/date";
+import Link from "next/link";
 import { 
   Scissors, 
   User, 
@@ -12,7 +13,8 @@ import {
   ChevronDown,
   Info,
   Crown,
-  CheckCircle
+  CheckCircle,
+  Search
 } from "lucide-react";
 
 type Service = {
@@ -485,6 +487,16 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   {catalog.tenant.address}
                 </span>
               )}
+            </div>
+
+            <div className="mt-6 pointer-events-auto">
+              <Link
+                href={`/s/${slug}/portal`}
+                className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 px-5 py-3 border border-white/10 text-xs font-black uppercase tracking-widest text-white transition-all shadow-md active:scale-95 cursor-pointer"
+              >
+                <Search size={14} />
+                Consultar Meus Agendamentos e Reservas
+              </Link>
             </div>
           </div>
         </div>
