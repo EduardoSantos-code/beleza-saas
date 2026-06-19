@@ -164,7 +164,7 @@ export default function AdminAppointmentsClient({
   const [loading, setLoading] = useState(true);
   const [activeProfId, setActiveProfId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [intervalMin, setIntervalMin] = useState<number>(30);
+  const [intervalMin, setIntervalMin] = useState<number>(15);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"appointments" | "reservations">("appointments");
 

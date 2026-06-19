@@ -429,6 +429,24 @@ async function resolveInstanceName(input: SendTenantWhatsAppMessageInput) {
 export async function sendTenantWhatsAppMessage(
   input: SendTenantWhatsAppMessageInput
 ): Promise<SendResult> {
+  const text = input.text || "";
+  const isOtp =
+    text.includes("código para acessar sua assinatura") ||
+    text.includes("código para usar o benefício") ||
+    text.includes("código para assinar o clube");
+
+  const isReminder = text.includes("Passando pra lembrar que seu trato é");
+
+  if (!isOtp && !isReminder) {
+    console.log(`[WhatsApp] Envio bloqueado por filtro (Opção 3): "${text.substring(0, 60)}..."`);
+    return {
+      success: true,
+      reason: "BLOCKED_BY_FILTER_OPTION_3",
+      data: { status: "BLOCKED_BY_FILTER_OPTION_3" },
+      messages: [],
+    };
+  }
+
   const resolved = await resolveInstanceName(input);
 
   if (!resolved.ok) {
