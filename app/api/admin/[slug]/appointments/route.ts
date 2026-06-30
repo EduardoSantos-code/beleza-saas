@@ -166,3 +166,79 @@ export async function GET(
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
 }
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params;
+
+  try {
+    await requireTenantAccess(slug);
+
+    const body = await request.json();
+    const { date } = body;
+
+    if (!date) {
+      return NextResponse.json({ error: "Data não fornecida" }, { status: 400 });
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { slug },
+      select: { id: true }
+    });
+
+    if (!tenant) {
+      return NextResponse.json({ error: "Salão não encontrado" }, { status: 404 });
+    }
+
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        tenantId: tenant.id,
+        businessDate: date,
+        status: { in: ["PENDING", "CONFIRMED"] }
+      },
+      select: {
+        id: true,
+        clientId: true
+      }
+    });
+
+    if (appointments.length === 0) {
+      return NextResponse.json({ message: "Nenhum agendamento pendente ou confirmado para finalizar nesta data." });
+    }
+
+    const actualIdsToUpdate = appointments.map((a) => a.id);
+
+    const updateOperations = [
+      prisma.appointment.updateMany({
+        where: { id: { in: actualIdsToUpdate } },
+        data: { status: "COMPLETED" }
+      }),
+      ...Object.entries(
+        appointments.reduce((acc, app) => {
+          if (app.clientId) {
+            acc[app.clientId] = (acc[app.clientId] || 0) + 1;
+          }
+          return acc;
+        }, {} as Record<string, number>)
+      ).map(([clientId, count]) =>
+        prisma.client.update({
+          where: { id: clientId },
+          data: { completedCount: { increment: count } }
+        })
+      )
+    ];
+
+    await prisma.$transaction(updateOperations);
+
+    return NextResponse.json({
+      success: true,
+      message: `${actualIdsToUpdate.length} agendamentos finalizados com sucesso.`
+    });
+
+  } catch (error) {
+    console.error("🔥 Erro fatal ao finalizar agendamentos em lote:", error);
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+  }
+}

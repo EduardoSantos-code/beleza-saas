@@ -245,6 +245,33 @@ export default function AdminAppointmentsClient({
     }
   }
 
+  async function handleCompleteAll() {
+    if (!window.confirm("Tem certeza que deseja finalizar todos os agendamentos deste dia?")) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/admin/${slug}/appointments`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Erro ao finalizar agendamentos");
+      }
+
+      await loadAppointments();
+    } catch (err: any) {
+      window.alert(err.message || "Erro ao finalizar agendamentos.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleManualSubmit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -384,6 +411,12 @@ export default function AdminAppointmentsClient({
       (a) => a.status !== "CANCELED" && a.status !== "COMPLETED"
     ).length;
   }, [professionalAppointments]);
+
+  const hasCompletableAppointments = useMemo(() => {
+    return data?.appointments?.some(
+      (a) => a.status === "PENDING" || a.status === "CONFIRMED"
+    ) ?? false;
+  }, [data]);
 
   if (loading && !data) {
     return (
@@ -894,6 +927,17 @@ export default function AdminAppointmentsClient({
                 </article>
               );
             })}
+            
+            {hasCompletableAppointments && (
+              <button
+                onClick={handleCompleteAll}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 rounded-3xl sm:rounded-[2rem] border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 py-5 text-xs sm:text-sm font-black uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50 mt-2"
+              >
+                <CheckCircle2 size={18} />
+                {loading ? "Finalizando agendamentos..." : "Finalizar Todos os Agendamentos do Dia"}
+              </button>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-zinc-200 bg-white p-16 shadow-sm transition-colors dark:border-zinc-800 dark:bg-zinc-900">
