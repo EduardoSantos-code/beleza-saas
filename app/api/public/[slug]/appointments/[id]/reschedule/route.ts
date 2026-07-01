@@ -137,62 +137,62 @@ export async function POST(
     const startMinutes = hours * 60 + minutes;
     const endMinutes = startMinutes + appointment.service.durationMin;
 
-    // 6. Verificar conflito de horário no novo slot (excluindo o próprio agendamento)
-    const conflicts = await prisma.appointment.findMany({
-      where: {
-        tenantId: session.tenantId,
-        professionalId: targetProfessionalId,
-        status: { not: "CANCELED" },
-        id: { not: id },
-        startAt: { lt: endUtc },
-        endAt: { gt: startUtc },
-      },
-    });
+    // 6. Executar transação com lock e validações para evitar concorrência no reagendamento
+    const updatedAppointment = await prisma.$transaction(async (tx) => {
+      // Lock no profissional de destino para serializar reagendamentos/agendamentos concorrentes
+      await tx.$executeRaw`SELECT id FROM "Professional" WHERE id = ${targetProfessionalId} FOR UPDATE`;
 
-    if (conflicts.length > 0) {
-      return NextResponse.json(
-        { error: "O horário selecionado já foi reservado." },
-        { status: 400 }
-      );
-    }
+      // Verificar conflito de horário no novo slot (excluindo o próprio agendamento)
+      const conflicts = await tx.appointment.findMany({
+        where: {
+          tenantId: session.tenantId,
+          professionalId: targetProfessionalId,
+          status: { not: "CANCELED" },
+          id: { not: id },
+          startAt: { lt: endUtc },
+          endAt: { gt: startUtc },
+        },
+      });
 
-    // 7. Verificar conflito com ScheduleBlocks (Bloqueios de agenda)
-    const blocks = await prisma.scheduleBlock.findMany({
-      where: {
-        tenantId: session.tenantId,
-        startAt: { lt: endUtc },
-        endAt: { gt: startUtc },
-        OR: [
-          { professionalId: null },
-          { professionalId: targetProfessionalId }
-        ]
-      },
-    });
+      if (conflicts.length > 0) {
+        throw new Error("SLOT_OCCUPIED");
+      }
 
-    if (blocks.length > 0) {
-      return NextResponse.json(
-        { error: "Este horário está bloqueado pelo profissional." },
-        { status: 400 }
-      );
-    }
+      // Verificar conflito com ScheduleBlocks (Bloqueios de agenda)
+      const blocks = await tx.scheduleBlock.findMany({
+        where: {
+          tenantId: session.tenantId,
+          startAt: { lt: endUtc },
+          endAt: { gt: startUtc },
+          OR: [
+            { professionalId: null },
+            { professionalId: targetProfessionalId }
+          ]
+        },
+      });
 
-    // 8. Atualizar o agendamento no banco
-    const updatedAppointment = await prisma.appointment.update({
-      where: { id },
-      data: {
-        professionalId: targetProfessionalId,
-        startAt: startUtc,
-        endAt: endUtc,
-        businessDate: localDateString,
-        startMinutes,
-        endMinutes,
-      },
-      include: {
-        professional: true,
-        service: true,
-        tenant: true,
-        client: true,
-      },
+      if (blocks.length > 0) {
+        throw new Error("SLOT_BLOCKED");
+      }
+
+      // Atualizar o agendamento no banco
+      return tx.appointment.update({
+        where: { id },
+        data: {
+          professionalId: targetProfessionalId,
+          startAt: startUtc,
+          endAt: endUtc,
+          businessDate: localDateString,
+          startMinutes,
+          endMinutes,
+        },
+        include: {
+          professional: true,
+          service: true,
+          tenant: true,
+          client: true,
+        },
+      });
     });
 
     // 9. Enviar notificações por WhatsApp (se o tenant não estiver cancelado)
@@ -242,7 +242,13 @@ export async function POST(
     }
 
     return NextResponse.json({ ok: true, appointment: updatedAppointment });
-  } catch (error) {
+  } catch (error: any) {
+    if (error instanceof Error && (error.message === "SLOT_OCCUPIED" || error.message === "SLOT_BLOCKED")) {
+      const message = error.message === "SLOT_OCCUPIED"
+        ? "O horário selecionado já foi reservado."
+        : "Este horário está bloqueado pelo profissional.";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
     console.error("[APPOINTMENT_RESCHEDULE_POST]", error);
     return NextResponse.json(
       { error: "Erro interno ao reagendar agendamento." },

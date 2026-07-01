@@ -251,6 +251,41 @@ export async function POST(
     const endMinutes = startMinutes + service.durationMin;
 
     const appointment = await prisma.$transaction(async (tx) => {
+      // 1. Lock no profissional para evitar concorrência (agendamentos duplicados)
+      await tx.$executeRaw`SELECT id FROM "Professional" WHERE id = ${professionalId} FOR UPDATE`;
+
+      // 2. Verificar conflito de horário (agendamentos ativos no mesmo período)
+      const conflicts = await tx.appointment.findFirst({
+        where: {
+          tenantId: tenant.id,
+          professionalId,
+          status: { not: "CANCELED" },
+          startAt: { lt: endUtc },
+          endAt: { gt: startUtc },
+        },
+      });
+
+      if (conflicts) {
+        throw new Error("SLOT_OCCUPIED");
+      }
+
+      // 3. Verificar conflitos com ScheduleBlocks (Bloqueios de agenda)
+      const blocks = await tx.scheduleBlock.findFirst({
+        where: {
+          tenantId: tenant.id,
+          startAt: { lt: endUtc },
+          endAt: { gt: startUtc },
+          OR: [
+            { professionalId: null },
+            { professionalId },
+          ],
+        },
+      });
+
+      if (blocks) {
+        throw new Error("SLOT_BLOCKED");
+      }
+
       const clientRecord = await tx.client.upsert({
         where: {
           tenantId_phoneE164: {
@@ -478,6 +513,13 @@ export async function POST(
 
     return NextResponse.json(appointment);
   } catch (error: unknown) {
+    if (error instanceof Error && (error.message === "SLOT_OCCUPIED" || error.message === "SLOT_BLOCKED")) {
+      const message =
+        error.message === "SLOT_OCCUPIED"
+          ? "Este horário já foi reservado por outro cliente."
+          : "Este horário está bloqueado ou indisponível.";
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
     console.error("[APPOINTMENT_POST_ERROR]", error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
   }
