@@ -101,6 +101,7 @@ export default function ProductsClient({ slug }: { slug: string }) {
   
   // Estados de dados
   const [products, setProducts] = useState<Product[]>([]);
+  const [planTier, setPlanTier] = useState<string>("PRO");
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -132,9 +133,12 @@ export default function ProductsClient({ slug }: { slug: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao carregar produtos");
       setProducts(data.products || []);
+      if (data.planTier) {
+        setPlanTier(data.planTier);
+      }
 
       const rows: any = {};
-      for (const prod of data.products) {
+      for (const prod of data.products || []) {
         rows[prod.id] = {
           name: prod.name,
           description: prod.description || "",
@@ -336,6 +340,35 @@ export default function ProductsClient({ slug }: { slug: string }) {
       <div className="p-10 flex items-center gap-3 text-zinc-800 dark:text-zinc-200 font-bold">
         <div className="animate-spin h-5 w-5 border-2 border-emerald-500 border-t-transparent rounded-full" />
         Carregando estoque e reservas...
+      </div>
+    );
+  }
+
+  if (planTier === "BASICO") {
+    return (
+      <div className="relative mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8 text-center mt-12">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 bg-amber-500 text-zinc-950 text-[10px] font-black px-5 py-1.5 rounded-bl-2xl uppercase tracking-widest">
+            Funcionalidade Premium
+          </div>
+          <div className="flex justify-center mb-6">
+            <div className="h-16 w-16 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center">
+              <Package size={32} />
+            </div>
+          </div>
+          <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter text-white uppercase mb-4">
+            Controle de Estoque não disponível
+          </h2>
+          <p className="text-zinc-400 text-sm md:text-base max-w-md mx-auto mb-8 font-semibold">
+            O plano <span className="text-emerald-400">Trato Básico</span> não possui controle de estoque e reserva de produtos. Faça um upgrade para o plano <span className="text-emerald-400">Trato Essencial</span> ou <span className="text-emerald-400">Trato Pro</span> para gerenciar seus produtos!
+          </p>
+          <a
+            href={`/admin/${slug}/billing`}
+            className="inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-wider transition-all hover:scale-[1.02] active:scale-95 shadow-xl shadow-emerald-500/10"
+          >
+            Fazer Upgrade do Plano
+          </a>
+        </div>
       </div>
     );
   }

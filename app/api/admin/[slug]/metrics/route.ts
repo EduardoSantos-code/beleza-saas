@@ -25,24 +25,43 @@ export async function GET(
     const { slug } = await params;
     const { searchParams } = new URL(req.url);
 
-    // 1. Pega o range e garante que é um número
-    const rangeParam = searchParams.get("range") || "7";
-    const days = parseInt(rangeParam);
+    // 1. Filtros por data personalizada ou range padrão
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
 
-    // 2. Cálculo preciso da data (Início do dia)
-    const dateLimit = new Date();
-    dateLimit.setHours(0, 0, 0, 0); // Começa às 00:00 de hoje
+    let dateLimitStart: Date;
+    let dateLimitEnd: Date;
 
-    if (days > 1) {
-      dateLimit.setDate(dateLimit.getDate() - (days - 1));
+    if (startDateParam && endDateParam) {
+      dateLimitStart = new Date(`${startDateParam}T00:00:00-03:00`);
+      dateLimitEnd = new Date(`${endDateParam}T23:59:59.999-03:00`);
+    } else {
+      const rangeParam = searchParams.get("range") || "month";
+      
+      if (rangeParam === "month") {
+        const now = new Date();
+        dateLimitStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        dateLimitEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      } else {
+        const daysParam = parseInt(rangeParam) || 7;
+        
+        dateLimitStart = new Date();
+        dateLimitStart.setHours(0, 0, 0, 0);
+        if (daysParam > 1) {
+          dateLimitStart.setDate(dateLimitStart.getDate() - (daysParam - 1));
+        }
+        
+        dateLimitEnd = new Date();
+        dateLimitEnd.setHours(23, 59, 59, 999);
+      }
     }
 
-    console.log(`📅 Filtrando agendamentos desde: ${dateLimit.toLocaleString()} (Range: ${days} dias)`);
+    console.log(`📅 Filtrando agendamentos de: ${dateLimitStart.toLocaleString()} até ${dateLimitEnd.toLocaleString()}`);
 
     const appointments = await prisma.appointment.findMany({
       where: {
         professional: { tenant: { slug } },
-        startAt: { gte: dateLimit },
+        startAt: { gte: dateLimitStart, lte: dateLimitEnd },
       },
       include: {
         service: true,
@@ -143,12 +162,13 @@ export async function GET(
       return `${year}-${month}-${day}`;
     };
 
-    // 2. Gerar a lista dos últimos dias baseada na data LOCAL e no range selecionado
-    const dynamicDays = [...Array(days)].map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      return getLocalDateString(d);
-    }).reverse();
+    // 2. Gerar a lista de dias no período selecionado (data LOCAL)
+    const dynamicDays: string[] = [];
+    const tempDate = new Date(dateLimitStart);
+    while (tempDate <= dateLimitEnd) {
+      dynamicDays.push(getLocalDateString(tempDate));
+      tempDate.setDate(tempDate.getDate() + 1);
+    }
 
     // 3. Montar o gráfico comparando as datas locais
     const chartData = dynamicDays.map(dateStr => {
@@ -163,7 +183,7 @@ export async function GET(
       const [y, m, d] = dateStr.split('-').map(Number);
       const dateObj = new Date(y, m - 1, d);
       
-      const label = days > 7 
+      const label = dynamicDays.length > 7 
         ? `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`
         : dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
 

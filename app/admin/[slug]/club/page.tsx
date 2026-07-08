@@ -22,6 +22,7 @@ export default async function ClubAdminPage({ params }: PageProps) {
       slug: true,
       clubEnabled: true,
       clubPaymentProvider: true,
+      planTier: true,
     },
   });
 

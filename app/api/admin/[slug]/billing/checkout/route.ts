@@ -38,6 +38,15 @@ function hasAsaasErrors(data: unknown): boolean {
   return Array.isArray(obj.errors) && obj.errors.length > 0;
 }
 
+async function readJsonSafe(res: Response): Promise<any> {
+  const text = await res.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch (err) {
+    return { _rawText: text };
+  }
+}
+
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ slug: string }> }
@@ -45,8 +54,24 @@ export async function POST(
   try {
     const { slug } = await params;
 
+    let body: any = {};
+    try {
+      body = await _req.json();
+    } catch {
+      // no body
+    }
+
+    const { planTier = "PRO", planCycle = "MONTHLY" } = body;
+
+    if (!["BASICO", "ESSENCIAL", "PRO"].includes(planTier)) {
+      return NextResponse.json({ error: "Plano inválido" }, { status: 400 });
+    }
+    if (!["MONTHLY", "YEARLY"].includes(planCycle)) {
+      return NextResponse.json({ error: "Ciclo de cobrança inválido" }, { status: 400 });
+    }
+
     console.log(
-      `[CHECKOUT] Iniciando checkout para ${slug}. URL do Asaas: ${ASAAS_URL}`
+      `[CHECKOUT] Iniciando checkout para ${slug}. Plano: ${planTier}, Ciclo: ${planCycle}. URL do Asaas: ${ASAAS_URL}`
     );
 
     const membership = await getCurrentMembershipBySlug(slug);
@@ -89,6 +114,7 @@ export async function POST(
 
     const owner = tenant.memberships[0]?.user;
     let asaasCustomerId = tenant.asaasCustomerId;
+    let asaasSubscriptionId = tenant.asaasSubscriptionId;
 
     const headers = {
       "Content-Type": "application/json",
@@ -108,12 +134,12 @@ export async function POST(
         }),
       });
 
-      const customerData = await customerRes.json();
+      const customerData = await readJsonSafe(customerRes);
 
       if (!customerRes.ok || hasAsaasErrors(customerData)) {
         console.error("[ASAAS_CUSTOMER_ERROR]", customerData);
         throw new Error(
-          getAsaasErrorMessage(customerData, "Erro ao criar cliente no Asaas.")
+          getAsaasErrorMessage(customerData, `Erro ao criar cliente no Asaas (Status ${customerRes.status}). Detalhes: ${customerData._rawText || JSON.stringify(customerData)}`)
         );
       }
 
@@ -140,21 +166,80 @@ export async function POST(
         }
       );
 
-      const updateCustomerData = await updateCustomerRes.json();
+      const updateCustomerData = await readJsonSafe(updateCustomerRes);
 
-      if (!updateCustomerRes.ok || hasAsaasErrors(updateCustomerData)) {
+      if (updateCustomerRes.status === 404) {
+        console.warn(`[CHECKOUT] Cliente Asaas ${asaasCustomerId} não encontrado (404). Criando um novo...`);
+        const createRes = await fetch(`${ASAAS_URL}/customers`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            name: tenant.name,
+            email: owner?.email || "dudu.santos2097@gmail.com",
+            cpfCnpj: tenant.cpfCnpj,
+            externalReference: tenant.id,
+          }),
+        });
+        const createData = await readJsonSafe(createRes);
+        if (!createRes.ok || hasAsaasErrors(createData)) {
+          console.error("[ASAAS_CUSTOMER_FALLBACK_ERROR]", createData);
+          throw new Error(
+            getAsaasErrorMessage(createData, `Erro ao criar cliente no Asaas após 404 (Status ${createRes.status}). Detalhes: ${createData._rawText || JSON.stringify(createData)}`)
+          );
+        }
+        asaasCustomerId = createData.id;
+        await prisma.tenant.update({
+          where: { id: tenant.id },
+          data: { asaasCustomerId, asaasSubscriptionId: null },
+        });
+        asaasSubscriptionId = null;
+      } else if (!updateCustomerRes.ok || hasAsaasErrors(updateCustomerData)) {
         console.error("[ASAAS_CUSTOMER_UPDATE_ERROR]", updateCustomerData);
         throw new Error(
           getAsaasErrorMessage(
             updateCustomerData,
-            "Erro ao atualizar cliente no Asaas."
+            `Erro ao atualizar cliente no Asaas (Status ${updateCustomerRes.status}). Detalhes: ${updateCustomerData._rawText || JSON.stringify(updateCustomerData)}`
           )
         );
       }
     }
 
     // 2. CRIAR ASSINATURA
-    let asaasSubscriptionId = tenant.asaasSubscriptionId;
+    const price = planCycle === "YEARLY"
+      ? (planTier === "BASICO" ? 390.00 : planTier === "ESSENCIAL" ? 490.00 : 590.00)
+      : (planTier === "BASICO" ? 39.90 : planTier === "ESSENCIAL" ? 49.90 : 59.90);
+
+    const planName = planTier === "BASICO" ? "Trato Básico" : planTier === "ESSENCIAL" ? "Trato Essencial" : "Trato Pro";
+    const cycleName = planCycle === "YEARLY" ? "Anual" : "Mensal";
+
+    if (asaasSubscriptionId) {
+      // Tentar atualizar a assinatura existente com o novo plano e ciclo no Asaas
+      const updateSubRes = await fetch(`${ASAAS_URL}/subscriptions/${asaasSubscriptionId}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({
+          value: price,
+          cycle: planCycle,
+          description: `Assinatura ${planName} - ${cycleName}`,
+          updatePendingPayments: true,
+        }),
+      });
+
+      if (!updateSubRes.ok) {
+        const errorText = await updateSubRes.text();
+        console.warn(`[CHECKOUT] Falha ao atualizar assinatura existente (${updateSubRes.status}): ${errorText}. Criando uma nova...`);
+        asaasSubscriptionId = null;
+      } else {
+        // Se atualizou com sucesso, salvamos a alteração no nosso banco de dados
+        await prisma.tenant.update({
+          where: { id: tenant.id },
+          data: {
+            planTier,
+            planCycle,
+          },
+        });
+      }
+    }
 
     if (!asaasSubscriptionId) {
       const today = new Date().toISOString().split("T")[0];
@@ -165,19 +250,19 @@ export async function POST(
         body: JSON.stringify({
           customer: asaasCustomerId,
           billingType: "UNDEFINED",
-          value: 39.0,
+          value: price,
           nextDueDate: today,
-          cycle: "MONTHLY",
-          description: "Assinatura Trato Pro",
+          cycle: planCycle,
+          description: `Assinatura ${planName} - ${cycleName}`,
         }),
       });
 
-      const subData = await subRes.json();
+      const subData = await readJsonSafe(subRes);
 
       if (!subRes.ok || hasAsaasErrors(subData)) {
         console.error("[ASAAS_SUBSCRIPTION_ERROR]", subData);
         throw new Error(
-          getAsaasErrorMessage(subData, "Erro ao criar assinatura no Asaas.")
+          getAsaasErrorMessage(subData, `Erro ao criar assinatura no Asaas (Status ${subRes.status}). Detalhes: ${subData._rawText || JSON.stringify(subData)}`)
         );
       }
 
@@ -190,7 +275,11 @@ export async function POST(
 
       await prisma.tenant.update({
         where: { id: tenant.id },
-        data: { asaasSubscriptionId },
+        data: {
+          asaasSubscriptionId,
+          planTier,
+          planCycle,
+        },
       });
     }
 
@@ -203,14 +292,14 @@ export async function POST(
       }
     );
 
-    const paymentsData = await paymentsRes.json();
+    const paymentsData = await readJsonSafe(paymentsRes);
 
     if (!paymentsRes.ok || hasAsaasErrors(paymentsData)) {
       console.error("[ASAAS_PAYMENTS_ERROR]", paymentsData);
       throw new Error(
         getAsaasErrorMessage(
           paymentsData,
-          "Erro ao buscar faturas da assinatura no Asaas."
+          `Erro ao buscar faturas da assinatura no Asaas (Status ${paymentsRes.status}). Detalhes: ${paymentsData._rawText || JSON.stringify(paymentsData)}`
         )
       );
     }

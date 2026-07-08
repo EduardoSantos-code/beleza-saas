@@ -151,6 +151,33 @@ export async function GET(
       });
     }
 
+    // 6.7. Horários de funcionamento do salão
+    const businessHours = await prisma.tenantBusinessHour.findMany({
+      where: { tenantId: tenant.id },
+    });
+
+    // 6.8. Bloqueios gerais do salão no dia consultado
+    let blocks: any[] = [];
+    if (date) {
+      const start = new Date(`${date}T00:00:00-03:00`);
+      const end = new Date(`${date}T23:59:59.999-03:00`);
+      blocks = await prisma.scheduleBlock.findMany({
+        where: {
+          tenantId: tenant.id,
+          startAt: { lt: end },
+          endAt: { gt: start },
+        },
+        select: {
+          id: true,
+          title: true,
+          startAt: true,
+          endAt: true,
+          allDay: true,
+          professionalId: true,
+        },
+      });
+    }
+
     // 7. RETORNO COMPLETO
     return NextResponse.json({
       tenant,
@@ -159,6 +186,8 @@ export async function GET(
       services, // Enviando a lista para o barbeiro escolher no modal
       announcement,
       productReservations,
+      businessHours,
+      blocks,
     });
 
   } catch (error) {

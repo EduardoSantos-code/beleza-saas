@@ -17,6 +17,8 @@ export async function getCurrentMembershipBySlug(slug: string) {
         planStatus: true,
         subscriptionStatus: true,
         createdAt: true,
+        planTier: true,
+        planCycle: true,
       },
     }),
     session.role

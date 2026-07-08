@@ -13,7 +13,6 @@ export default function BrandingClient({ slug }: { slug: string }) {
   const [instagram, setInstagram] = useState("");
   const [address, setAddress] = useState("");
   const [minAdvanceHours, setMinAdvanceHours] = useState(2);
-  const [googleMapsLink, setGoogleMapsLink] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,7 +33,6 @@ export default function BrandingClient({ slug }: { slug: string }) {
           setInstagram(data.instagram || "");
           setAddress(data.address || "");
           setMinAdvanceHours(data.minAdvanceHours ?? 2);
-          setGoogleMapsLink(data.googleMapsLink || "");
         }
       } catch (err) {
         console.error("Erro ao carregar:", err);
@@ -105,7 +103,6 @@ export default function BrandingClient({ slug }: { slug: string }) {
         body: JSON.stringify({
           name, primaryColor, logoUrl, heroImageUrl, publicDescription,
           publicPhone, instagram, address, minAdvanceHours: Number(minAdvanceHours),
-          googleMapsLink,
         }),
       });
 
@@ -172,11 +169,6 @@ export default function BrandingClient({ slug }: { slug: string }) {
             <div>
               <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Instagram</label>
               <input type="text" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@seuinsta" className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Link para Avaliação no Google Maps</label>
-              <input type="text" value={googleMapsLink} onChange={(e) => setGoogleMapsLink(e.target.value)} placeholder="https://g.page/r/seu-link/review" className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-2 text-zinc-900 outline-none focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" />
             </div>
 
             <div>

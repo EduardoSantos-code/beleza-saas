@@ -17,6 +17,18 @@ export async function POST(
       );
     }
 
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: session.tenantId },
+      select: { planTier: true },
+    });
+
+    if (tenant?.planTier === "BASICO") {
+      return NextResponse.json(
+        { error: "Este estabelecimento não possui suporte a reserva de produtos no plano atual." },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const { items } = body as { items?: { productId: string; quantity: number }[] };
 

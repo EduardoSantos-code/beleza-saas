@@ -29,6 +29,7 @@ export default function AdminLayout({
   const links = [
     { name: "Agenda", href: `/admin/${slug}`, icon: "📅" },
     { name: "Clube", href: `/admin/${slug}/club`, icon: <Crown size={18} className="text-amber-500" /> },
+    { name: "Clientes", href: `/admin/${slug}/clients`, icon: "👥" },
     { name: "Estoque", href: `/admin/${slug}/products`, icon: "📦" },
     { name: "Assinatura", href: `/admin/${slug}/billing`, icon: "💳" },
     { name: "Métricas", href: `/admin/${slug}/metrics`, icon: "📊" },
@@ -38,6 +39,7 @@ export default function AdminLayout({
     { name: "Bloqueios", href: `/admin/${slug}/blocks`, icon: "🔒" },
     { name: "Branding", href: `/admin/${slug}/branding`, icon: "🎨" },
     { name: "Whatsapp", href: `/admin/${slug}/whatsapp`, icon: "✉️" },
+    { name: "Como Usar", href: `/admin/${slug}/help`, icon: "📖" },
   ];
 
   if (!slug) return <>{children}</>;

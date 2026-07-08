@@ -25,7 +25,9 @@ export async function GET(
         trialEndsAt: true,
         asaasCustomerId: true,
         asaasSubscriptionId: true,
-        cpfCnpj: true, // 👈 Agora incluímos o CPF na busca
+        cpfCnpj: true,
+        planTier: true,
+        planCycle: true,
       },
     });
 

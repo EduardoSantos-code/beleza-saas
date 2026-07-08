@@ -38,6 +38,7 @@ type ClubTenant = {
   slug: string;
   clubEnabled: boolean;
   clubPaymentProvider: "ASAAS" | "MERCADO_PAGO" | null;
+  planTier?: string | null;
 };
 
 type ClubPlan = {
@@ -674,6 +675,37 @@ export default function ClubPlansClient({
       setPaymentSaving(false);
     }
   };
+
+  const planTier = initialTenant.planTier || "PRO";
+
+  if (planTier === "BASICO") {
+    return (
+      <div className="relative mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8 text-center mt-12">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 md:p-12 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 bg-amber-500 text-zinc-950 text-[10px] font-black px-5 py-1.5 rounded-bl-2xl uppercase tracking-widest">
+            Funcionalidade Premium
+          </div>
+          <div className="flex justify-center mb-6">
+            <div className="h-16 w-16 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center">
+              <Crown size={32} />
+            </div>
+          </div>
+          <h2 className="text-2xl md:text-3xl font-black italic tracking-tighter text-white uppercase mb-4">
+            Clube de Assinaturas não disponível
+          </h2>
+          <p className="text-zinc-400 text-sm md:text-base max-w-md mx-auto mb-8 font-semibold">
+            O plano <span className="text-emerald-400">Trato Básico</span> não inclui módulo de Clube de Assinaturas. Faça um upgrade para o plano <span className="text-emerald-400">Trato Essencial</span> ou <span className="text-emerald-400">Trato Pro</span> e garanta faturamento recorrente previsível!
+          </p>
+          <a
+            href={`/admin/${slug}/billing`}
+            className="inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-950 px-8 py-4 rounded-2xl font-black uppercase text-xs tracking-wider transition-all hover:scale-[1.02] active:scale-95 shadow-xl shadow-emerald-500/10"
+          >
+            Fazer Upgrade do Plano
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen bg-zinc-50 dark:bg-zinc-950">

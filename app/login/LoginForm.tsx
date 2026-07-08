@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 // Removi 'Scissors' e adicionei ícones de Mail, Lock, ArrowRight, AlertCircle
 import { Mail, Lock, ArrowRight, AlertCircle } from "lucide-react";
 
@@ -92,9 +93,17 @@ export default function LoginForm({ nextPath }: { nextPath: string }) {
 
             {/* Campo de Senha */}
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
-                Senha de Acesso
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">
+                  Senha de Acesso
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-[10px] font-black uppercase tracking-widest text-emerald-500 hover:text-emerald-400 transition-colors mr-1"
+                >
+                  Esqueceu a senha?
+                </Link>
+              </div>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-600 group-focus-within:text-emerald-500 transition-colors" />
                 <input

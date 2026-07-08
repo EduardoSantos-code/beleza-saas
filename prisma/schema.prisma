@@ -23,12 +23,13 @@ model Tenant {
   asaasCustomerId               String?                    @unique
   asaasSubscriptionId           String?                    @unique
   planStatus                    String                     @default("TRIAL") // TRIAL, ACTIVE, OVERDUE
+  planTier                      String                     @default("PRO") // BASICO, ESSENCIAL, PRO
+  planCycle                     String                     @default("MONTHLY") // MONTHLY, YEARLY
   subscriptionCancelAtPeriodEnd Boolean                    @default(false)
   subscriptionCurrentPeriodEnd  DateTime?
   subscriptionStatus            TenantSubscriptionStatus   @default(NONE)
   trialEndsAt                   DateTime?
   minAdvanceHours               Int                        @default(2)
-  googleMapsLink                String?
   clubEnabled                   Boolean                    @default(false)
   clubPaymentProvider           ClubPaymentProvider?
   clubAsaasApiKeyEnc            String?
@@ -47,8 +48,6 @@ model Tenant {
   blocks                        ScheduleBlock[]
   services                      Service[]
   businessHours                 TenantBusinessHour[]
-  inboundMessages               WhatsAppInboundMessage[]
-  outboundMessages              WhatsAppOutboundMessage[]
   clientPhoneVerifications      ClientPhoneVerification[]
   whatsappConfig                WhatsappConfig?
   products                      Product[]
@@ -82,6 +81,7 @@ model Professional {
   name           String
   active         Boolean                    @default(true)
   commissionRate Int                        @default(50)
+  imageUrl       String?
   createdAt      DateTime                   @default(now())
   phoneE164      String?
   updatedAt      DateTime                   @updatedAt
@@ -122,8 +122,6 @@ model Client {
   clubSubscriptions ClubSubscription[]
   clubBenefitUsages ClubBenefitUsage[]
   tenant              Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  inboundMessages     WhatsAppInboundMessage[]
-  outboundMessages    WhatsAppOutboundMessage[]
   productReservations ProductReservation[]
 
   @@unique([tenantId, phoneE164])
@@ -154,7 +152,7 @@ model Appointment {
   clubDiscountAmount Int?
   clubFinalPrice     Int?
   client             Client             @relation(fields: [clientId], references: [id])
-  professional       Professional       @relation(fields: [professionalId], references: [id])
+  professional       Professional       @relation(fields: [professionalId], references: [id], onDelete: Cascade)
   service            Service            @relation(fields: [serviceId], references: [id])
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   reminder           Reminder?
@@ -243,50 +241,13 @@ model ScheduleBlock {
   allDay         Boolean       @default(false)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  professional   Professional? @relation(fields: [professionalId], references: [id])
+  professional   Professional? @relation(fields: [professionalId], references: [id], onDelete: Cascade)
   tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, startAt])
   @@index([professionalId, startAt])
 }
 
-model WhatsAppInboundMessage {
-  id            String                     @id @default(cuid())
-  tenantId      String
-  clientId      String?
-  waMessageId   String                     @unique
-  phoneNumberId String
-  fromPhoneE164 String
-  fromName      String?
-  type          WhatsAppInboundMessageType @default(UNKNOWN)
-  textBody      String?
-  rawJson       Json
-  createdAt     DateTime                   @default(now())
-  client        Client?                    @relation(fields: [clientId], references: [id])
-  tenant        Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId, createdAt])
-  @@index([clientId, createdAt])
-  @@index([fromPhoneE164, createdAt])
-}
-
-model WhatsAppOutboundMessage {
-  id            String   @id @default(cuid())
-  tenantId      String
-  clientId      String?
-  waMessageId   String?  @unique
-  phoneNumberId String
-  toPhoneE164   String
-  textBody      String
-  rawJson       Json?
-  createdAt     DateTime @default(now())
-  client        Client?  @relation(fields: [clientId], references: [id])
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId, createdAt])
-  @@index([clientId, createdAt])
-  @@index([toPhoneE164, createdAt])
-}
 
 model Announcement {
   id        String   @id @default(cuid())
@@ -490,21 +451,6 @@ enum Weekday {
   SATURDAY
 }
 
-enum WhatsAppInboundMessageType {
-  TEXT
-  IMAGE
-  AUDIO
-  VIDEO
-  DOCUMENT
-  STICKER
-  LOCATION
-  CONTACTS
-  INTERACTIVE
-  BUTTON
-  ORDER
-  REACTION
-  UNKNOWN
-}
 
 enum TenantSubscriptionStatus {
   NONE
@@ -568,5 +514,15 @@ enum ProductReservationStatus {
   CONFIRMED
   CANCELED
   PICKED_UP
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
 }
 

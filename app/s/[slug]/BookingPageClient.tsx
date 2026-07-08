@@ -27,6 +27,7 @@ type Service = {
 type Professional = {
   id: string;
   name: string;
+  imageUrl?: string | null;
 };
 
 type CatalogResponse = {
@@ -431,7 +432,7 @@ export default function BookingPageClient({ slug }: { slug: string }) {
           }}
         />
 
-        <div className="relative z-10 mx-auto flex min-h-[380px] max-w-6xl flex-col justify-end px-4 pb-12 pt-20">
+        <div className="relative z-10 mx-auto flex min-h-[260px] max-w-6xl flex-col justify-end px-4 pb-8 pt-16">
           <div className="absolute right-4 top-4 z-20 pointer-events-auto">
             <ThemeToggle />
           </div>
@@ -444,11 +445,11 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                 <img
                   src={catalog.tenant.logoUrl}
                   alt={catalog.tenant.name}
-                  className="h-24 md:h-32 w-auto min-w-[6rem] max-w-[250px] shrink-0 rounded-[1.5rem] bg-white object-contain shadow-2xl ring-4 ring-white/20"
+                  className="h-28 md:h-36 w-auto min-w-[7rem] max-w-[280px] shrink-0 rounded-[1.5rem] bg-white object-contain shadow-2xl ring-4 ring-white/20"
                 />
               ) : (
                 <div
-                  className="flex h-24 w-24 shrink-0 items-center justify-center rounded-[1.5rem] text-4xl font-black text-white ring-4 ring-white/20 shadow-2xl md:h-32 md:w-32"
+                  className="flex h-28 w-28 shrink-0 items-center justify-center rounded-[1.5rem] text-4xl font-black text-white ring-4 ring-white/20 shadow-2xl md:h-36 md:w-36"
                   style={{ backgroundColor: primaryColor }}
                 >
                   {catalog.tenant.name.slice(0, 1).toUpperCase()}
@@ -564,18 +565,34 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   <label className="mb-2 block text-xs font-black uppercase tracking-widest text-zinc-500">
                     2. Com quem?
                   </label>
-                  <div className="relative w-full">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
-                    <select
-                      value={professionalId}
-                      onChange={(e) => setProfessionalId(e.target.value)}
-                      className="w-full min-w-0 appearance-none rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-10 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all cursor-pointer"
-                    >
-                      {catalog?.professionals.map((prof) => (
-                        <option key={prof.id} value={prof.id}>{prof.name}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 pointer-events-none" />
+                  <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700">
+                    {catalog?.professionals.map((prof) => {
+                      const selected = professionalId === prof.id;
+                      return (
+                        <button
+                          key={prof.id}
+                          type="button"
+                          onClick={() => setProfessionalId(prof.id)}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all cursor-pointer shrink-0 ${
+                            selected
+                              ? "border-transparent text-white shadow-lg scale-[1.02]"
+                              : "border-zinc-150 bg-white text-zinc-600 hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                          }`}
+                          style={selected ? { backgroundColor: primaryColor, boxShadow: `0 10px 20px -5px ${primaryColor}30` } : undefined}
+                        >
+                          <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700 border border-black/10">
+                            {prof.imageUrl ? (
+                              <img src={prof.imageUrl} alt={prof.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <User className="h-full w-full p-3 text-zinc-400" />
+                            )}
+                          </div>
+                          <span className="text-xs font-black uppercase tracking-wider">
+                            {prof.name.split(" ")[0]}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

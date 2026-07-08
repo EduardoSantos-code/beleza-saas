@@ -10,13 +10,20 @@ export async function GET(
 
     const tenant = await prisma.tenant.findUnique({
       where: { slug },
-      select: { id: true, planStatus: true },
+      select: { id: true, planStatus: true, planTier: true },
     });
 
     if (!tenant) {
       return NextResponse.json(
         { error: "Estabelecimento não encontrado." },
         { status: 404 }
+      );
+    }
+
+    if (tenant.planTier === "BASICO") {
+      return NextResponse.json(
+        { error: "Este estabelecimento não possui o módulo de produtos ativo." },
+        { status: 403 }
       );
     }
 

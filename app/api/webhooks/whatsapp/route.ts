@@ -44,29 +44,6 @@ function extractMessageText(message: any): string | null {
   );
 }
 
-function detectMessageType(
-  message: any
-):
-  | "TEXT"
-  | "IMAGE"
-  | "AUDIO"
-  | "VIDEO"
-  | "DOCUMENT"
-  | "STICKER"
-  | "LOCATION"
-  | "CONTACTS"
-  | "UNKNOWN" {
-  if (!message) return "UNKNOWN";
-  if (message.conversation || message.extendedTextMessage) return "TEXT";
-  if (message.imageMessage) return "IMAGE";
-  if (message.audioMessage) return "AUDIO";
-  if (message.videoMessage) return "VIDEO";
-  if (message.documentMessage) return "DOCUMENT";
-  if (message.stickerMessage) return "STICKER";
-  if (message.locationMessage) return "LOCATION";
-  if (message.contactMessage || message.contactsArrayMessage) return "CONTACTS";
-  return "UNKNOWN";
-}
 
 function collectMessages(body: any): any[] {
   if (Array.isArray(body?.data?.messages)) return body.data.messages;
@@ -197,7 +174,6 @@ export async function POST(req: Request) {
 
         const message = item?.message || {};
         const textBody = extractMessageText(message);
-        const type = detectMessageType(message);
 
         const client = await prisma.client.upsert({
           where: {
@@ -213,33 +189,6 @@ export async function POST(req: Request) {
             tenantId: config.tenantId,
             phoneE164,
             name: fromName || phoneE164,
-          },
-        });
-
-        await prisma.whatsAppInboundMessage.upsert({
-          where: {
-            waMessageId,
-          },
-          update: {
-            tenantId: config.tenantId,
-            clientId: client.id,
-            phoneNumberId: instanceName,
-            fromPhoneE164: phoneE164,
-            fromName,
-            type,
-            textBody,
-            rawJson: item,
-          },
-          create: {
-            tenantId: config.tenantId,
-            clientId: client.id,
-            waMessageId,
-            phoneNumberId: instanceName,
-            fromPhoneE164: phoneE164,
-            fromName,
-            type,
-            textBody,
-            rawJson: item,
           },
         });
 

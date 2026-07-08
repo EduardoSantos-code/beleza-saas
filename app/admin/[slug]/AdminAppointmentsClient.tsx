@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { formatBR } from "@/lib/date";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import {
   AlignLeft,
   ArrowRight,
@@ -25,6 +26,7 @@ import {
   X,
   XCircle,
   ShoppingBag,
+  Coffee,
 } from "lucide-react";
 
 type Appointment = {
@@ -41,7 +43,7 @@ type Appointment = {
     completedCount?: number;
   };
   service: { name: string; price: number; durationMin: number };
-  professional: { id: string; name: string; userId?: string };
+  professional: { id: string; name: string; imageUrl?: string | null; userId?: string };
   clubSubscriptionId?: string | null;
   clubPlanName?: string | null;
   clubOriginalPrice?: number | null;
@@ -50,7 +52,7 @@ type Appointment = {
   presenceConfirmed?: boolean;
 };
 
-type Professional = { id: string; name: string; userId?: string };
+type Professional = { id: string; name: string; imageUrl?: string | null; userId?: string };
 type Service = { id: string; name: string; price: number; durationMin: number };
 
 type ReservationItem = {
@@ -74,6 +76,23 @@ type ProductReservation = {
   items: ReservationItem[];
 };
 
+type BusinessHour = {
+  id: string;
+  weekday: "SUNDAY" | "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY" | "SATURDAY";
+  isOpen: boolean;
+  startMin: number | null;
+  endMin: number | null;
+};
+
+type ScheduleBlock = {
+  id: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  allDay: boolean;
+  professionalId: string | null;
+};
+
 type ResponseData = {
   tenant: { id: string; name: string };
   appointments: Appointment[];
@@ -81,6 +100,8 @@ type ResponseData = {
   services?: Service[];
   announcement?: { content: string } | null;
   productReservations?: ProductReservation[];
+  businessHours?: BusinessHour[];
+  blocks?: ScheduleBlock[];
 };
 
 type TimelineAppointmentItem = Appointment & { isFree: false };
@@ -128,18 +149,18 @@ function translateReservationStatus(status: string) {
 }
 
 const generateTimeSlots = (
-  startHour: number,
-  endHour: number,
+  startMin: number,
+  endMin: number,
   intervalMinutes: number
 ) => {
   const slots: string[] = [];
   const current = new Date();
-  current.setHours(startHour, 0, 0, 0);
+  current.setHours(Math.floor(startMin / 60), startMin % 60, 0, 0);
 
   const end = new Date();
-  end.setHours(endHour, 0, 0, 0);
+  end.setHours(Math.floor(endMin / 60), endMin % 60, 0, 0);
 
-  while (current <= end) {
+  while (current < end) {
     slots.push(
       current.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
@@ -167,6 +188,7 @@ export default function AdminAppointmentsClient({
   const [intervalMin, setIntervalMin] = useState<number>(15);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"appointments" | "reservations">("appointments");
+  const [isPatchNotesOpen, setIsPatchNotesOpen] = useState(false);
 
   const [manualForm, setManualForm] = useState({
     clientName: "",
@@ -311,7 +333,8 @@ export default function AdminAppointmentsClient({
   }, [slug, date]);
 
   useEffect(() => {
-    if (isModalOpen) {
+    const shouldLock = isModalOpen || isPatchNotesOpen;
+    if (shouldLock) {
       document.body.style.overflow = "hidden";
       document.body.style.position = "fixed";
       document.body.style.width = "100%";
@@ -326,7 +349,14 @@ export default function AdminAppointmentsClient({
       document.body.style.position = "";
       document.body.style.width = "";
     };
-  }, [isModalOpen]);
+  }, [isModalOpen, isPatchNotesOpen]);
+
+  useEffect(() => {
+    const seen = localStorage.getItem("trato_patch_notes_v2.0_seen");
+    if (!seen) {
+      setIsPatchNotesOpen(true);
+    }
+  }, []);
 
   const professionals = data?.professionals ?? [];
   const hasMultipleProfessionals = professionals.length > 1;
@@ -349,7 +379,24 @@ export default function AdminAppointmentsClient({
   }, [data, activeProfId]);
 
   const timelineData = useMemo(() => {
-    const allPossibleSlots = generateTimeSlots(8, 20, intervalMin);
+    const WEEKDAYS = [
+      "SUNDAY",
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+    ];
+    const [yNum, mNum, dNum] = date.split("-").map(Number);
+    const dateObj = new Date(yNum, mNum - 1, dNum);
+    const weekdayName = WEEKDAYS[dateObj.getDay()];
+
+    const dayHours = data?.businessHours?.find((h) => h.weekday === weekdayName);
+    const startMin = dayHours?.isOpen && dayHours.startMin != null ? dayHours.startMin : 8 * 60;
+    const endMin = dayHours?.isOpen && dayHours.endMin != null ? dayHours.endMin : 20 * 60;
+
+    const allPossibleSlots = generateTimeSlots(startMin, endMin, intervalMin);
     const apps = professionalAppointments.filter(
       (a) => a.status !== "CANCELED" && a.status !== "COMPLETED"
     );
@@ -392,19 +439,52 @@ export default function AdminAppointmentsClient({
         } as TimelineFreeItem;
       })
       .filter(Boolean) as TimelineItem[];
-  }, [professionalAppointments, date, intervalMin]);
+  }, [professionalAppointments, date, intervalMin, data?.businessHours]);
 
   const stats = useMemo(() => {
     const apps = professionalAppointments;
+    const confirmedApps = apps.filter((a) => a.status === "CONFIRMED" || a.status === "PENDING");
+    const completedApps = apps.filter((a) => a.status === "COMPLETED");
+    const canceled = apps.filter((a) => a.status === "CANCELED").length;
+    
+    // Calcular capacidade com base em businessHours (de 30 em 30 minutos)
+    const WEEKDAYS = [
+      "SUNDAY",
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+    ];
+    const [yNum, mNum, dNum] = date.split("-").map(Number);
+    const dateObj = new Date(yNum, mNum - 1, dNum);
+    const weekdayName = WEEKDAYS[dateObj.getDay()];
+
+    const dayHours = data?.businessHours?.find((h) => h.weekday === weekdayName);
+    const startMin = dayHours?.isOpen && dayHours.startMin != null ? dayHours.startMin : 8 * 60;
+    const endMin = dayHours?.isOpen && dayHours.endMin != null ? dayHours.endMin : 20 * 60;
+
+    const allPossibleSlots = generateTimeSlots(startMin, endMin, 30);
+    const activeProfsCount = activeProfId ? 1 : (data?.professionals?.length || 1);
+    const totalCapacity = allPossibleSlots.length * activeProfsCount;
+    
+    // Ocupado: Somatória dos tempos dos agendamentos ativos em slots de 30 minutos
+    const activeApps = [...confirmedApps, ...completedApps];
+    const totalMinutesBooked = activeApps.reduce((acc, app) => acc + (app.service?.durationMin || 30), 0);
+    const occupied = Math.ceil(totalMinutesBooked / 30);
+    const ratePercentage = totalCapacity > 0 ? Math.min(100, (occupied / totalCapacity) * 100) : 0;
+    
     return {
       total: apps.length,
-      confirmed: apps.filter(
-        (a) => a.status === "CONFIRMED" || a.status === "PENDING"
-      ).length,
-      completed: apps.filter((a) => a.status === "COMPLETED").length,
-      canceled: apps.filter((a) => a.status === "CANCELED").length,
+      confirmed: confirmedApps.length,
+      completed: completedApps.length,
+      canceled,
+      rate: ratePercentage,
+      occupied,
+      totalCapacity
     };
-  }, [professionalAppointments]);
+  }, [professionalAppointments, activeProfId, data?.professionals, date, data?.businessHours]);
 
   const visibleAppointmentsCount = useMemo(() => {
     return professionalAppointments.filter(
@@ -417,6 +497,41 @@ export default function AdminAppointmentsClient({
       (a) => a.status === "PENDING" || a.status === "CONFIRMED"
     ) ?? false;
   }, [data]);
+
+  const isRestDay = useMemo(() => {
+    if (!data?.businessHours || !date) return null;
+
+    const WEEKDAYS = [
+      "SUNDAY",
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+    ];
+
+    const [year, month, day] = date.split("-").map(Number);
+    const d = new Date(year, month - 1, day);
+    const weekdayName = WEEKDAYS[d.getDay()];
+
+    const dayHours = data.businessHours.find((h) => h.weekday === weekdayName);
+    if (dayHours && !dayHours.isOpen) {
+      return { type: "closed", message: "O salão não abre neste dia da semana. Aproveite o seu dia de folga para descansar! ☕" };
+    }
+
+    const generalBlocks = data.blocks?.filter((b) => b.professionalId === null) || [];
+    if (generalBlocks.length > 0) {
+      const allDayBlock = generalBlocks.find((b) => b.allDay);
+      if (allDayBlock) {
+        return { type: "blocked", message: `Dia bloqueado na agenda do salão: "${allDayBlock.title}". Bom descanso! 💤` };
+      }
+      const firstBlock = generalBlocks[0];
+      return { type: "blocked", message: `Bloqueio geral ativo: "${firstBlock.title}". Bom descanso!` };
+    }
+
+    return null;
+  }, [data?.businessHours, data?.blocks, date]);
 
   if (loading && !data) {
     return (
@@ -471,9 +586,9 @@ export default function AdminAppointmentsClient({
               <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="inline-flex w-full items-center justify-center gap-2.5 rounded-2xl bg-emerald-500 px-6 py-4 text-xs font-black uppercase tracking-widest text-zinc-950 shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 active:scale-95 sm:w-auto"
+                  className="inline-flex w-full items-center justify-center gap-2.5 rounded-2xl bg-emerald-500 px-5 py-3 text-xs font-bold uppercase tracking-wider text-zinc-950 shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 active:scale-95 sm:w-auto"
                 >
-                  <Plus size={18} />
+                  <Plus size={16} />
                   Novo Agendamento
                 </button>
 
@@ -490,12 +605,12 @@ export default function AdminAppointmentsClient({
                     <option value={45}>Grade: 45 min</option>
                     <option value={60}>Grade: 60 min</option>
                   </select>
-                  <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white px-6 py-4 text-sm font-black uppercase tracking-widest text-zinc-900 shadow-xl shadow-zinc-200/50 transition-all group-hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:shadow-none dark:group-hover:border-emerald-500 lg:justify-start">
-                    <div className="flex items-center gap-3">
-                      <Sliders size={20} className="text-emerald-500" />
+                  <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-zinc-900 shadow-xl shadow-zinc-200/50 transition-all group-hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:shadow-none dark:group-hover:border-emerald-500 lg:justify-start">
+                    <div className="flex items-center gap-2.5">
+                      <Sliders size={18} className="text-emerald-500" />
                       <span>{intervalMin} MIN</span>
                     </div>
-                    <ChevronDown size={16} className="text-zinc-400" />
+                    <ChevronDown size={14} className="text-zinc-400" />
                   </button>
                 </div>
 
@@ -507,12 +622,12 @@ export default function AdminAppointmentsClient({
                     onChange={(e) => setDate(e.target.value)}
                     className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
                   />
-                  <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white px-6 py-4 text-sm font-black uppercase tracking-widest text-zinc-900 shadow-xl shadow-zinc-200/50 transition-all group-hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:shadow-none dark:group-hover:border-emerald-500 lg:justify-start">
-                    <div className="flex items-center gap-3">
-                      <Calendar size={20} className="text-emerald-500" />
+                  <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-zinc-900 shadow-xl shadow-zinc-200/50 transition-all group-hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:shadow-none dark:group-hover:border-emerald-500 lg:justify-start">
+                    <div className="flex items-center gap-2.5">
+                      <Calendar size={18} className="text-emerald-500" />
                       <span>{date.split("-").reverse().join("/")}</span>
                     </div>
-                    <ChevronDown size={16} className="text-zinc-400" />
+                    <ChevronDown size={14} className="text-zinc-400" />
                   </button>
                 </div>
               </div>
@@ -524,7 +639,7 @@ export default function AdminAppointmentsClient({
                   <>
                     <button
                       onClick={() => setActiveProfId(null)}
-                      className={`rounded-2xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                      className={`rounded-2xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all active:scale-95 ${
                         activeProfId === null
                           ? "bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20"
                           : "border border-zinc-200 bg-white text-zinc-700 hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
@@ -537,12 +652,19 @@ export default function AdminAppointmentsClient({
                       <button
                         key={prof.id}
                         onClick={() => setActiveProfId(prof.id)}
-                        className={`rounded-2xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                        className={`flex items-center gap-2.5 rounded-2xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all active:scale-95 ${
                           activeProfId === prof.id
                             ? "bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20"
                             : "border border-zinc-200 bg-white text-zinc-700 hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
                         }`}
                       >
+                        <div className="relative h-6 w-6 rounded-full overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800 border border-black/10">
+                          {prof.imageUrl ? (
+                            <img src={prof.imageUrl} alt={prof.name} className="absolute inset-0 h-full w-full object-cover rounded-full" />
+                          ) : (
+                            <User className="h-full w-full p-1 text-zinc-400" />
+                          )}
+                        </div>
                         {prof.name}
                       </button>
                     ))}
@@ -558,38 +680,166 @@ export default function AdminAppointmentsClient({
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[
-          {
-            label: "Total do Dia",
-            value: stats.total,
-            valueClass: "text-zinc-900 dark:text-white",
-          },
-          {
-            label: "Agendados",
-            value: stats.confirmed,
-            valueClass: "text-emerald-600 dark:text-emerald-400",
-          },
-          {
-            label: "Finalizados",
-            value: stats.completed,
-            valueClass: "text-blue-600 dark:text-blue-400",
-          },
-          {
-            label: "Cancelados",
-            value: stats.canceled,
-            valueClass: "text-red-600 dark:text-red-500",
-          },
-        ].map((stat) => (
-          <div key={stat.label} className={`${innerCardClass} p-5`}>
-            <p className={labelClass}>{stat.label}</p>
-            <p
-              className={`mt-1 text-3xl font-black italic tracking-tighter ${stat.valueClass}`}
-            >
-              {stat.value}
+      {/* VIEW DESKTOP */}
+      <div className="hidden md:grid grid-cols-3 gap-6">
+        {/* CARD 1: Taxa de Ocupação */}
+        <div className={`${shellCardClass} p-6 flex flex-col items-center justify-center`}>
+          <p className={`${labelClass} mb-4 text-center`}>Taxa de Ocupação</p>
+          
+          <div className="relative flex items-center justify-center h-32 w-32">
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                className="stroke-zinc-100 dark:stroke-zinc-800"
+                strokeWidth="10"
+                fill="transparent"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                className="stroke-emerald-500 transition-all duration-500 ease-out"
+                strokeWidth="10"
+                fill="transparent"
+                strokeDasharray={`${2 * Math.PI * 40}`}
+                strokeDashoffset={`${2 * Math.PI * 40 * (1 - stats.rate / 100)}`}
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="absolute flex flex-col items-center justify-center">
+              <span className="text-3xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                {stats.rate.toFixed(0)}%
+              </span>
+            </div>
+          </div>
+          
+          <p className="mt-4 text-[10px] font-bold text-zinc-400 text-center">
+            {stats.occupied} de {stats.totalCapacity} horários preenchidos
+          </p>
+        </div>
+
+        {/* CARD 2: Distribuição de Agendamentos */}
+        <div className={`${shellCardClass} p-6 col-span-2 flex flex-col justify-between`}>
+          <div>
+            <p className={`${labelClass} mb-6`}>Distribuição dos Agendamentos</p>
+          </div>
+          
+          <div className="h-32 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                layout="vertical"
+                data={[
+                  { name: "Agendados", quantidade: stats.confirmed, fill: "#10b981" },
+                  { name: "Finalizados", quantidade: stats.completed, fill: "#3b82f6" },
+                  { name: "Cancelados", quantidade: stats.canceled, fill: "#ef4444" },
+                ]}
+                margin={{ top: 0, right: 20, left: 10, bottom: 0 }}
+              >
+                <XAxis type="number" hide />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#71717a", fontWeight: 700, fontSize: 12 }}
+                  width={80}
+                />
+                <Tooltip
+                  cursor={{ fill: "transparent" }}
+                  contentStyle={{
+                    backgroundColor: "#18181b",
+                    border: "none",
+                    borderRadius: "12px",
+                    color: "#fff",
+                    fontWeight: "bold",
+                  }}
+                  formatter={(value: any) => [value, "Quantidade"]}
+                />
+                <Bar dataKey="quantidade" radius={[0, 6, 6, 0]} barSize={20} {...({} as any)}>
+                  {[
+                    { fill: "#10b981" },
+                    { fill: "#3b82f6" },
+                    { fill: "#ef4444" },
+                  ].map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="flex justify-between items-center border-t border-zinc-100 dark:border-zinc-800/80 pt-4 mt-2">
+            <div className="flex gap-4 text-[10px] font-black uppercase tracking-wider text-zinc-500">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" />
+                Agendados ({stats.confirmed})
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-blue-500 inline-block" />
+                Finalizados ({stats.completed})
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-red-500 inline-block" />
+                Cancelados ({stats.canceled})
+              </span>
+            </div>
+            <span className="text-[10px] font-black uppercase text-zinc-400">
+              Total: {stats.total}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* VIEW MOBILE COMPACTA */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="relative h-14 w-14 flex items-center justify-center shrink-0">
+            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                className="stroke-zinc-100 dark:stroke-zinc-800"
+                strokeWidth="12"
+                fill="transparent"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r="40"
+                className="stroke-emerald-500"
+                strokeWidth="12"
+                fill="transparent"
+                strokeDasharray={`${2 * Math.PI * 40}`}
+                strokeDashoffset={`${2 * Math.PI * 40 * (1 - stats.rate / 100)}`}
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="absolute text-xs font-black italic tracking-tighter text-zinc-900 dark:text-white">
+              {stats.rate.toFixed(0)}%
+            </span>
+          </div>
+          <div>
+            <p className="text-[9px] font-black uppercase text-zinc-500 tracking-tighter">Ocupação</p>
+            <p className="text-xs font-bold text-zinc-800 dark:text-zinc-350">
+              {stats.occupied}/{stats.totalCapacity} horários
             </p>
           </div>
-        ))}
+        </div>
+
+        <div className="flex flex-col gap-0.5 text-[9px] font-black uppercase tracking-widest text-right">
+          <span className="text-emerald-600 dark:text-emerald-400">
+            {stats.confirmed} Confirmados
+          </span>
+          <span className="text-blue-600 dark:text-blue-400">
+            {stats.completed} Finalizados
+          </span>
+          <span className="text-red-500">
+            {stats.canceled} Cancelados
+          </span>
+        </div>
       </div>
 
       {/* TABS MENU */}
@@ -625,7 +875,28 @@ export default function AdminAppointmentsClient({
             </span>
           </div>
 
-        {timelineData.length > 0 ? (
+        {isRestDay ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center rounded-[2rem] border border-zinc-200 bg-white shadow-xl dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="p-4 bg-emerald-500/10 rounded-full text-emerald-500 mb-4 animate-bounce">
+              <Coffee size={40} />
+            </div>
+            <h3 className="text-2xl font-black italic text-zinc-900 dark:text-white">
+              Momento de descanso!
+            </h3>
+            <p className="mt-2 text-sm font-bold text-zinc-500 max-w-md">
+              {isRestDay.message}
+            </p>
+            <div className="mt-6">
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="inline-flex items-center gap-2.5 rounded-2xl bg-zinc-150 hover:bg-zinc-250 text-zinc-850 dark:bg-zinc-800 dark:hover:bg-zinc-750 dark:text-white px-6 py-3 text-xs font-black uppercase tracking-widest transition-all"
+              >
+                <Plus size={16} />
+                Agendar Horário Manual
+              </button>
+            </div>
+          </div>
+        ) : timelineData.length > 0 ? (
           <div className="grid gap-4">
             {timelineData.map((item) => {
               if (item.isFree) {
@@ -710,7 +981,14 @@ export default function AdminAppointmentsClient({
                       </div>
 
                       {activeProfId === null && (
-                        <div className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 lg:mt-4">
+                        <div className="flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white pl-1.5 pr-3 py-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 lg:mt-4">
+                          <div className="h-4 w-4 rounded-full overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800">
+                            {item.professional?.imageUrl ? (
+                              <img src={item.professional.imageUrl} alt={item.professional.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <User className="h-full w-full p-0.5 text-zinc-400" />
+                            )}
+                          </div>
                           {item.professional.name.split(" ")[0]}
                         </div>
                       )}
@@ -1224,6 +1502,109 @@ export default function AdminAppointmentsClient({
                 )}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE PATCH NOTES V2.0 */}
+      {isPatchNotesOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="w-full max-w-lg rounded-[2.5rem] bg-zinc-900 border border-zinc-800 p-8 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
+            {/* Glow verde topo */}
+            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-64 h-64 bg-emerald-500/10 blur-[60px] pointer-events-none rounded-full" />
+            
+            <div className="relative text-center mb-6">
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-4">
+                <Megaphone className="h-7 w-7" />
+              </div>
+              <h3 className="text-2xl font-black italic tracking-tighter text-white">
+                Trato<span className="text-emerald-500">Marcado</span> v2.0
+              </h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500/70 mt-1">
+                Novidades da Nova Versão
+              </p>
+            </div>
+
+            {/* Lista de novidades */}
+            <div className="space-y-3.5 max-h-[320px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+              
+              {/* Clientes */}
+              <div className="flex gap-3 bg-zinc-950/40 border border-zinc-800/40 p-3.5 rounded-2xl">
+                <span className="text-lg shrink-0">👥</span>
+                <div className="text-left">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-200">Aba Clientes Integrada</h4>
+                  <p className="text-[11px] font-bold text-zinc-400 mt-1 leading-relaxed">
+                    Dashboard dedicado para gerenciar clientes, monitorar faltas (no-shows) e taxas de cancelamentos recorrentes.
+                  </p>
+                </div>
+              </div>
+
+              {/* Clube & Planos */}
+              <div className="flex gap-3 bg-zinc-950/40 border border-zinc-800/40 p-3.5 rounded-2xl">
+                <span className="text-lg shrink-0">👑</span>
+                <div className="text-left">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-200">Clube de Assinaturas & Planos</h4>
+                  <p className="text-[11px] font-bold text-zinc-400 mt-1 leading-relaxed">
+                    Nova estrutura de planos recorrentes do clube integrados ao Asaas e Mercado Pago com gestão de assinantes.
+                  </p>
+                </div>
+              </div>
+
+              {/* Métricas */}
+              <div className="flex gap-3 bg-zinc-950/40 border border-zinc-800/40 p-3.5 rounded-2xl">
+                <span className="text-lg shrink-0">📊</span>
+                <div className="text-left">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-200">Gráficos de Faturamento</h4>
+                  <p className="text-[11px] font-bold text-zinc-400 mt-1 leading-relaxed">
+                    Gráficos financeiros aprimorados no painel com comissões, faturamento médio e histórico de usos de benefícios.
+                  </p>
+                </div>
+              </div>
+
+              {/* Recuperação de Senha */}
+              <div className="flex gap-3 bg-zinc-950/40 border border-zinc-800/40 p-3.5 rounded-2xl">
+                <span className="text-lg shrink-0">🔑</span>
+                <div className="text-left">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-200">Recuperação de Senha</h4>
+                  <p className="text-[11px] font-bold text-zinc-400 mt-1 leading-relaxed">
+                    Opção de "Esqueceu a senha?" na tela de login com envio automático de e-mail de redefinição via Resend.
+                  </p>
+                </div>
+              </div>
+
+              {/* Foto de Perfil */}
+              <div className="flex gap-3 bg-zinc-950/40 border border-zinc-800/40 p-3.5 rounded-2xl">
+                <span className="text-lg shrink-0">💈</span>
+                <div className="text-left">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-200">Perfil de Equipe com Foto</h4>
+                  <p className="text-[11px] font-bold text-zinc-400 mt-1 leading-relaxed">
+                    Upload de fotos de perfil para os barbeiros. Avatares visíveis na agenda e na página pública de reservas.
+                  </p>
+                </div>
+              </div>
+
+              {/* WhatsApp */}
+              <div className="flex gap-3 bg-zinc-950/40 border border-zinc-800/40 p-3.5 rounded-2xl">
+                <span className="text-lg shrink-0">✉️</span>
+                <div className="text-left">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-zinc-200">Notificações automáticas no WhatsApp</h4>
+                  <p className="text-[11px] font-bold text-zinc-400 mt-1 leading-relaxed">
+                    Alertas instantâneos confirmando agendamentos e cancelamentos de horários para otimizar os atendimentos.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+
+            <button
+              onClick={() => {
+                localStorage.setItem("trato_patch_notes_v2.0_seen", "true");
+                setIsPatchNotesOpen(false);
+              }}
+              className="mt-6 w-full h-12 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] transition-all active:scale-95 shadow-[0_8px_20px_-6px_rgba(16,185,129,0.5)] cursor-pointer"
+            >
+              Entendido, vamos lá!
+            </button>
           </div>
         </div>
       )}

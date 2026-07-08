@@ -9,6 +9,7 @@ const CreateProfessionalSchema = z.object({
   phoneE164: z.string().optional().nullable(), // Aceita o telefone vindo do front
   active: z.boolean().optional(),
   commissionRate: z.number().min(0).max(100).optional(),
+  imageUrl: z.string().optional().nullable(),
 });
 
 export async function GET(
@@ -58,8 +59,8 @@ export async function POST(
     const { slug } = await params;
     const membership = await getCurrentMembershipBySlug(slug);
 
-    // Proteção de segurança: apenas OWNER ou MANAGER podem criar profissionais
-    if (!membership || (membership.role !== "OWNER" && membership.role !== "MANAGER")) {
+    // Proteção de segurança: apenas OWNER, MANAGER ou MASTER podem criar profissionais
+    if (!membership || (membership.role !== "OWNER" && membership.role !== "MANAGER" && membership.role !== "MASTER")) {
       return NextResponse.json({ error: "Acesso negado: permissão insuficiente" }, { status: 403 });
     }
 
@@ -73,14 +74,36 @@ export async function POST(
       );
     }
 
-    // 2. CORREÇÃO: Agora salvamos o phoneE164 no banco de dados e a taxa de comissão
+    const active = parsed.data.active ?? true;
+    if (active) {
+      const activeCount = await prisma.professional.count({
+        where: {
+          tenantId: membership.tenantId,
+          active: true,
+        },
+      });
+
+      const planTier = membership.tenant.planTier || "PRO";
+      const limit = planTier === "BASICO" ? 1 : planTier === "ESSENCIAL" ? 3 : 5;
+
+      if (activeCount >= limit) {
+        const planName = planTier === "BASICO" ? "Trato Básico" : planTier === "ESSENCIAL" ? "Trato Essencial" : "Trato Pro";
+        return NextResponse.json(
+          { error: `Seu plano (${planName}) permite no máximo ${limit} barbeiro(s) ativo(s). Faça um upgrade para adicionar mais.` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 2. CORREÇÃO: Agora salvamos o phoneE164 no banco de dados, a taxa de comissão e a foto
     const professional = await prisma.professional.create({
       data: {
         tenantId: membership.tenantId,
         name: parsed.data.name,
         phoneE164: parsed.data.phoneE164, // Salva o telefone
-        active: parsed.data.active ?? true,
+        active,
         commissionRate: parsed.data.commissionRate ?? 50,
+        imageUrl: parsed.data.imageUrl,
       },
     });
 

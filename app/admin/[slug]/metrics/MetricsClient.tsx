@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import {
   ArrowLeft,
   TrendingUp,
@@ -69,14 +69,31 @@ export default function MetricsClient({ slug }: { slug: string }) {
   const router = useRouter();
   const [data, setData] = useState<MetricsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [range, setRange] = useState("7");
+  const [range, setRange] = useState("month");
+  const [startDate, setStartDate] = useState(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}-01`;
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  });
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     async function loadMetrics() {
       try {
         setLoading(true);
-        const res = await fetch(`/api/admin/${slug}/metrics?range=${range}`);
+        let url = `/api/admin/${slug}/metrics?range=${range}`;
+        if (range === "custom") {
+          url = `/api/admin/${slug}/metrics?startDate=${startDate}&endDate=${endDate}`;
+        }
+        const res = await fetch(url);
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Erro ao carregar dados.");
         setData(json);
@@ -87,7 +104,7 @@ export default function MetricsClient({ slug }: { slug: string }) {
       }
     }
     loadMetrics();
-  }, [slug, range]);
+  }, [slug, range, startDate, endDate]);
 
   if (loading || !data) return (
     <div className="p-10 flex items-center gap-3 text-zinc-800 dark:text-zinc-200 font-bold">
@@ -121,18 +138,38 @@ export default function MetricsClient({ slug }: { slug: string }) {
           </div>
         </div>
 
-        <div className="relative inline-block w-full md:w-64">
-          <select
-            value={range}
-            onChange={(e) => setRange(e.target.value)}
-            className="w-full appearance-none rounded-2xl px-5 py-4 text-sm font-black shadow-xl ring-1 ring-zinc-200 outline-none transition-all bg-white border-zinc-200 text-zinc-900 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white focus:ring-2 ring-emerald-500"
-          >
-            <option value="1">Hoje</option>
-            <option value="7">Últimos 7 dias</option>
-            <option value="30">Últimos 30 dias</option>
-            <option value="90">Últimos 90 dias</option>
-          </select>
-          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+        <div className="flex flex-col sm:flex-row gap-4 items-center w-full md:w-auto">
+          {range === "custom" && (
+            <div className="flex items-center gap-2 w-full sm:w-auto bg-white dark:bg-zinc-900 px-4 py-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent border-none outline-none text-xs font-bold text-zinc-850 dark:text-zinc-150 focus:ring-0 cursor-pointer"
+              />
+              <span className="text-zinc-400 text-xs font-bold">até</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent border-none outline-none text-xs font-bold text-zinc-850 dark:text-zinc-150 focus:ring-0 cursor-pointer"
+              />
+            </div>
+          )}
+
+          <div className="relative inline-block w-full md:w-64">
+            <select
+              value={range}
+              onChange={(e) => setRange(e.target.value)}
+              className="w-full appearance-none rounded-2xl px-5 py-4 text-sm font-black shadow-xl ring-1 ring-zinc-200 outline-none transition-all bg-white border-zinc-200 text-zinc-900 dark:bg-zinc-900 dark:border-zinc-800 dark:text-white focus:ring-2 ring-emerald-500"
+            >
+              <option value="month">Mês Atual</option>
+              <option value="1">Hoje</option>
+              <option value="7">Últimos 7 dias</option>
+              <option value="custom">Período Personalizado</option>
+            </select>
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+          </div>
         </div>
       </div>
 
@@ -203,7 +240,13 @@ export default function MetricsClient({ slug }: { slug: string }) {
 
         <div className="h-[350px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartDataInReais} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+            <AreaChart data={chartDataInReais} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorFaturamento" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" className="dark:stroke-zinc-800" />
               <XAxis
                 dataKey="date"
@@ -215,29 +258,31 @@ export default function MetricsClient({ slug }: { slug: string }) {
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: '#71717a', fontSize: 11, fontWeight: 700 }}
-                tickFormatter={(val) => `R$${val / 100}`}
+                tickFormatter={(val) => `R$${val.toFixed(0)}`}
               />
               <Tooltip
-                cursor={{ fill: 'transparent' }}
                 contentStyle={{
                   backgroundColor: '#18181b',
                   border: 'none',
-                  borderRadius: '12px',
+                  borderRadius: '16px',
                   color: '#fff',
-                  fontWeight: 'bold'
+                  fontWeight: 'bold',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
                 }}
                 formatter={(value: any) => [
                   formatCurrencyFromReais(Number(value ?? 0)),
                   "Faturamento",
                 ]}
               />
-              {/* AQUI ESTÁ O TRUQUE: Usamos o 'as any' no Bar para silenciar o erro de tipagem chato */}
-              <Bar dataKey="faturamentoReais" radius={[6, 6, 0, 0]} {...({} as any)}>
-                {chartDataInReais.map((_entry, index) => (
-                  <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#10b981' : '#059669'} />
-                ))}
-              </Bar>
-            </BarChart>
+              <Area 
+                type="monotone" 
+                dataKey="faturamentoReais" 
+                stroke="#10b981" 
+                strokeWidth={3}
+                fillOpacity={1} 
+                fill="url(#colorFaturamento)" 
+              />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       </section>

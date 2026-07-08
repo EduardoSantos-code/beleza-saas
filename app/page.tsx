@@ -100,7 +100,7 @@ export default async function LandingPage() {
             Criar meu salão agora <ArrowRight size={16} />
           </Link>
         </div>
-        <p className="text-[11px] text-zinc-500 font-black uppercase tracking-wider mt-4">14 dias grátis • Sem cartão de crédito • Configuração em 2 min</p>
+        <p className="text-[11px] text-zinc-500 font-black uppercase tracking-wider mt-4">30 dias grátis • Sem cartão de crédito • Configuração em 2 min</p>
       </section>
 
       {/* AS DORES DO MERCADO */}
@@ -240,57 +240,155 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* SEÇÃO PREÇO ÚNICO */}
+      {/* SEÇÃO PREÇO */}
       <section className="py-24 px-6 bg-zinc-900/30 border-y border-zinc-900 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-emerald-400 font-black uppercase tracking-widest text-[10px] mb-2">Transparência Total</p>
+        <div className="max-w-6xl mx-auto text-center">
+          <p className="text-emerald-400 font-black uppercase tracking-widest text-[10px] mb-2">Planos Sob Medida</p>
           <h2 className="text-3xl md:text-5xl font-black italic tracking-tighter text-white uppercase mb-6">
             O investimento que se paga com 1 cliente retido.
           </h2>
-          <p className="text-zinc-400 text-base md:text-lg max-w-2xl mx-auto mb-14 font-medium">
-            Acesso completo e irrestrito a todas as ferramentas, incluindo os novos módulos de assinatura e PWA. Sem pegadinhas ou taxas adicionais.
+          <p className="text-zinc-400 text-sm md:text-base max-w-2xl mx-auto mb-16 font-medium">
+            Escolha o plano ideal para a escala do seu negócio. Comece a testar grátis por 30 dias hoje mesmo, cancele quando quiser.
           </p>
 
-          {/* Card Pricing no Design System */}
-          <div className="bg-zinc-950 border border-emerald-500/20 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 bg-emerald-500 text-zinc-950 text-[10px] font-black px-5 py-1.5 rounded-bl-2xl uppercase tracking-widest">
-              Plano Pro Completo
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-12 items-center text-left">
+          <div className="grid md:grid-cols-3 gap-8 items-stretch text-left">
+            {/* Plano Básico */}
+            <div className="bg-zinc-950 border border-zinc-800 rounded-[2rem] p-8 shadow-xl flex flex-col justify-between relative overflow-hidden transition-all hover:border-zinc-700">
               <div>
-                <h3 className="text-3xl font-black text-white italic uppercase tracking-tight mb-2">Trato Pro</h3>
-                <p className="text-zinc-400 text-sm font-medium mb-8">Controle cirúrgico do tempo, da marca e da recorrência do seu salão.</p>
-                <div className="flex items-baseline gap-1.5 mb-2">
-                  <span className="text-6xl font-black text-white tracking-tighter italic">R$ 39</span>
-                  <span className="text-lg font-black text-zinc-500 uppercase tracking-wider">/mês</span>
+                <h3 className="text-xl font-black text-white italic uppercase tracking-tight mb-2">Trato Básico</h3>
+                <p className="text-zinc-500 text-xs font-semibold mb-6 h-10">Ideal para barbeiros autônomos ou salões individuais iniciando no digital.</p>
+                <div className="space-y-1 mb-6">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-black text-white italic">R$ 39,90</span>
+                    <span className="text-xs font-black text-zinc-500 uppercase">/mês</span>
+                  </div>
+                  <div className="text-[10px] text-emerald-400 font-bold">
+                    Ou R$ 390 no plano Anual (R$ 32,50/mês)
+                  </div>
                 </div>
-                <p className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Sem fidelidade • Cancele quando quiser</p>
+                
+                <div className="border-t border-zinc-900 pt-6 space-y-4">
+                  {[
+                    "1 Barbeiro Ativo",
+                    "Notificações de WhatsApp",
+                    "Agendamento Online Ilimitado",
+                    "Link Personalizado",
+                    "Gestão de Horários e Bloqueios"
+                  ].map((feature, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                      <span className="text-zinc-300 text-xs font-bold">{feature}</span>
+                    </div>
+                  ))}
+                  {[
+                    "Controle de estoque",
+                    "Clube de assinatura"
+                  ].map((feature, i) => (
+                    <div key={i} className="flex items-center gap-3 opacity-30">
+                      <CheckCircle2 size={14} className="text-zinc-500 shrink-0" />
+                      <span className="text-zinc-500 text-xs font-semibold line-through">{feature}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="space-y-4">
-                {[
-                  "Agendamentos Online Ilimitados",
-                  "Módulo de Clube de Assinatura (VIP)",
-                  "Instalação de Web App PWA Personalizado",
-                  "Lembretes e Avisos Automáticos de WhatsApp",
-                  "Gestão Multi-Profissional e Serviços",
-                  "Painel com Métricas de Faturamento"
-                ].map((feature, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
-                    <span className="text-zinc-200 text-sm font-semibold">{feature}</span>
-                  </div>
-                ))}
+              <div className="pt-8">
+                <Link
+                  href="/signup"
+                  className="block text-center w-full bg-zinc-900 hover:bg-zinc-800 text-white h-12 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all flex items-center justify-center border border-zinc-850"
+                >
+                  Testar Grátis por 30 dias
+                </Link>
+              </div>
+            </div>
 
-                <div className="pt-6">
-                  <Link
-                    href="/signup"
-                    className="block text-center w-full bg-emerald-500 hover:bg-emerald-600 text-zinc-950 h-14 rounded-2xl font-black uppercase text-xs tracking-[0.15em] transition-all hover:scale-[1.01] active:scale-95 flex items-center justify-center shadow-lg shadow-emerald-500/10"
-                  >
-                    Testar Grátis Por 14 Dias
-                  </Link>
+            {/* Plano Essencial */}
+            <div className="bg-zinc-950 border border-emerald-500/20 rounded-[2rem] p-8 shadow-2xl flex flex-col justify-between relative overflow-hidden transition-all hover:border-emerald-500/40 ring-1 ring-emerald-500/10 scale-[1.02] z-20">
+              <div className="absolute top-0 right-0 bg-emerald-500 text-zinc-950 text-[9px] font-black px-4 py-1.5 rounded-bl-xl uppercase tracking-wider">
+                Mais Escolhido
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-white italic uppercase tracking-tight mb-2">Trato Essencial</h3>
+                <p className="text-zinc-500 text-xs font-semibold mb-6 h-10">Para barbearias em crescimento que precisam de mais barbeiros e fidelização.</p>
+                <div className="space-y-1 mb-6">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-black text-white italic">R$ 49,90</span>
+                    <span className="text-xs font-black text-zinc-500 uppercase">/mês</span>
+                  </div>
+                  <div className="text-[10px] text-emerald-400 font-bold">
+                    Ou R$ 490 no plano Anual (R$ 40,83/mês)
+                  </div>
                 </div>
+
+                <div className="border-t border-zinc-900 pt-6 space-y-4">
+                  {[
+                    "Até 3 Barbeiros Ativos",
+                    "Notificações de WhatsApp",
+                    "Controle de Estoque e Reservas",
+                    "Clube de Assinatura (VIP)",
+                    "Agendamento Online Ilimitado",
+                    "Link Personalizado",
+                    "Gestão de Horários e Bloqueios"
+                  ].map((feature, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                      <span className="text-zinc-300 text-xs font-bold">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-8">
+                <Link
+                  href="/signup"
+                  className="block text-center w-full bg-emerald-500 hover:bg-emerald-600 text-zinc-950 h-12 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all hover:scale-[1.01] flex items-center justify-center shadow-lg shadow-emerald-500/10"
+                >
+                  Testar Grátis por 30 dias
+                </Link>
+              </div>
+            </div>
+
+            {/* Plano Pro */}
+            <div className="bg-zinc-950 border border-zinc-800 rounded-[2rem] p-8 shadow-xl flex flex-col justify-between relative overflow-hidden transition-all hover:border-zinc-700">
+              <div>
+                <h3 className="text-xl font-black text-white italic uppercase tracking-tight mb-2">Trato Pro</h3>
+                <p className="text-zinc-500 text-xs font-semibold mb-6 h-10">A experiência premium definitiva com maior número de profissionais e suporte.</p>
+                <div className="space-y-1 mb-6">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-black text-white italic">R$ 59,90</span>
+                    <span className="text-xs font-black text-zinc-500 uppercase">/mês</span>
+                  </div>
+                  <div className="text-[10px] text-emerald-400 font-bold">
+                    Ou R$ 590 no plano Anual (R$ 49,16/mês)
+                  </div>
+                </div>
+
+                <div className="border-t border-zinc-900 pt-6 space-y-4">
+                  {[
+                    "Até 5 Barbeiros Ativos",
+                    "Notificações de WhatsApp",
+                    "Controle de Estoque e Reservas",
+                    "Clube de Assinatura (VIP)",
+                    "Suporte Prioritário",
+                    "Agendamento Online Ilimitado",
+                    "Link Personalizado",
+                    "Gestão de Horários e Bloqueios"
+                  ].map((feature, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                      <span className="text-zinc-300 text-xs font-bold">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-8">
+                <Link
+                  href="/signup"
+                  className="block text-center w-full bg-zinc-900 hover:bg-zinc-800 text-white h-12 rounded-xl font-black uppercase text-[10px] tracking-wider transition-all flex items-center justify-center border border-zinc-850"
+                >
+                  Testar Grátis por 30 dias
+                </Link>
               </div>
             </div>
           </div>

@@ -30,6 +30,7 @@ export type TenantInfo = {
   primaryColor: string | null;
   clubEnabled: boolean;
   minAdvanceHours: number;
+  planTier?: string | null;
 };
 
 type Appointment = {
@@ -626,17 +627,19 @@ export default function ClientPortalClient({ slug, tenant }: Props) {
             <CalendarDays size={16} />
             Agendamentos
           </button>
-          <button
-            onClick={() => setActiveTab("products")}
-            className={`flex items-center gap-2 py-4 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-              activeTab === "products"
-                ? "border-zinc-900 text-zinc-900 dark:border-white dark:text-white"
-                : "border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-            }`}
-          >
-            <ShoppingBag size={16} />
-            Produtos
-          </button>
+          {tenant.planTier !== "BASICO" && (
+            <button
+              onClick={() => setActiveTab("products")}
+              className={`flex items-center gap-2 py-4 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+                activeTab === "products"
+                  ? "border-zinc-900 text-zinc-900 dark:border-white dark:text-white"
+                  : "border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+              }`}
+            >
+              <ShoppingBag size={16} />
+              Produtos
+            </button>
+          )}
           {tenant.clubEnabled && (
             <button
               onClick={() => setActiveTab("club")}

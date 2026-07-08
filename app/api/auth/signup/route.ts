@@ -121,7 +121,7 @@ export async function POST(req: Request) {
     }
 
     const passwordHash = hashPassword(password);
-    const trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -139,6 +139,9 @@ export async function POST(req: Request) {
           timezone: "America/Sao_Paulo",
           primaryColor: "#7c3aed",
           subscriptionStatus: "TRIALING",
+          planStatus: "TRIAL",
+          planTier: "PRO",
+          planCycle: "MONTHLY",
           trialEndsAt,
           publicDescription:
             "Agendamento online prático e profissional para seu salão.",

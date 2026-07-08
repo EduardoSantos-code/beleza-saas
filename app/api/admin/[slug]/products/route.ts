@@ -23,7 +23,10 @@ export async function GET(
       },
     });
 
-    return NextResponse.json({ products });
+    return NextResponse.json({ 
+      products,
+      planTier: membership.tenant.planTier || "PRO"
+    });
   } catch (error) {
     console.error("[ADMIN_PRODUCTS_GET]", error);
     return NextResponse.json(
@@ -43,6 +46,14 @@ export async function POST(
 
     if (!membership) {
       return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+    }
+
+    const planTier = membership.tenant.planTier || "PRO";
+    if (planTier === "BASICO") {
+      return NextResponse.json(
+        { error: "O plano Trato Básico não inclui controle de estoque e reserva de produtos. Faça um upgrade para utilizar esta funcionalidade." },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();

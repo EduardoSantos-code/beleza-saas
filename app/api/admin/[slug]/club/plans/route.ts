@@ -77,6 +77,13 @@ export async function POST(
       return NextResponse.json({ error: 'Tenant não encontrado' }, { status: 404 });
     }
 
+    if (tenant.planTier === "BASICO") {
+      return NextResponse.json(
+        { error: "O plano Trato Básico não inclui módulo de Clube de Assinatura. Faça um upgrade para utilizar esta funcionalidade." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const {
       name,

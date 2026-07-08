@@ -19,6 +19,7 @@ export default async function PortalPage({ params }: PageProps) {
       primaryColor: true,
       clubEnabled: true,
       minAdvanceHours: true,
+      planTier: true,
     },
   });
 
@@ -38,6 +39,7 @@ export default async function PortalPage({ params }: PageProps) {
           primaryColor: tenant.primaryColor,
           clubEnabled: tenant.clubEnabled,
           minAdvanceHours: tenant.minAdvanceHours,
+          planTier: tenant.planTier,
         }} 
       />
     </main>

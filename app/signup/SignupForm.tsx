@@ -84,7 +84,7 @@ export default function SignupForm() {
             className="h-16 w-auto mb-6 shadow-[0_0_30px_-5px_rgba(16,185,129,0.4)] ring-1 ring-emerald-500/30 rounded-xl rotate-2"
           />
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500 mb-4">
-            <Sparkles className="h-3 w-3" /> Teste Grátis de 14 dias
+            <Sparkles className="h-3 w-3" /> Teste Grátis de 30 dias
           </span>
           <h1 className="text-4xl font-black italic tracking-tighter text-white uppercase leading-tight">
             Crie sua <span className="text-emerald-500">Unidade</span>

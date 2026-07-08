@@ -464,18 +464,6 @@ export async function sendTenantWhatsAppMessage(
 
   if (input.tenantId) {
     try {
-      await prisma.whatsAppOutboundMessage.create({
-        data: {
-          tenantId: input.tenantId,
-          clientId: input.clientId ?? null,
-          waMessageId: result.messages[0]?.id ?? null,
-          phoneNumberId: instanceName,
-          toPhoneE164: input.to,
-          textBody: input.text,
-          rawJson: result.data ?? undefined,
-        },
-      });
-
       if (result.success) {
         await prisma.whatsappConfig.update({
           where: { tenantId: input.tenantId },
@@ -496,7 +484,7 @@ export async function sendTenantWhatsAppMessage(
         });
       }
     } catch (logError) {
-      console.error("[WHATSAPP_OUTBOUND_LOG_ERROR]", logError);
+      console.error("[WHATSAPP_CONFIG_STATUS_UPDATE_ERROR]", logError);
     }
   }
 

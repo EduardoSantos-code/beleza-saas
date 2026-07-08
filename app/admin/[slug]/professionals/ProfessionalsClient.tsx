@@ -12,7 +12,70 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("+55");
   const [newCommissionRate, setNewCommissionRate] = useState(50);
+  const [newImageUrl, setNewImageUrl] = useState("");
   const [creating, setCreating] = useState(false);
+
+  const [uploadingNew, setUploadingNew] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+  async function handleNewImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingNew(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`/api/admin/${slug}/professionals/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Erro ao fazer upload");
+      }
+
+      const data = await res.json();
+      setNewImageUrl(data.url);
+    } catch (err: any) {
+      alert(`Erro no upload: ${err.message}`);
+    } finally {
+      setUploadingNew(false);
+    }
+  }
+
+  async function handleRowImageUpload(e: React.ChangeEvent<HTMLInputElement>, id: string) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingId(id);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`/api/admin/${slug}/professionals/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Erro ao fazer upload");
+      }
+
+      const data = await res.json();
+      setEditRows((prev) => ({
+        ...prev,
+        [id]: { ...prev[id], imageUrl: data.url },
+      }));
+    } catch (err: any) {
+      alert(`Erro no upload: ${err.message}`);
+    } finally {
+      setUploadingId(null);
+    }
+  }
 
   async function load() {
     try {
@@ -23,7 +86,13 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
       
       const rows: any = {};
       json.professionals.forEach((p: any) => {
-        rows[p.id] = { name: p.name, phoneE164: p.phoneE164 || "+55", active: p.active, commissionRate: p.commissionRate ?? 50 };
+        rows[p.id] = { 
+          name: p.name, 
+          phoneE164: p.phoneE164 || "+55", 
+          active: p.active, 
+          commissionRate: p.commissionRate ?? 50,
+          imageUrl: p.imageUrl || ""
+        };
       });
       setEditRows(rows);
     } catch (err) {
@@ -44,16 +113,23 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
       const res = await fetch(`/api/admin/${slug}/professionals`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName, phoneE164: newPhone, commissionRate: newCommissionRate }),
+        body: JSON.stringify({ 
+          name: newName, 
+          phoneE164: newPhone, 
+          commissionRate: newCommissionRate,
+          imageUrl: newImageUrl || undefined 
+        }),
       });
 
       if (res.ok) {
         setNewName("");
         setNewPhone("+55");
         setNewCommissionRate(50);
+        setNewImageUrl("");
         load();
       } else {
-        alert("Erro ao criar profissional");
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || "Erro ao criar profissional");
       }
     } catch (err) {
       console.error(err);
@@ -104,7 +180,27 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
         </div>
         
         <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-          <div className="md:col-span-4">
+          {/* Foto de Perfil */}
+          <div className="md:col-span-2 flex flex-col items-center justify-center gap-2">
+            <div className="relative h-20 w-20 rounded-full bg-zinc-50 dark:bg-zinc-800 overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shadow-inner">
+              {newImageUrl ? (
+                <img src={newImageUrl} alt="Preview" className="h-full w-full object-cover" />
+              ) : (
+                <User className="h-8 w-8 text-zinc-400" />
+              )}
+              {uploadingNew && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+            <label className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-500 hover:text-emerald-400 cursor-pointer transition-colors">
+              Carregar Foto
+              <input type="file" accept="image/*" onChange={handleNewImageUpload} className="hidden" />
+            </label>
+          </div>
+
+          <div className="md:col-span-3">
             <label className="text-xs text-zinc-700 dark:text-zinc-300 uppercase font-black mb-2 block">Nome Completo</label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
@@ -148,9 +244,9 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
           <button 
             type="submit"
             disabled={creating}
-            className="md:col-span-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+            className="md:col-span-2 w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
           >
-            {creating ? "Criando..." : "Adicionar Membro"}
+            {creating ? "Criando..." : "Adicionar"}
           </button>
         </form>
       </section>
@@ -169,6 +265,26 @@ export default function ProfessionalsClient({ slug }: { slug: string }) {
           {data?.professionals.map((p: any) => (
             <div key={p.id} className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col md:flex-row gap-6 items-center transition-all hover:border-emerald-500/30">
               
+              {/* Foto de Perfil */}
+              <div className="flex flex-col items-center gap-2 shrink-0">
+                <div className="relative h-16 w-16 rounded-full bg-zinc-50 dark:bg-zinc-800 overflow-hidden border border-zinc-150 dark:border-zinc-700 flex items-center justify-center shadow-inner">
+                  {editRows[p.id]?.imageUrl ? (
+                    <img src={editRows[p.id]?.imageUrl} alt={p.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <User className="h-6 w-6 text-zinc-400" />
+                  )}
+                  {uploadingId === p.id && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <label className="text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-500 hover:text-emerald-400 cursor-pointer transition-colors">
+                  Alterar
+                  <input type="file" accept="image/*" onChange={(e) => handleRowImageUpload(e, p.id)} className="hidden" />
+                </label>
+              </div>
+
               <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-black mb-1 block">Nome</label>
