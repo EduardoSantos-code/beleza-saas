@@ -84,6 +84,7 @@ type ClubBenefitEligibility = {
 
 export default function BookingPageClient({ slug }: { slug: string }) {
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
+  const primaryColor = catalog?.tenant.primaryColor || "#10b981";
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -99,6 +100,80 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   const [clientPhoneE164, setClientPhoneE164] = useState("+55");
   const [notes, setNotes] = useState("");
 
+  // Estados de Identificação do Cliente
+  const [identified, setIdentified] = useState(false);
+  const [checkingPhone, setCheckingPhone] = useState(false);
+  const [isNewClient, setIsNewClient] = useState(false);
+
+  useEffect(() => {
+    const checkIdentified = () => {
+      if (typeof window !== "undefined") {
+        const savedPhone = localStorage.getItem("client_phone");
+        const savedName = localStorage.getItem("client_name");
+        if (savedPhone && savedName) {
+          setClientPhoneE164(savedPhone);
+          setClientName(savedName);
+          setIdentified(true);
+        } else {
+          setIdentified(false);
+        }
+      }
+    };
+
+    checkIdentified();
+    window.addEventListener("pageshow", checkIdentified);
+    return () => {
+      window.removeEventListener("pageshow", checkIdentified);
+    };
+  }, []);
+
+  const handleCheckClientPhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (clientPhoneE164.length !== 14 || !clientPhoneE164.startsWith("+55")) {
+      setErrorMessage("O número deve ter o formato +55 seguido de DDD e 9 dígitos (Ex: +5511999998888).");
+      return;
+    }
+    try {
+      setCheckingPhone(true);
+      setErrorMessage("");
+      const res = await fetch(`/api/public/${slug}/client-check?phoneE164=${encodeURIComponent(clientPhoneE164)}`);
+      if (!res.ok) throw new Error("Erro ao verificar telefone.");
+      const data = await res.json();
+      if (data.exists && data.name) {
+        setClientName(data.name);
+        setIdentified(true);
+        localStorage.setItem("client_phone", clientPhoneE164);
+        localStorage.setItem("client_name", data.name);
+      } else {
+        setIsNewClient(true);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Erro de conexão ao verificar telefone.");
+    } finally {
+      setCheckingPhone(false);
+    }
+  };
+
+  const handleRegisterClient = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (clientName.trim().length < 3) {
+      setErrorMessage("Por favor, digite seu nome completo (mínimo 3 letras).");
+      return;
+    }
+    localStorage.setItem("client_phone", clientPhoneE164);
+    localStorage.setItem("client_name", clientName.trim());
+    setIdentified(true);
+  };
+
+  const handleResetClient = () => {
+    localStorage.removeItem("client_phone");
+    localStorage.removeItem("client_name");
+    setClientPhoneE164("+55");
+    setClientName("");
+    setIdentified(false);
+    setIsNewClient(false);
+  };
+
   const [submitting, setSubmitting] = useState(false);
 
   // Estados do Clube
@@ -111,6 +186,12 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   const [clubDevCode, setClubDevCode] = useState("");
   const [activeClubMembership, setActiveClubMembership] = useState<ActiveClubMembership | null>(null);
   const [validatedClubPhone, setValidatedClubPhone] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (identified && clientPhoneE164) {
+      setClubPhone(clientPhoneE164);
+    }
+  }, [identified, clientPhoneE164]);
 
   const [clubBenefitEligibility, setClubBenefitEligibility] = useState<ClubBenefitEligibility | null>(null);
   const [clubBenefitEligibilityLoading, setClubBenefitEligibilityLoading] = useState(false);
@@ -250,7 +331,6 @@ export default function BookingPageClient({ slug }: { slug: string }) {
     }
   }, [activeClubMembership]);
 
-  const primaryColor = catalog?.tenant.primaryColor || "#10b981";
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
@@ -417,6 +497,142 @@ export default function BookingPageClient({ slug }: { slug: string }) {
       </div>
     </main>
   );
+
+  if (!identified) {
+    return (
+      <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Background Decorative Gradient/Hero Image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center filter blur-md opacity-20 dark:opacity-10 pointer-events-none"
+          style={{
+            backgroundImage: catalog.tenant.heroImageUrl
+              ? `url('${catalog.tenant.heroImageUrl}')`
+              : `linear-gradient(135deg, ${primaryColor}, #09090b)`,
+          }}
+        />
+
+        <div className="relative z-10 max-w-md w-full rounded-3xl bg-white dark:bg-zinc-900 p-8 shadow-2xl ring-1 ring-zinc-200 dark:ring-zinc-800 transition-all">
+          <div className="flex flex-col items-center text-center mb-6">
+            {catalog.tenant.logoUrl ? (
+              <img
+                src={catalog.tenant.logoUrl}
+                alt={catalog.tenant.name}
+                className="h-20 w-auto rounded-2xl bg-white object-contain shadow-md mb-4 ring-2 ring-zinc-100 dark:ring-zinc-850"
+              />
+            ) : (
+              <div
+                className="flex h-16 w-16 items-center justify-center rounded-2xl text-2xl font-black text-white shadow-md mb-4"
+                style={{ backgroundColor: primaryColor }}
+              >
+                {catalog.tenant.name.slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500 mb-1">
+              Agendamento Online
+            </p>
+            <h1 className="text-2xl font-black text-zinc-900 dark:text-white leading-tight">
+              {catalog.tenant.name}
+            </h1>
+          </div>
+
+          {!isNewClient ? (
+            <form onSubmit={handleCheckClientPhone} className="space-y-4">
+              <div className="text-center mb-4">
+                <h2 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                  Para começar, informe seu WhatsApp:
+                </h2>
+              </div>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+                <input
+                  type="text"
+                  inputMode="tel"
+                  value={clientPhoneE164}
+                  onChange={handlePhoneChange}
+                  placeholder="+5511999998888"
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-4 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
+                  required
+                  disabled={checkingPhone}
+                />
+              </div>
+              <p className="text-[10px] text-zinc-400 dark:text-zinc-500 text-center font-semibold">
+                Formato: +55 + DDD + Número (Sem espaços)
+              </p>
+
+              {errorMessage && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
+                  🚨 {errorMessage}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={checkingPhone || clientPhoneE164.length < 14}
+                className="w-full rounded-2xl py-4 text-sm font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                style={{ backgroundColor: primaryColor, boxShadow: `0 8px 20px -6px ${primaryColor}60` }}
+              >
+                {checkingPhone ? (
+                  <>
+                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    Identificando...
+                  </>
+                ) : (
+                  "Continuar"
+                )}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleRegisterClient} className="space-y-4">
+              <div className="text-center mb-2">
+                <span className="inline-block px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2">
+                  Primeiro Acesso!
+                </span>
+                <h2 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                  Como podemos te chamar?
+                </h2>
+              </div>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+                <input
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="Seu Nome Completo"
+                  className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-4 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
+                  required
+                  minLength={3}
+                  autoFocus
+                />
+              </div>
+
+              {errorMessage && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
+                  🚨 {errorMessage}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsNewClient(false)}
+                  className="flex-1 rounded-2xl border border-zinc-200 dark:border-zinc-800 py-4 text-xs font-black uppercase tracking-widest text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
+                >
+                  Voltar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-[2] rounded-2xl py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg cursor-pointer"
+                  style={{ backgroundColor: primaryColor, boxShadow: `0 8px 20px -6px ${primaryColor}60` }}
+                >
+                  Confirmar e Entrar
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-colors duration-200">
@@ -785,40 +1001,28 @@ export default function BookingPageClient({ slug }: { slug: string }) {
 
             <h2 className="text-2xl font-black text-zinc-900 dark:text-white italic tracking-tight">Finalizar</h2>
             <p className="mt-1 text-xs font-bold text-zinc-500 dark:text-zinc-400">
-              Preencha seus dados para confirmar.
+              Confirme seus dados e finalize o agendamento.
             </p>
-
+ 
             <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-              <div>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
-                  <input
-                    type="text"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    placeholder="Seu Nome Completo"
-                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-4 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
-                    required
-                  />
+              {/* Card de Cliente Identificado */}
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/40 p-4 flex items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
+                    <User size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-tight truncate max-w-[150px]">{clientName}</p>
+                    <p className="text-[10px] text-zinc-500 font-bold mt-0.5">{clientPhoneE164}</p>
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
-                  <input
-                    type="text" // Mantemos text para aceitar o "+"
-                    inputMode="tel" // Abre o teclado numérico no celular
-                    value={clientPhoneE164}
-                    onChange={handlePhoneChange} // 👈 Usando a função nova
-                    placeholder="+5511999998888"
-                    className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 pl-12 pr-4 py-4 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
-                    required
-                  />
-                </div>
-                <p className="mt-1 ml-4 text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-                  Formato: +55 + DDD + Número (Sem espaços)
-                </p>
+                <button
+                  type="button"
+                  onClick={handleResetClient}
+                  className="rounded-xl border border-red-200 bg-red-50/50 hover:bg-red-50 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-red-600 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-950/40 transition-all cursor-pointer shrink-0"
+                >
+                  Alterar
+                </button>
               </div>
 
               <div>

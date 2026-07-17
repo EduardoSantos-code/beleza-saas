@@ -160,6 +160,15 @@ export default function ClientPortalClient({ slug, tenant }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [checkingSession, setCheckingSession] = useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem("client_phone");
+    localStorage.removeItem("client_name");
+    setPhoneE164("+55");
+    setName("");
+    setStep("LOGIN");
+  };
 
   const [activeTab, setActiveTab] = useState<"appointments" | "products" | "club">("appointments");
 
@@ -218,6 +227,10 @@ export default function ClientPortalClient({ slug, tenant }: Props) {
 
       if (data.registered) {
         setClientName(data.name);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("client_phone", phoneE164);
+          localStorage.setItem("client_name", data.name);
+        }
         setStep("DASHBOARD");
         await loadDashboardData();
       } else {
@@ -251,6 +264,10 @@ export default function ClientPortalClient({ slug, tenant }: Props) {
       if (!res.ok) throw new Error(data.error || "Erro ao criar perfil.");
 
       setClientName(data.name);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("client_phone", phoneE164);
+        localStorage.setItem("client_name", data.name);
+      }
       setStep("DASHBOARD");
       await loadDashboardData();
     } catch (err: any) {
@@ -304,6 +321,45 @@ export default function ClientPortalClient({ slug, tenant }: Props) {
       console.error("Erro ao carregar dados do dashboard", err);
     }
   };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedPhone = localStorage.getItem("client_phone");
+      if (savedPhone) {
+        setPhoneE164(savedPhone);
+        setCheckingSession(true);
+
+        const autoLogin = async () => {
+          try {
+            setLoading(true);
+            setError("");
+            const res = await fetch(`/api/public/${slug}/portal/login`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phoneE164: savedPhone }),
+            });
+            const data = await res.json();
+
+            if (res.ok && data.registered) {
+              setClientName(data.name);
+              setStep("DASHBOARD");
+              await loadDashboardData();
+            } else {
+              setStep("LOGIN");
+            }
+          } catch (err) {
+            console.error("Auto login failed", err);
+            setStep("LOGIN");
+          } finally {
+            setLoading(false);
+            setCheckingSession(false);
+          }
+        };
+
+        autoLogin();
+      }
+    }
+  }, [slug]);
 
   // Cancelar Agendamento
   const handleCancelApp = async (appId: string) => {
@@ -467,6 +523,15 @@ export default function ClientPortalClient({ slug, tenant }: Props) {
     return sum + (prod?.price || 0) * qty;
   }, 0);
 
+  if (checkingSession && loading) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-4">
+        <div className="animate-spin h-8 w-8 border-4 border-zinc-300 dark:border-zinc-700 border-t-zinc-900 dark:border-t-white rounded-full" />
+        <p className="mt-4 font-black text-zinc-500 uppercase tracking-widest text-xs">Acessando seu portal...</p>
+      </div>
+    );
+  }
+
   // Interface de LOGIN
   if (step === "LOGIN") {
     return (
@@ -600,12 +665,18 @@ export default function ClientPortalClient({ slug, tenant }: Props) {
           </div>
 
           <div className="flex items-center gap-4">
+            <Link
+              href={`/s/${slug}`}
+              className="text-xs font-black uppercase tracking-widest text-zinc-300 hover:text-white transition-colors"
+            >
+              Novo Agendamento
+            </Link>
             <span className="text-xs font-bold text-zinc-300 bg-zinc-800 px-3 py-1.5 rounded-xl border border-zinc-700">
               {clientName}
             </span>
             <button
-              onClick={() => setStep("LOGIN")}
-              className="text-xs font-bold text-red-400 hover:text-red-300 transition-colors uppercase tracking-wider"
+              onClick={handleLogout}
+              className="text-xs font-bold text-red-400 hover:text-red-300 transition-colors uppercase tracking-wider cursor-pointer"
             >
               Sair
             </button>
