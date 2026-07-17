@@ -4,6 +4,10 @@
     {
       "path": "/api/internal/run-reminders",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/club-subscriptions/expire",
+      "schedule": "0 2 * * *"
     }
   ]
 }

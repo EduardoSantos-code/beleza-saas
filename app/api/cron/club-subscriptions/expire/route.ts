@@ -15,8 +15,13 @@ type ReconcileStats = {
 
 function isAuthorized(request: Request, cronSecret: string): boolean {
   const authHeader = request.headers.get("authorization");
-  return authHeader === `Bearer ${cronSecret}`;
+  if (authHeader === `Bearer ${cronSecret}`) return true;
+
+  const url = new URL(request.url);
+  const cronKey = url.searchParams.get("key");
+  return cronKey === cronSecret;
 }
+
 
 async function reconcileSubscription(subscription: {
   id: string;

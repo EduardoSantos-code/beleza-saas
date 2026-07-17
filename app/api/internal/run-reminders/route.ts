@@ -7,12 +7,18 @@ export const runtime = "nodejs";
 
 export async function GET(req: Request) {
   try {
+    const authHeader = req.headers.get("authorization");
     const { searchParams } = new URL(req.url);
     const cronKey = searchParams.get("key");
 
-    if (cronKey !== process.env.CRON_SECRET) {
+    const isAuthorized =
+      authHeader === `Bearer ${process.env.CRON_SECRET}` ||
+      cronKey === process.env.CRON_SECRET;
+
+    if (!isAuthorized) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
+
 
     const agora = new Date();
     const daquiADuasHoras = addHours(agora, 2);
