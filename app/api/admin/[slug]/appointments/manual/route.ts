@@ -36,6 +36,21 @@ export async function POST(
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
+    // Impedir agendamento em dias que já passaram
+    const now = new Date();
+    const nowInBR = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const yearBR = nowInBR.getFullYear();
+    const monthBR = String(nowInBR.getMonth() + 1).padStart(2, "0");
+    const dayBR = String(nowInBR.getDate()).padStart(2, "0");
+    const todayStr = `${yearBR}-${monthBR}-${dayBR}`;
+
+    if (date < todayStr) {
+      return NextResponse.json(
+        { error: "Não é possível realizar agendamentos em datas passadas." },
+        { status: 400 }
+      );
+    }
+
     const cleanPhone = clientPhone?.replace(/\D/g, "") || "";
     const isPlaceholder = /^0+$/.test(cleanPhone);
     const hasPhone = cleanPhone !== "" && !isPlaceholder;

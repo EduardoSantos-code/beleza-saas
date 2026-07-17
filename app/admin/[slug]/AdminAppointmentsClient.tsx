@@ -29,6 +29,7 @@ import {
   Coffee,
   Lock,
   Unlock,
+  Users,
 } from "lucide-react";
 
 type Appointment = {
@@ -96,7 +97,7 @@ type ScheduleBlock = {
 };
 
 type ResponseData = {
-  tenant: { id: string; name: string };
+  tenant: { id: string; name: string; logoUrl?: string | null };
   appointments: Appointment[];
   professionals: Professional[];
   services?: Service[];
@@ -218,6 +219,19 @@ export default function AdminAppointmentsClient({
   });
 
   const [date, setDate] = useState(() => formatBR(new Date(), "yyyy-MM-dd"));
+
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    const nowInBR = new Date(now.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const yearBR = nowInBR.getFullYear();
+    const monthBR = String(nowInBR.getMonth() + 1).padStart(2, "0");
+    const dayBR = String(nowInBR.getDate()).padStart(2, "0");
+    return `${yearBR}-${monthBR}-${dayBR}`;
+  }, []);
+
+  const isPastDate = useMemo(() => {
+    return date < todayStr;
+  }, [date, todayStr]);
 
   async function loadAppointments() {
     try {
@@ -667,7 +681,6 @@ export default function AdminAppointmentsClient({
   if (loading && !data) {
     return (
       <div className="relative min-h-screen bg-zinc-50 dark:bg-zinc-950">
-        <div className="fixed top-0 left-1/2 h-[500px] w-full -translate-x-1/2 bg-emerald-500/5 blur-[120px] pointer-events-none" />
         <div className="relative flex min-h-screen items-center gap-3 px-6 text-zinc-800 dark:text-zinc-200">
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
           <span className="font-black italic tracking-tight">
@@ -680,7 +693,6 @@ export default function AdminAppointmentsClient({
 
   return (
     <div className="relative mx-auto max-w-6xl space-y-8 p-4 pb-20 antialiased sm:p-6">
-      <div className="fixed top-0 left-1/2 h-[500px] w-full -translate-x-1/2 bg-emerald-500/5 blur-[120px] pointer-events-none" />
 
       {data?.announcement && (
         <div className="relative rounded-3xl border border-emerald-400/30 bg-emerald-600 p-5 text-white shadow-xl shadow-emerald-500/20 sm:px-6 sm:py-4">
@@ -695,16 +707,19 @@ export default function AdminAppointmentsClient({
         </div>
       )}
 
-      <section className={shellCardClass}>
-        <div className="border-b border-zinc-200 bg-gradient-to-br from-emerald-500/[0.08] via-transparent to-transparent px-5 py-6 dark:border-zinc-800 sm:px-8 sm:py-8">
+      <section className="w-full">
+        <div className="py-2">
           <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            
+            {/* Top row: Title and Selector */}
+            <div className="flex flex-row items-center justify-between gap-4 w-full">
+              {/* Title Section */}
               <div>
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                  <CalendarDays className="h-4 w-4" />
+                <div className="flex items-center gap-2 text-[10px] sm:text-xs font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                  <CalendarDays className="h-3.5 w-3.5" />
                   Painel interno
                 </div>
-                <h2 className="mt-2 text-[1.75rem] leading-[1.05] font-black italic tracking-tighter text-zinc-900 dark:text-white sm:text-4xl">
+                <h2 className="mt-1 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white sm:text-3xl md:text-4xl">
                   {data?.tenant.name || "Sua Barbearia"}
                 </h2>
                 {isMaster && (
@@ -714,38 +729,9 @@ export default function AdminAppointmentsClient({
                 )}
               </div>
 
-              <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="inline-flex w-full items-center justify-center gap-2.5 rounded-2xl bg-emerald-500 px-5 py-3 text-xs font-bold uppercase tracking-wider text-zinc-950 shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 active:scale-95 sm:w-auto"
-                >
-                  <Plus size={16} />
-                  Novo Agendamento
-                </button>
-
-                <div className="relative group w-full sm:w-auto">
-                  <select
-                    value={intervalMin}
-                    onChange={(e) => setIntervalMin(Number(e.target.value))}
-                    className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-                  >
-                    <option value={15}>Grade: 15 min</option>
-                    <option value={20}>Grade: 20 min</option>
-                    <option value={30}>Grade: 30 min</option>
-                    <option value={40}>Grade: 40 min</option>
-                    <option value={45}>Grade: 45 min</option>
-                    <option value={60}>Grade: 60 min</option>
-                  </select>
-                  <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-zinc-900 shadow-xl shadow-zinc-200/50 transition-all group-hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:shadow-none dark:group-hover:border-emerald-500 lg:justify-start">
-                    <div className="flex items-center gap-2.5">
-                      <Sliders size={18} className="text-emerald-500" />
-                      <span>{intervalMin} MIN</span>
-                    </div>
-                    <ChevronDown size={14} className="text-zinc-400" />
-                  </button>
-                </div>
-
-                <div className="relative group w-full sm:w-auto">
+              {/* Date Selector */}
+              <div className="flex justify-end shrink-0">
+                <div className="relative group">
                   <input
                     type="date"
                     value={date}
@@ -753,225 +739,165 @@ export default function AdminAppointmentsClient({
                     onChange={(e) => setDate(e.target.value)}
                     className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
                   />
-                  <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-xs font-bold uppercase tracking-wider text-zinc-900 shadow-xl shadow-zinc-200/50 transition-all group-hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:shadow-none dark:group-hover:border-emerald-500 lg:justify-start">
-                    <div className="flex items-center gap-2.5">
-                      <Calendar size={18} className="text-emerald-500" />
-                      <span>{date.split("-").reverse().join("/")}</span>
-                    </div>
-                    <ChevronDown size={14} className="text-zinc-400" />
+                  <button className="flex items-center justify-between gap-2.5 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-zinc-900 shadow-sm transition-all group-hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:shadow-none dark:group-hover:border-emerald-500">
+                    <Calendar size={14} className="text-emerald-500" />
+                    <span>{date.split("-").reverse().join("/")}</span>
+                    <ChevronDown size={12} className="text-zinc-400" />
                   </button>
                 </div>
               </div>
             </div>
 
-            {professionals.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {hasMultipleProfessionals ? (
-                  <>
+            {/* Separator line */}
+            <div className="border-t border-zinc-200 dark:border-zinc-800/80 my-1" />
+
+            {/* Middle row: Integrated occupancy and status statistics charts */}
+            <div className="grid grid-cols-2 items-center gap-2 sm:gap-4 w-full p-4 sm:p-5 rounded-3xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-150 dark:border-zinc-800/50">
+              
+              {/* Left Column: Circle Gauge (Ocupação) */}
+              <div className="flex flex-col items-center justify-center gap-3 border-r border-zinc-200 dark:border-zinc-800/80 pr-2 sm:pr-4">
+                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-widest text-zinc-500 text-center leading-none">
+                  Ocupação
+                </span>
+                <div className="relative h-20 w-20 sm:h-24 sm:w-24 flex items-center justify-center shrink-0">
+                  <svg className="w-full h-full transform -rotate-90 drop-shadow-sm" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      className="stroke-zinc-200 dark:stroke-zinc-800/80"
+                      strokeWidth="8"
+                      fill="transparent"
+                    />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="38"
+                      className="stroke-emerald-500"
+                      strokeWidth="8"
+                      fill="transparent"
+                      strokeDasharray={`${2 * Math.PI * 38}`}
+                      strokeDashoffset={`${2 * Math.PI * 38 * (1 - stats.rate / 100)}`}
+                      strokeLinecap="round"
+                      style={{ transition: "stroke-dashoffset 1s ease-in-out" }}
+                    />
+                  </svg>
+                  <div className="absolute flex flex-col items-center justify-center mt-1">
+                    <span className="text-[13px] sm:text-base font-black italic tracking-tighter text-zinc-900 dark:text-white leading-none">
+                      {stats.rate.toFixed(0)}%
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 text-center leading-none mt-1">
+                      {stats.occupied}/{stats.totalCapacity}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Columns (Finalizados, Confirmados, Cancelados) */}
+              <div className="flex flex-row items-end justify-around gap-1 sm:gap-2 h-28 pl-2 sm:pl-4">
+                
+                {/* Confirmados (Green) */}
+                <div className="flex flex-col items-center justify-end h-full w-full gap-2">
+                  <span className="text-[10px] sm:text-xs font-black text-emerald-600 dark:text-emerald-400">
+                    {stats.confirmed}
+                  </span>
+                  <div className="w-5 sm:w-7 h-16 sm:h-20 rounded-full bg-zinc-200/60 dark:bg-zinc-800/60 relative flex items-end overflow-hidden shadow-inner">
+                    <div
+                      className="w-full bg-gradient-to-t from-emerald-600 to-emerald-400 transition-all duration-1000 rounded-full"
+                      style={{ height: `${stats.total > 0 ? (stats.confirmed / stats.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight text-emerald-600 dark:text-emerald-400 text-center leading-tight">
+                    Confirm.
+                  </span>
+                </div>
+
+                {/* Finalizados (Blue) */}
+                <div className="flex flex-col items-center justify-end h-full w-full gap-2">
+                  <span className="text-[10px] sm:text-xs font-black text-blue-600 dark:text-blue-400">
+                    {stats.completed}
+                  </span>
+                  <div className="w-5 sm:w-7 h-16 sm:h-20 rounded-full bg-zinc-200/60 dark:bg-zinc-800/60 relative flex items-end overflow-hidden shadow-inner">
+                    <div
+                      className="w-full bg-gradient-to-t from-blue-600 to-blue-400 transition-all duration-1000 rounded-full"
+                      style={{ height: `${stats.total > 0 ? (stats.completed / stats.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight text-blue-600 dark:text-blue-400 text-center leading-tight">
+                    Finaliz.
+                  </span>
+                </div>
+
+                {/* Cancelados (Red) */}
+                <div className="flex flex-col items-center justify-end h-full w-full gap-2">
+                  <span className="text-[10px] sm:text-xs font-black text-red-500">
+                    {stats.canceled}
+                  </span>
+                  <div className="w-5 sm:w-7 h-16 sm:h-20 rounded-full bg-zinc-200/60 dark:bg-zinc-800/60 relative flex items-end overflow-hidden shadow-inner">
+                    <div
+                      className="w-full bg-gradient-to-t from-red-600 to-red-400 transition-all duration-1000 rounded-full"
+                      style={{ height: `${stats.total > 0 ? (stats.canceled / stats.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-tight text-red-500 text-center leading-tight">
+                    Cancel.
+                  </span>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Professional filter avatars (Only show if multiple professionals exist) */}
+            {hasMultipleProfessionals && (
+              <>
+                {/* Separator line */}
+                <div className="border-t border-zinc-200 dark:border-zinc-800/80 my-1" />
+                
+                {/* Bottom row: Filter avatars */}
+                <div className="flex flex-wrap items-center gap-4">
+                  <button
+                    onClick={() => setActiveProfId(null)}
+                    title="Todos os Profissionais"
+                    className={`relative h-16 w-16 rounded-full flex items-center justify-center shrink-0 border transition-all overflow-hidden active:scale-95 ${
+                      activeProfId === null
+                        ? "border-emerald-500 ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-zinc-950"
+                        : "border-zinc-200 hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900"
+                    }`}
+                  >
+                    {data?.tenant.logoUrl ? (
+                      <img src={data.tenant.logoUrl} alt="Todos" className="absolute inset-0 h-full w-full object-cover rounded-full" />
+                    ) : (
+                      <Users className="h-6 w-6 text-zinc-500 dark:text-zinc-400" />
+                    )}
+                  </button>
+
+                  {professionals.map((prof) => (
                     <button
-                      onClick={() => setActiveProfId(null)}
-                      className={`rounded-2xl px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all active:scale-95 ${
-                        activeProfId === null
-                          ? "bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20"
-                          : "border border-zinc-200 bg-white text-zinc-700 hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                      key={prof.id}
+                      onClick={() => setActiveProfId(prof.id)}
+                      title={prof.name}
+                      className={`relative h-16 w-16 rounded-full flex items-center justify-center shrink-0 border transition-all overflow-hidden active:scale-95 ${
+                        activeProfId === prof.id
+                          ? "border-emerald-500 ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-zinc-950"
+                          : "border-zinc-200 hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900"
                       }`}
                     >
-                      Todos
-                    </button>
-
-                    {professionals.map((prof) => (
-                      <button
-                        key={prof.id}
-                        onClick={() => setActiveProfId(prof.id)}
-                        className={`flex items-center gap-2.5 rounded-2xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all active:scale-95 ${
-                          activeProfId === prof.id
-                            ? "bg-emerald-500 text-zinc-950 shadow-lg shadow-emerald-500/20"
-                            : "border border-zinc-200 bg-white text-zinc-700 hover:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
-                        }`}
-                      >
-                        <div className="relative h-6 w-6 rounded-full overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800 border border-black/10">
-                          {prof.imageUrl ? (
-                            <img src={prof.imageUrl} alt={prof.name} className="absolute inset-0 h-full w-full object-cover rounded-full" />
-                          ) : (
-                            <User className="h-full w-full p-1 text-zinc-400" />
-                          )}
+                      {prof.imageUrl ? (
+                        <img src={prof.imageUrl} alt={prof.name} className="absolute inset-0 h-full w-full object-cover rounded-full" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-zinc-150 dark:bg-zinc-850 text-zinc-500 dark:text-zinc-400 text-base font-black uppercase rounded-full">
+                          {prof.name.slice(0, 1)}
                         </div>
-                        {prof.name}
-                      </button>
-                    ))}
-                  </>
-                ) : (
-                  <div className="rounded-2xl bg-emerald-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-950 shadow-lg shadow-emerald-500/20">
-                    {professionals[0]?.name}
-                  </div>
-                )}
-              </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
+
           </div>
         </div>
       </section>
-
-      {/* VIEW DESKTOP */}
-      <div className="hidden md:grid grid-cols-3 gap-6">
-        {/* CARD 1: Taxa de Ocupação */}
-        <div className={`${shellCardClass} p-6 flex flex-col items-center justify-center`}>
-          <p className={`${labelClass} mb-4 text-center`}>Taxa de Ocupação</p>
-          
-          <div className="relative flex items-center justify-center h-32 w-32">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                className="stroke-zinc-100 dark:stroke-zinc-800"
-                strokeWidth="10"
-                fill="transparent"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                className="stroke-emerald-500 transition-all duration-500 ease-out"
-                strokeWidth="10"
-                fill="transparent"
-                strokeDasharray={`${2 * Math.PI * 40}`}
-                strokeDashoffset={`${2 * Math.PI * 40 * (1 - stats.rate / 100)}`}
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="absolute flex flex-col items-center justify-center">
-              <span className="text-3xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
-                {stats.rate.toFixed(0)}%
-              </span>
-            </div>
-          </div>
-          
-          <p className="mt-4 text-[10px] font-bold text-zinc-400 text-center">
-            {stats.occupied} de {stats.totalCapacity} horários preenchidos
-          </p>
-        </div>
-
-        {/* CARD 2: Distribuição de Agendamentos */}
-        <div className={`${shellCardClass} p-6 col-span-2 flex flex-col justify-between`}>
-          <div>
-            <p className={`${labelClass} mb-6`}>Distribuição dos Agendamentos</p>
-          </div>
-          
-          <div className="h-32 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                layout="vertical"
-                data={[
-                  { name: "Agendados", quantidade: stats.confirmed, fill: "#10b981" },
-                  { name: "Finalizados", quantidade: stats.completed, fill: "#3b82f6" },
-                  { name: "Cancelados", quantidade: stats.canceled, fill: "#ef4444" },
-                ]}
-                margin={{ top: 0, right: 20, left: 10, bottom: 0 }}
-              >
-                <XAxis type="number" hide />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#71717a", fontWeight: 700, fontSize: 12 }}
-                  width={80}
-                />
-                <Tooltip
-                  cursor={{ fill: "transparent" }}
-                  contentStyle={{
-                    backgroundColor: "#18181b",
-                    border: "none",
-                    borderRadius: "12px",
-                    color: "#fff",
-                    fontWeight: "bold",
-                  }}
-                  formatter={(value: any) => [value, "Quantidade"]}
-                />
-                <Bar dataKey="quantidade" radius={[0, 6, 6, 0]} barSize={20} {...({} as any)}>
-                  {[
-                    { fill: "#10b981" },
-                    { fill: "#3b82f6" },
-                    { fill: "#ef4444" },
-                  ].map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="flex justify-between items-center border-t border-zinc-100 dark:border-zinc-800/80 pt-4 mt-2">
-            <div className="flex gap-4 text-[10px] font-black uppercase tracking-wider text-zinc-500">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" />
-                Agendados ({stats.confirmed})
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-blue-500 inline-block" />
-                Finalizados ({stats.completed})
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-red-500 inline-block" />
-                Cancelados ({stats.canceled})
-              </span>
-            </div>
-            <span className="text-[10px] font-black uppercase text-zinc-400">
-              Total: {stats.total}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* VIEW MOBILE COMPACTA */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="relative h-14 w-14 flex items-center justify-center shrink-0">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                className="stroke-zinc-100 dark:stroke-zinc-800"
-                strokeWidth="12"
-                fill="transparent"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                className="stroke-emerald-500"
-                strokeWidth="12"
-                fill="transparent"
-                strokeDasharray={`${2 * Math.PI * 40}`}
-                strokeDashoffset={`${2 * Math.PI * 40 * (1 - stats.rate / 100)}`}
-                strokeLinecap="round"
-              />
-            </svg>
-            <span className="absolute text-xs font-black italic tracking-tighter text-zinc-900 dark:text-white">
-              {stats.rate.toFixed(0)}%
-            </span>
-          </div>
-          <div>
-            <p className="text-[9px] font-black uppercase text-zinc-500 tracking-tighter">Ocupação</p>
-            <p className="text-xs font-bold text-zinc-800 dark:text-zinc-350">
-              {stats.occupied}/{stats.totalCapacity} horários
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-0.5 text-[9px] font-black uppercase tracking-widest text-right">
-          <span className="text-emerald-600 dark:text-emerald-400">
-            {stats.confirmed} Confirmados
-          </span>
-          <span className="text-blue-600 dark:text-blue-400">
-            {stats.completed} Finalizados
-          </span>
-          <span className="text-red-500">
-            {stats.canceled} Cancelados
-          </span>
-        </div>
-      </div>
 
       {/* TABS MENU */}
       <div className="flex border-b border-zinc-200 dark:border-zinc-800 gap-4 mb-4">
@@ -1031,6 +957,25 @@ export default function AdminAppointmentsClient({
           <div className="grid gap-4">
             {timelineData.map((item) => {
               if (item.isFree) {
+                if (isPastDate) {
+                  return (
+                    <div
+                      key={item.id}
+                      className="group flex flex-row items-center justify-between rounded-[1.75rem] border border-dashed border-zinc-200 bg-zinc-50/30 p-4 dark:border-zinc-800/50 dark:bg-zinc-900/10"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="w-12 text-sm font-black text-zinc-300 dark:text-zinc-650">
+                          {item.time}
+                        </span>
+                        <div className="h-4 w-[2px] bg-zinc-150 dark:bg-zinc-850" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-300 dark:text-zinc-650">
+                          Horário Passado
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={item.id}
@@ -1111,7 +1056,7 @@ export default function AdminAppointmentsClient({
                         <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-red-600 dark:text-red-400 flex-wrap">
                           <Lock size={12} className="shrink-0" />
                           Horário Bloqueado
-                          {activeProfId === null && (
+                          {activeProfId === null && hasMultipleProfessionals && (
                             <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[8px] font-bold text-red-600 dark:text-red-400">
                               Profissional: {blockProfName}
                             </span>
@@ -1181,7 +1126,7 @@ export default function AdminAppointmentsClient({
                         </p>
                       </div>
 
-                      {activeProfId === null && (
+                      {activeProfId === null && hasMultipleProfessionals && (
                         <div className="flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white pl-1.5 pr-3 py-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 lg:mt-4">
                           <div className="h-4 w-4 rounded-full overflow-hidden shrink-0 bg-zinc-100 dark:bg-zinc-800">
                             {item.professional?.imageUrl ? (
@@ -1615,6 +1560,7 @@ export default function AdminAppointmentsClient({
                   <input
                     type="date"
                     value={manualForm.date}
+                    min={todayStr}
                     onClick={(e) => e.currentTarget.showPicker?.()}
                     onChange={(e) =>
                       setManualForm({ ...manualForm, date: e.target.value })

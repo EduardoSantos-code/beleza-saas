@@ -104,6 +104,21 @@ export async function POST(
     const rawDate = startAt.split("T")[0];
     const rawTime = startAt.split("T")[1]?.substring(0, 5) || "00:00";
 
+    // Impedir agendamento em datas passadas
+    const now = new Date();
+    const nowInBR = new Date(now.toLocaleString("en-US", { timeZone: TZ }));
+    const yearBR = nowInBR.getFullYear();
+    const monthBR = String(nowInBR.getMonth() + 1).padStart(2, "0");
+    const dayBR = String(nowInBR.getDate()).padStart(2, "0");
+    const todayStr = `${yearBR}-${monthBR}-${dayBR}`;
+
+    if (rawDate < todayStr) {
+      return NextResponse.json(
+        { error: "Não é possível realizar agendamentos em datas passadas." },
+        { status: 400 }
+      );
+    }
+
     const startUtc = fromZonedTime(`${rawDate}T${rawTime}:00`, TZ);
     const endUtc = new Date(startUtc.getTime() + service.durationMin * 60000);
 
