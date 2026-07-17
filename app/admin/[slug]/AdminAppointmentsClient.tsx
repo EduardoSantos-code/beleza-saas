@@ -27,6 +27,8 @@ import {
   XCircle,
   ShoppingBag,
   Coffee,
+  Lock,
+  Unlock,
 } from "lucide-react";
 
 type Appointment = {
@@ -104,9 +106,16 @@ type ResponseData = {
   blocks?: ScheduleBlock[];
 };
 
-type TimelineAppointmentItem = Appointment & { isFree: false };
-type TimelineFreeItem = { id: string; isFree: true; time: string };
-type TimelineItem = TimelineAppointmentItem | TimelineFreeItem;
+type TimelineAppointmentItem = Appointment & { isFree: false; isBlocked?: false };
+type TimelineFreeItem = { id: string; isFree: true; time: string; isBlocked?: false };
+type TimelineBlockedItem = {
+  id: string;
+  isFree: false;
+  isBlocked: true;
+  time: string;
+  block: ScheduleBlock;
+};
+type TimelineItem = TimelineAppointmentItem | TimelineFreeItem | TimelineBlockedItem;
 
 const labelClass =
   "text-[10px] font-black uppercase tracking-widest text-zinc-500";
@@ -189,6 +198,7 @@ export default function AdminAppointmentsClient({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"appointments" | "reservations">("appointments");
   const [isPatchNotesOpen, setIsPatchNotesOpen] = useState(false);
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
 
   const [manualForm, setManualForm] = useState({
     clientName: "",
@@ -197,6 +207,14 @@ export default function AdminAppointmentsClient({
     professionalId: "",
     date: "",
     time: "",
+  });
+
+  const [blockForm, setBlockForm] = useState({
+    title: "",
+    startHour: "",
+    endHour: "",
+    professionalId: "",
+    allDay: false,
   });
 
   const [date, setDate] = useState(() => formatBR(new Date(), "yyyy-MM-dd"));
@@ -328,12 +346,79 @@ export default function AdminAppointmentsClient({
     }
   }
 
+  async function handleBlockSubmit(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const startAtISO = new Date(`${date}T${blockForm.startHour}:00-03:00`).toISOString();
+      const endAtISO = new Date(`${date}T${blockForm.endHour}:00-03:00`).toISOString();
+
+      const res = await fetch(`/api/admin/${slug}/blocks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: blockForm.title,
+          startAtISO,
+          endAtISO,
+          professionalId: blockForm.professionalId || null,
+          allDay: blockForm.allDay,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error || "Erro ao criar bloqueio");
+      }
+
+      setBlockForm({
+        title: "",
+        startHour: "",
+        endHour: "",
+        professionalId: "",
+        allDay: false,
+      });
+      setIsBlockModalOpen(false);
+      await loadAppointments();
+    } catch (err: any) {
+      window.alert(err.message || "Erro ao criar bloqueio.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDeleteBlock(blockId: string) {
+    if (!window.confirm("Tem certeza que deseja remover este bloqueio de horário?")) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/admin/${slug}/blocks/${blockId}`, {
+        method: "DELETE",
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error || "Erro ao deletar bloqueio");
+      }
+
+      await loadAppointments();
+    } catch (err: any) {
+      window.alert(err.message || "Erro ao excluir o bloqueio.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadAppointments();
   }, [slug, date]);
 
   useEffect(() => {
-    const shouldLock = isModalOpen || isPatchNotesOpen;
+    const shouldLock = isModalOpen || isPatchNotesOpen || isBlockModalOpen;
     if (shouldLock) {
       document.body.style.overflow = "hidden";
       document.body.style.position = "fixed";
@@ -349,7 +434,7 @@ export default function AdminAppointmentsClient({
       document.body.style.position = "";
       document.body.style.width = "";
     };
-  }, [isModalOpen, isPatchNotesOpen]);
+  }, [isModalOpen, isPatchNotesOpen, isBlockModalOpen]);
 
   useEffect(() => {
     const seen = localStorage.getItem("trato_patch_notes_v2.0_seen");
@@ -413,7 +498,17 @@ export default function AdminAppointmentsClient({
 
         if (isToday && slotTotalMinutes < currentTotalMinutes) {
           const hasApp = apps.find((a) => formatBR(a.startAt, "HH:mm") === slotTime);
-          if (!hasApp) return null;
+          const hasBlock = data?.blocks?.find((b) => {
+            if (activeProfId && b.professionalId !== activeProfId && b.professionalId !== null) {
+              return false;
+            }
+            const slotStart = new Date(`${date}T${slotTime}:00-03:00`).getTime();
+            const slotEnd = slotStart + intervalMin * 60000;
+            const blockStart = new Date(b.startAt).getTime();
+            const blockEnd = new Date(b.endAt).getTime();
+            return blockStart < slotEnd && blockEnd > slotStart;
+          });
+          if (!hasApp && !hasBlock) return null;
         }
 
         const slotStart = new Date(`${date}T${slotTime}:00-03:00`).getTime();
@@ -432,6 +527,38 @@ export default function AdminAppointmentsClient({
           return null;
         }
 
+        // Verificar se há algum bloqueio nesse slot
+        const conflictingBlock = data?.blocks?.find((b) => {
+          if (activeProfId && b.professionalId !== activeProfId && b.professionalId !== null) {
+            return false;
+          }
+          const blockStart = new Date(b.startAt).getTime();
+          const blockEnd = new Date(b.endAt).getTime();
+          return blockStart < slotEnd && blockEnd > slotStart;
+        });
+
+        if (conflictingBlock) {
+          // Encontrar o primeiro slot da timeline que colide com esse bloqueio
+          const firstOverlappingSlot = allPossibleSlots.find((st) => {
+            const stStart = new Date(`${date}T${st}:00-03:00`).getTime();
+            const stEnd = stStart + intervalMin * 60000;
+            const bStart = new Date(conflictingBlock.startAt).getTime();
+            const bEnd = new Date(conflictingBlock.endAt).getTime();
+            return bStart < stEnd && bEnd > stStart;
+          });
+
+          if (firstOverlappingSlot === slotTime) {
+            return {
+              id: `block-${conflictingBlock.id}-${slotTime}`,
+              isFree: false,
+              isBlocked: true,
+              time: slotTime,
+              block: conflictingBlock,
+            } as TimelineBlockedItem;
+          }
+          return null;
+        }
+
         return {
           id: `free-${slotTime}-${index}`,
           isFree: true,
@@ -439,7 +566,7 @@ export default function AdminAppointmentsClient({
         } as TimelineFreeItem;
       })
       .filter(Boolean) as TimelineItem[];
-  }, [professionalAppointments, date, intervalMin, data?.businessHours]);
+  }, [professionalAppointments, date, intervalMin, data?.businessHours, data?.blocks, activeProfId]);
 
   const stats = useMemo(() => {
     const apps = professionalAppointments;
@@ -520,18 +647,22 @@ export default function AdminAppointmentsClient({
       return { type: "closed", message: "O salão não abre neste dia da semana. Aproveite o seu dia de folga para descansar! ☕" };
     }
 
-    const generalBlocks = data.blocks?.filter((b) => b.professionalId === null) || [];
-    if (generalBlocks.length > 0) {
-      const allDayBlock = generalBlocks.find((b) => b.allDay);
-      if (allDayBlock) {
-        return { type: "blocked", message: `Dia bloqueado na agenda do salão: "${allDayBlock.title}". Bom descanso! 💤` };
+    const activeProfAllDayBlock = data.blocks?.find((b) => {
+      if (activeProfId) {
+        return b.allDay && (b.professionalId === activeProfId || b.professionalId === null);
       }
-      const firstBlock = generalBlocks[0];
-      return { type: "blocked", message: `Bloqueio geral ativo: "${firstBlock.title}". Bom descanso!` };
+      return b.allDay && b.professionalId === null;
+    });
+
+    if (activeProfAllDayBlock) {
+      return { 
+        type: "blocked", 
+        message: `Dia bloqueado: "${activeProfAllDayBlock.title}". Bom descanso! 💤` 
+      };
     }
 
     return null;
-  }, [data?.businessHours, data?.blocks, date]);
+  }, [data?.businessHours, data?.blocks, date, activeProfId]);
 
   if (loading && !data) {
     return (
@@ -903,7 +1034,7 @@ export default function AdminAppointmentsClient({
                 return (
                   <div
                     key={item.id}
-                    className="group flex items-center justify-between rounded-[1.75rem] border-2 border-dashed border-zinc-200 bg-zinc-50/70 p-4 transition-all duration-300 hover:border-emerald-500/50 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900/20 dark:hover:bg-zinc-900"
+                    className="group flex flex-col sm:flex-row sm:items-center justify-between rounded-[1.75rem] border-2 border-dashed border-zinc-200 bg-zinc-50/70 p-4 gap-3 sm:gap-4 transition-all duration-300 hover:border-emerald-500/50 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900/20 dark:hover:bg-zinc-900"
                   >
                     <div className="flex items-center gap-4">
                       <span className="w-12 text-sm font-black text-zinc-400 dark:text-zinc-500">
@@ -915,19 +1046,89 @@ export default function AdminAppointmentsClient({
                       </span>
                     </div>
 
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={() => {
+                          setManualForm((prev) => ({
+                            ...prev,
+                            time: item.time,
+                            date,
+                          }));
+                          setIsModalOpen(true);
+                        }}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 opacity-100 shadow-sm transition-all hover:border-emerald-500 hover:text-emerald-500 active:scale-95 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-emerald-500 dark:hover:text-emerald-400 md:opacity-0 md:group-hover:opacity-100"
+                      >
+                        <Plus size={14} />
+                        Reservar
+                      </button>
+                      <button
+                        onClick={() => {
+                          const [h, m] = item.time.split(":").map(Number);
+                          const endTotal = h * 60 + m + intervalMin;
+                          const endH = String(Math.floor(endTotal / 60)).padStart(2, "0");
+                          const endM = String(endTotal % 60).padStart(2, "0");
+                          const endHour = `${endH}:${endM}`;
+
+                          setBlockForm({
+                            title: "",
+                            startHour: item.time,
+                            endHour,
+                            professionalId: activeProfId || "",
+                            allDay: false,
+                          });
+                          setIsBlockModalOpen(true);
+                        }}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 opacity-100 shadow-sm transition-all hover:border-red-500 hover:text-red-500 active:scale-95 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-red-500 dark:hover:text-red-400 md:opacity-0 md:group-hover:opacity-100"
+                      >
+                        <Lock size={14} />
+                        Bloquear
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              if ("isBlocked" in item && item.isBlocked) {
+                const blockProf = item.block.professionalId
+                  ? data?.professionals?.find((p) => p.id === item.block.professionalId)
+                  : null;
+                const blockProfName = blockProf ? blockProf.name.split(" ")[0] : "Todos";
+
+                return (
+                  <div
+                    key={item.id}
+                    className="group flex flex-col sm:flex-row sm:items-center justify-between rounded-[1.75rem] border border-red-200 bg-red-50/20 p-5 gap-3 sm:gap-4 transition-all duration-300 hover:border-red-500/50 dark:border-red-950/30 dark:bg-red-950/10"
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
+                      <div className="flex items-center gap-4">
+                        <span className="w-12 text-sm font-black text-red-500 dark:text-red-400">
+                          {item.time}
+                        </span>
+                        <div className="h-4 w-[2px] bg-red-200 dark:bg-red-900" />
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-red-600 dark:text-red-400 flex-wrap">
+                          <Lock size={12} className="shrink-0" />
+                          Horário Bloqueado
+                          {activeProfId === null && (
+                            <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[8px] font-bold text-red-600 dark:text-red-400">
+                              Profissional: {blockProfName}
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                          {item.block.title}
+                        </span>
+                      </div>
+                    </div>
+
                     <button
-                      onClick={() => {
-                        setManualForm((prev) => ({
-                          ...prev,
-                          time: item.time,
-                          date,
-                        }));
-                        setIsModalOpen(true);
-                      }}
-                      className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 opacity-100 shadow-sm transition-all hover:border-emerald-500 hover:text-emerald-500 active:scale-95 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-emerald-500 dark:hover:text-emerald-400 md:opacity-0 md:group-hover:opacity-100"
+                      onClick={() => handleDeleteBlock(item.block.id)}
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-600 shadow-sm transition-all hover:bg-red-50 hover:border-red-500 hover:text-red-500 active:scale-95 dark:border-red-950/50 dark:bg-zinc-800 dark:text-red-400 dark:hover:bg-red-950/50"
                     >
-                      <Plus size={14} />
-                      Reservar
+                      <Unlock size={14} />
+                      Desbloquear
                     </button>
                   </div>
                 );
@@ -995,7 +1196,7 @@ export default function AdminAppointmentsClient({
                     </div>
 
                     <div className="flex-1 p-4 sm:p-6">
-                      <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="mb-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
                         <h4 className="truncate text-lg font-black uppercase tracking-tight text-zinc-900 dark:text-white sm:text-2xl flex items-center gap-2">
                           {clientDisplayName}
                           {item.presenceConfirmed && (
@@ -1007,7 +1208,7 @@ export default function AdminAppointmentsClient({
                         
                         {/* Attendance Stats */}
                         {(item.client.completedCount !== undefined) && (item.client.completedCount > 0 || item.client.noShowCount! > 0 || item.client.lateCancelCount! > 0) && (
-                          <div className="flex gap-2 text-[10px] uppercase font-bold tracking-widest mt-1">
+                          <div className="flex flex-wrap gap-x-2 gap-y-1 text-[10px] uppercase font-bold tracking-widest mt-1">
                             {item.client.completedCount! > 0 && (
                               <span className="text-emerald-600 dark:text-emerald-400">
                                 {item.client.completedCount} atendimentos
@@ -1120,9 +1321,9 @@ export default function AdminAppointmentsClient({
                       {(item.notes || item.client.phoneE164) && (
                         <div className="mt-4 flex flex-col gap-2 rounded-xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/50 sm:p-4">
                           {item.client.phoneE164 && (
-                            <div className="flex items-center justify-between gap-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                               <div className="flex items-center gap-2 text-xs font-bold text-zinc-700 dark:text-zinc-300">
-                                <Phone size={14} className="text-emerald-500" />
+                                <Phone size={14} className="text-emerald-500 shrink-0" />
                                 <span className="truncate">
                                   {item.client.phoneE164}
                                 </span>
@@ -1131,7 +1332,7 @@ export default function AdminAppointmentsClient({
                               <a
                                 href={`https://wa.me/${item.client.phoneE164.replace(/\D/g, "")}`}
                                 target="_blank"
-                                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-[10px] font-black uppercase text-zinc-950 shadow-md shadow-emerald-500/10 transition-all hover:bg-emerald-600 active:scale-95"
+                                className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-[10px] font-black uppercase text-zinc-950 shadow-md shadow-emerald-500/10 transition-all hover:bg-emerald-600 active:scale-95"
                               >
                                 <MessageCircle size={14} />
                                 Chamar
@@ -1154,18 +1355,18 @@ export default function AdminAppointmentsClient({
                       )}
                     </div>
 
-                    <div className="flex shrink-0 flex-row gap-2 border-t border-zinc-100 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-950/30 lg:flex-col lg:justify-center lg:border-t-0 lg:border-l sm:p-6">
+                    <div className="flex shrink-0 flex-col sm:flex-row lg:flex-col gap-2 border-t border-zinc-100 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-950/30 lg:justify-center lg:border-t-0 lg:border-l sm:p-6">
                       <button
                         disabled={updatingId === item.id}
                         onClick={() => handleStatusChange(item.id, "COMPLETED")}
-                        className="flex-1 rounded-2xl bg-emerald-500 px-2 py-2 text-[9px] font-black uppercase text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 active:scale-95 disabled:opacity-50 sm:py-3 sm:text-sm"
+                        className="w-full sm:flex-1 lg:w-full rounded-2xl bg-emerald-500 py-3 px-4 text-xs font-black uppercase text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 active:scale-95 disabled:opacity-50 sm:text-sm"
                       >
-                        <span className="flex flex-col sm:flex-row items-center justify-center gap-1.5">
+                        <span className="flex items-center justify-center gap-1.5">
                           {updatingId === item.id ? (
                             <span className="animate-pulse">...</span>
                           ) : (
                             <>
-                              <CheckCircle2 size={16} className="sm:w-[18px]" />
+                              <CheckCircle2 size={16} />
                               Finalizar
                             </>
                           )}
@@ -1179,9 +1380,9 @@ export default function AdminAppointmentsClient({
                             handleStatusChange(item.id, "NOSHOW");
                           }
                         }}
-                        className="flex-1 rounded-2xl bg-amber-50 px-2 py-2 text-[9px] font-black uppercase text-amber-600 transition-all hover:bg-amber-500 hover:text-white active:scale-95 disabled:opacity-50 dark:bg-amber-500/10 dark:text-amber-500 sm:py-3"
+                        className="w-full sm:flex-1 lg:w-full rounded-2xl bg-amber-50 py-3 px-4 text-xs font-black uppercase text-amber-600 transition-all hover:bg-amber-500 hover:text-white active:scale-95 disabled:opacity-50 dark:bg-amber-500/10 dark:text-amber-500"
                       >
-                        <span className="flex flex-col sm:flex-row items-center justify-center gap-1.5">
+                        <span className="flex items-center justify-center gap-1.5">
                           Falta
                         </span>
                       </button>
@@ -1193,10 +1394,10 @@ export default function AdminAppointmentsClient({
                             handleStatusChange(item.id, "CANCELED");
                           }
                         }}
-                        className="flex-1 rounded-2xl bg-red-50 px-2 py-2 text-[9px] font-black uppercase text-red-600 transition-all hover:bg-red-500 hover:text-white active:scale-95 disabled:opacity-50 dark:bg-red-500/10 dark:text-red-500 sm:py-3"
+                        className="w-full sm:flex-1 lg:w-full rounded-2xl bg-red-50 py-3 px-4 text-xs font-black uppercase text-red-600 transition-all hover:bg-red-500 hover:text-white active:scale-95 disabled:opacity-50 dark:bg-red-500/10 dark:text-red-500"
                       >
-                        <span className="flex flex-col sm:flex-row items-center justify-center gap-1.5">
-                          <XCircle size={14} className="sm:w-[14px]" />
+                        <span className="flex items-center justify-center gap-1.5">
+                          <XCircle size={14} />
                           Cancelar
                         </span>
                       </button>
@@ -1497,6 +1698,139 @@ export default function AdminAppointmentsClient({
                 ) : (
                   <>
                     Confirmar Agendamento
+                    <ArrowRight size={14} />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isBlockModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/90 p-3 backdrop-blur-sm animate-in fade-in duration-300 sm:p-4">
+          <div className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-[2rem] border border-zinc-200 bg-white p-5 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
+            <button
+              onClick={() => setIsBlockModalOpen(false)}
+              className="absolute top-5 right-5 p-1 text-zinc-400 transition-colors hover:text-zinc-900 dark:hover:text-white"
+            >
+              <X size={20} />
+            </button>
+
+            <div className="mb-5 flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 rotate-3 items-center justify-center rounded-xl bg-red-500 shadow-lg shadow-red-500/20">
+                <Lock className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="leading-none text-lg font-black italic uppercase tracking-tighter text-zinc-900 dark:text-white">
+                  Bloquear <span className="text-red-500">Horário</span>
+                </h3>
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  Bloqueio de agenda interna
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleBlockSubmit} className="space-y-3">
+              <div className="space-y-1">
+                <label className="ml-1 text-[9px] font-black uppercase tracking-widest text-zinc-500">
+                  Motivo / Título do Bloqueio
+                </label>
+                <input
+                  type="text"
+                  value={blockForm.title}
+                  onChange={(e) =>
+                    setBlockForm({ ...blockForm, title: e.target.value })
+                  }
+                  className="h-11 w-full rounded-xl border-none bg-zinc-100 px-4 text-xs font-bold text-zinc-900 outline-none focus:ring-2 focus:ring-red-500 dark:bg-zinc-950 dark:text-white"
+                  placeholder="Ex: Horário de Almoço, Reunião, Folga"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <label className="ml-1 truncate text-[9px] font-black uppercase tracking-widest text-zinc-500">
+                    Hora Inicial
+                  </label>
+                  <input
+                    type="time"
+                    value={blockForm.startHour}
+                    onClick={(e) => e.currentTarget.showPicker?.()}
+                    onChange={(e) =>
+                      setBlockForm({ ...blockForm, startHour: e.target.value })
+                    }
+                    className="h-11 w-full appearance-none rounded-xl border-none bg-zinc-100 px-3 text-[11px] font-bold text-zinc-900 outline-none focus:ring-2 focus:ring-red-500 dark:bg-zinc-950 dark:text-white"
+                    required
+                  />
+                </div>
+
+                <div className="flex min-w-0 flex-col gap-1">
+                  <label className="ml-1 truncate text-[9px] font-black uppercase tracking-widest text-zinc-500">
+                    Hora Final
+                  </label>
+                  <input
+                    type="time"
+                    value={blockForm.endHour}
+                    onClick={(e) => e.currentTarget.showPicker?.()}
+                    onChange={(e) =>
+                      setBlockForm({ ...blockForm, endHour: e.target.value })
+                    }
+                    className="h-11 w-full appearance-none rounded-xl border-none bg-zinc-100 px-3 text-[11px] font-bold text-zinc-900 outline-none focus:ring-2 focus:ring-red-500 dark:bg-zinc-950 dark:text-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <label className="ml-1 truncate text-[9px] font-black uppercase tracking-widest text-zinc-500">
+                    Profissional
+                  </label>
+                  <select
+                    value={blockForm.professionalId}
+                    onChange={(e) =>
+                      setBlockForm({
+                        ...blockForm,
+                        professionalId: e.target.value,
+                      })
+                    }
+                    className="h-11 w-full appearance-none rounded-xl border-none bg-zinc-100 px-3 text-[11px] font-bold text-zinc-900 outline-none focus:ring-2 focus:ring-red-500 dark:bg-zinc-950 dark:text-white"
+                  >
+                    <option value="">Todos (Bloqueio Geral)</option>
+                    {data?.professionals?.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-center h-11 mt-5">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-[11px] font-bold text-zinc-650 dark:text-zinc-350">
+                    <input
+                      type="checkbox"
+                      checked={blockForm.allDay}
+                      onChange={(e) =>
+                        setBlockForm({ ...blockForm, allDay: e.target.checked })
+                      }
+                      className="h-4 w-4 rounded border-zinc-350 text-red-500 focus:ring-red-500"
+                    />
+                    Dia Inteiro
+                  </label>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-red-500 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-red-500/20 transition-all hover:bg-red-400 active:scale-95 disabled:opacity-50"
+              >
+                {loading ? (
+                  <span className="animate-pulse">Bloqueando...</span>
+                ) : (
+                  <>
+                    Confirmar Bloqueio
                     <ArrowRight size={14} />
                   </>
                 )}
