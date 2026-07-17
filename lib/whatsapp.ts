@@ -437,7 +437,12 @@ export async function sendTenantWhatsAppMessage(
 
   const isReminder = text.includes("Passando pra lembrar que seu trato é");
 
-  if (!isOtp && !isReminder) {
+  const isReminderResponse =
+    text.includes("Presença confirmada") ||
+    text.includes("Seu agendamento foi cancelado") ||
+    text.includes("Seu agendamento atual foi cancelado");
+
+  if (!isOtp && !isReminder && !isReminderResponse) {
     console.log(`[WhatsApp] Envio bloqueado por filtro (Opção 3): "${text.substring(0, 60)}..."`);
     return {
       success: true,

@@ -258,14 +258,6 @@ export async function POST(req: Request) {
                   ] : [])
                 ]);
                 
-                if (upcomingApp.professional?.phoneE164) {
-                   await sendTenantWhatsAppMessage({
-                     tenantId: config.tenantId,
-                     to: upcomingApp.professional.phoneE164,
-                     text: `❌ *Cancelamento via WhatsApp*\nO cliente *${upcomingApp.client?.name}* acabou de cancelar o agendamento de hoje. O horário está livre novamente.`
-                   });
-                }
-                
                 if (startsWith2) {
                    await sendTenantWhatsAppMessage({
                      tenantId: config.tenantId,
