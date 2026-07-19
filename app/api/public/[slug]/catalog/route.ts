@@ -33,7 +33,7 @@ export async function GET(
       );
     }
 
-    const [services, professionals, activeClubPlansCount] = await Promise.all([
+    const [services, professionals, activeClubPlansCount, reviewStats, totalServicesRendered] = await Promise.all([
       prisma.service.findMany({
         where: { tenantId: tenant.id, active: true },
         select: {
@@ -59,6 +59,17 @@ export async function GET(
           isActive: true,
         },
       }),
+      prisma.review.aggregate({
+        where: { tenantId: tenant.id },
+        _avg: { rating: true },
+        _count: { id: true },
+      }),
+      prisma.appointment.count({
+        where: {
+          tenantId: tenant.id,
+          status: "COMPLETED",
+        },
+      }),
     ]);
 
     return NextResponse.json({
@@ -69,6 +80,13 @@ export async function GET(
         enabled: tenant.clubEnabled && activeClubPlansCount > 0,
         plansCount: activeClubPlansCount,
         paymentProvider: tenant.clubPaymentProvider,
+      },
+      stats: {
+        averageRating: reviewStats._avg.rating
+          ? Math.round(reviewStats._avg.rating * 10) / 10
+          : 0,
+        totalReviews: reviewStats._count.id,
+        totalServicesRendered,
       },
     });
   } catch (error) {

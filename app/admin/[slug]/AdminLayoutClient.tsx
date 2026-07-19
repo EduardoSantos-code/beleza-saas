@@ -33,6 +33,7 @@ export default function AdminLayout({
     { name: "Estoque", href: `/admin/${slug}/products`, icon: "📦" },
     { name: "Assinatura", href: `/admin/${slug}/billing`, icon: "💳" },
     { name: "Métricas", href: `/admin/${slug}/metrics`, icon: "📊" },
+    { name: "Avaliações", href: `/admin/${slug}/reviews`, icon: "⭐" },
     { name: "Serviços", href: `/admin/${slug}/services`, icon: "✂️" },
     { name: "Profissionais", href: `/admin/${slug}/professionals`, icon: "💈" },
     { name: "Horários", href: `/admin/${slug}/hours`, icon: "⏰" },

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { formatBR } from "@/lib/date";
 import Link from "next/link";
@@ -14,7 +14,16 @@ import {
   Info,
   Crown,
   CheckCircle,
-  Search
+  Search,
+  Star,
+  MessageSquare,
+  ImageIcon,
+  Users,
+  ChevronRight,
+  Send,
+  History,
+  Trash2,
+  X
 } from "lucide-react";
 
 type Service = {
@@ -50,7 +59,38 @@ type CatalogResponse = {
     plansCount: number;
     paymentProvider: "ASAAS" | "MERCADO_PAGO" | null;
   };
+  stats?: {
+    averageRating: number;
+    totalReviews: number;
+    totalServicesRendered: number;
+  };
 };
+
+type ReviewData = {
+  id: string;
+  clientName: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+};
+
+type GalleryPhotoData = {
+  id: string;
+  imageUrl: string;
+  caption: string | null;
+};
+
+type HistoryAppointment = {
+  id: string;
+  status: string;
+  startAt: string;
+  notes: string | null;
+  review?: { id: string } | null;
+  service: { name: string; durationMin: number; price: number };
+  professional: { name: string };
+};
+
+type PageTab = "agendamento" | "reservas" | "historico" | "galeria" | "avaliacoes";
 
 type Slot = {
   iso: string;
@@ -175,6 +215,256 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   };
 
   const [submitting, setSubmitting] = useState(false);
+
+  // Estados de Tabs, Reviews, Galeria e Histórico
+  const [activeTab, setActiveTab] = useState<PageTab>("agendamento");
+  const [reviews, setReviews] = useState<ReviewData[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhotoData[]>([]);
+  const [loadingGallery, setLoadingGallery] = useState(false);
+  const [historyAppointments, setHistoryAppointments] = useState<HistoryAppointment[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [reservations, setReservations] = useState<any[]>([]);
+  const [loadingReservations, setLoadingReservations] = useState(false);
+  const [productsList, setProductsList] = useState<any[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<Record<string, number>>({});
+  const [reserving, setReserving] = useState(false);
+  const [reserveSuccess, setReserveSuccess] = useState("");
+  const [reserveError, setReserveError] = useState("");
+
+  // Estados do formulário de review
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewHover, setReviewHover] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewAppointmentId, setReviewAppointmentId] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSuccess, setReviewSuccess] = useState("");
+  const [reviewError, setReviewError] = useState("");
+
+  const loadReviews = useCallback(async () => {
+    try {
+      setLoadingReviews(true);
+      const res = await fetch(`/api/public/${slug}/reviews?limit=50`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setReviews(data.reviews || []);
+    } catch {
+      // silent
+    } finally {
+      setLoadingReviews(false);
+    }
+  }, [slug]);
+
+  const loadGallery = useCallback(async () => {
+    try {
+      setLoadingGallery(true);
+      const res = await fetch(`/api/public/${slug}/gallery`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setGalleryPhotos(data.photos || []);
+    } catch {
+      // silent
+    } finally {
+      setLoadingGallery(false);
+    }
+  }, [slug]);
+
+  const loadHistory = useCallback(async () => {
+    if (!identified || !clientPhoneE164) return;
+    try {
+      setLoadingHistory(true);
+      const qs = new URLSearchParams({ phoneE164: clientPhoneE164 });
+      const res = await fetch(`/api/public/${slug}/client-history?${qs.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryAppointments(data.appointments || []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [slug, identified, clientPhoneE164]);
+
+  const loadReservations = useCallback(async () => {
+    if (!identified || !clientPhoneE164) return;
+    try {
+      setLoadingReservations(true);
+      const qs = new URLSearchParams({ phoneE164: clientPhoneE164 });
+      const res = await fetch(`/api/public/${slug}/client-reservations?${qs.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setReservations(data.reservations || []);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingReservations(false);
+    }
+  }, [slug, identified, clientPhoneE164]);
+
+  const loadProducts = useCallback(async () => {
+    try {
+      setLoadingProducts(true);
+      const res = await fetch(`/api/public/${slug}/products`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setProductsList(data.products || []);
+    } catch {
+      // silent
+    } finally {
+      setLoadingProducts(false);
+    }
+  }, [slug]);
+
+  const handleCreateReservation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReserveError("");
+    setReserveSuccess("");
+
+    const items = Object.entries(selectedProducts)
+      .filter(([_, qty]) => qty > 0)
+      .map(([productId, quantity]) => ({ productId, quantity }));
+
+    if (items.length === 0) {
+      setReserveError("Selecione pelo menos um produto para reservar.");
+      return;
+    }
+
+    try {
+      setReserving(true);
+      const res = await fetch(`/api/public/${slug}/client-reserve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneE164: clientPhoneE164,
+          clientName,
+          items,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao realizar reserva.");
+
+      setReserveSuccess("Reserva realizada com sucesso! Retire seus produtos no estabelecimento. 🛍️");
+      setSelectedProducts({});
+      loadReservations();
+      loadProducts();
+    } catch (err: any) {
+      setReserveError(err.message || "Erro inesperado.");
+    } finally {
+      setReserving(false);
+    }
+  };
+
+  const handleCancelAppointment = async (apptId: string) => {
+    if (!confirm("Tem certeza que deseja cancelar este agendamento?")) return;
+
+    try {
+      const res = await fetch(`/api/public/${slug}/appointments/${apptId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELED" }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao cancelar agendamento.");
+
+      alert("Agendamento cancelado com sucesso!");
+      loadHistory();
+    } catch (err: any) {
+      alert(err.message || "Erro ao cancelar agendamento.");
+    }
+  };
+
+  // Load reviews, gallery, history, and reservations when tab changes
+  useEffect(() => {
+    if (activeTab === "avaliacoes") {
+      loadReviews();
+      if (identified) loadHistory();
+    } else if (activeTab === "galeria") {
+      loadGallery();
+    } else if (activeTab === "historico" && identified) {
+      loadHistory();
+    } else if (activeTab === "reservas") {
+      loadProducts();
+      if (identified) loadReservations();
+    }
+  }, [activeTab, loadReviews, loadGallery, loadHistory, loadReservations, loadProducts, identified]);
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReviewError("");
+    setReviewSuccess("");
+
+    if (!reviewAppointmentId) {
+      setReviewError("Selecione um agendamento para avaliar.");
+      return;
+    }
+    if (reviewRating < 1 || reviewRating > 5) {
+      setReviewError("Selecione uma nota de 1 a 5 estrelas.");
+      return;
+    }
+
+    try {
+      setSubmittingReview(true);
+      const res = await fetch(`/api/public/${slug}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId: reviewAppointmentId,
+          phoneE164: clientPhoneE164,
+          clientName: clientName.trim(),
+          rating: reviewRating,
+          comment: reviewComment.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao enviar avaliação.");
+
+      setReviewSuccess("Avaliação enviada com sucesso! Obrigado pelo feedback. ✨");
+      setReviewRating(0);
+      setReviewComment("");
+      setReviewAppointmentId("");
+      loadReviews();
+      // Reload catalog to update stats
+      try {
+        const catRes = await fetch(`/api/public/${slug}/catalog`, { cache: "no-store" });
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          setCatalog(catData);
+        }
+      } catch {}
+    } catch (err: any) {
+      setReviewError(err.message || "Erro inesperado.");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const formatRelativeDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return "Hoje";
+    if (diffDays === 1) return "Ontem";
+    if (diffDays < 7) return `${diffDays} dias atrás`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} sem. atrás`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} mês(es) atrás`;
+    return date.toLocaleDateString("pt-BR");
+  };
+
+  const statusLabels: Record<string, { label: string; color: string }> = {
+    PENDING: { label: "Pendente", color: "text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950/20 dark:border-amber-900/50" },
+    CONFIRMED: { label: "Confirmado", color: "text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950/20 dark:border-blue-900/50" },
+    COMPLETED: { label: "Concluído", color: "text-emerald-600 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-950/20 dark:border-emerald-900/50" },
+    CANCELED: { label: "Cancelado", color: "text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950/20 dark:border-red-900/50" },
+    NOSHOW: { label: "Não compareceu", color: "text-zinc-600 bg-zinc-50 border-zinc-200 dark:text-zinc-400 dark:bg-zinc-950/20 dark:border-zinc-900/50" },
+  };
 
   // Estados do Clube
   const [clubPhone, setClubPhone] = useState("+55");
@@ -688,17 +978,55 @@ export default function BookingPageClient({ slug }: { slug: string }) {
               </p>
             )}
 
-            <div className="mt-6 flex flex-wrap gap-2 text-xs font-bold">
-              {catalog.tenant.publicPhone && (
-                <span className="rounded-xl bg-white/10 px-4 py-2 backdrop-blur-md border border-white/10">
-                  {catalog.tenant.publicPhone}
+            <div className="mt-6 flex flex-wrap gap-2 text-xs font-bold items-center">
+              {catalog.stats?.averageRating && catalog.stats.averageRating > 0 ? (
+                <span className="flex items-center gap-1 rounded-xl bg-amber-500/25 text-amber-400 px-4 py-2 backdrop-blur-md border border-amber-500/30">
+                  <Star className="h-3.5 w-3.5 fill-current" />
+                  {catalog.stats.averageRating.toFixed(1)}
                 </span>
-              )}
-              {catalog.tenant.instagram && (
-                <span className="rounded-xl bg-white/10 px-4 py-2 backdrop-blur-md border border-white/10">
-                  {catalog.tenant.instagram}
-                </span>
-              )}
+              ) : null}
+              {catalog.tenant.publicPhone && (() => {
+                const cleanPhone = catalog.tenant.publicPhone.replace(/\D/g, "");
+                const waLink = `https://wa.me/${cleanPhone.startsWith("55") ? cleanPhone : "55" + cleanPhone}`;
+                return (
+                  <a
+                    href={waLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 px-4 py-2 backdrop-blur-md border border-white/10 transition-all pointer-events-auto text-white hover:scale-105 active:scale-95"
+                  >
+                    <Phone className="h-3.5 w-3.5 opacity-80" />
+                    {catalog.tenant.publicPhone}
+                  </a>
+                );
+              })()}
+              {catalog.tenant.instagram && (() => {
+                const username = catalog.tenant.instagram.replace("@", "").trim();
+                return (
+                  <a
+                    href={`https://instagram.com/${username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 px-4 py-2 backdrop-blur-md border border-white/10 transition-all pointer-events-auto text-white hover:scale-105 active:scale-95"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-3.5 w-3.5 opacity-80"
+                    >
+                      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+                    </svg>
+                    {catalog.tenant.instagram}
+                  </a>
+                );
+              })()}
               {catalog.tenant.address && (
                 <span className="rounded-xl bg-white/10 px-4 py-2 backdrop-blur-md border border-white/10">
                   {catalog.tenant.address}
@@ -706,20 +1034,63 @@ export default function BookingPageClient({ slug }: { slug: string }) {
               )}
             </div>
 
-            <div className="mt-6 pointer-events-auto">
-              <Link
-                href={`/s/${slug}/portal`}
-                className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 px-5 py-3 border border-white/10 text-xs font-black uppercase tracking-widest text-white transition-all shadow-md active:scale-95 cursor-pointer"
-              >
-                <Search size={14} />
-                Consultar Meus Agendamentos e Reservas
-              </Link>
-            </div>
+            {/* STATS ESTILO UBER */}
+            {(catalog.stats?.totalServicesRendered ?? 0) > 0 && (
+              <div className="mt-6 flex flex-wrap gap-3 pointer-events-auto">
+                <div className="flex items-center gap-2 rounded-2xl bg-white/10 backdrop-blur-md px-5 py-3 border border-white/10">
+                  <Scissors className="h-4 w-4 text-white/70" />
+                  <span className="text-sm font-black text-white">{catalog.stats!.totalServicesRendered}</span>
+                  <span className="text-[10px] font-bold text-white/60 uppercase">serviços realizados</span>
+                </div>
+                {(catalog.stats?.totalReviews ?? 0) > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("avaliacoes")}
+                    className="flex items-center gap-2 rounded-2xl bg-white/10 hover:bg-white/20 backdrop-blur-md px-5 py-3 border border-white/10 transition-all cursor-pointer"
+                  >
+                    <MessageSquare className="h-4 w-4 text-white/70" />
+                    <span className="text-sm font-black text-white">{catalog.stats!.totalReviews}</span>
+                    <span className="text-[10px] font-bold text-white/60 uppercase">avaliações</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* CONTEÚDO PRINCIPAL (SPLIT SCREEN) */}
+      {/* TAB NAVIGATION */}
+      <div className="sticky top-0 z-30 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
+        <div className="mx-auto max-w-6xl px-4">
+          <nav className="flex gap-1 -mb-px overflow-x-auto scrollbar-hide">
+            {([
+              { id: "agendamento" as PageTab, label: "Agendamento", icon: <CalendarIcon size={16} /> },
+              { id: "reservas" as PageTab, label: "Reservas", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
+              { id: "historico" as PageTab, label: "Histórico", icon: <History size={16} /> },
+              { id: "galeria" as PageTab, label: "Galeria", icon: <ImageIcon size={16} /> },
+              { id: "avaliacoes" as PageTab, label: "Avaliações", icon: <Star size={16} /> },
+            ]).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-5 py-4 text-xs font-black uppercase tracking-widest transition-all border-b-2 shrink-0 cursor-pointer ${
+                  activeTab === tab.id
+                    ? "border-current"
+                    : "border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                }`}
+                style={activeTab === tab.id ? { color: primaryColor, borderColor: primaryColor } : undefined}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      {/* CONTEÚDO PRINCIPAL */}
+      {activeTab === "agendamento" && (
       <div className="mx-auto max-w-6xl px-4 py-10 pb-24">
         <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr] items-start">
           
@@ -1154,6 +1525,582 @@ export default function BookingPageClient({ slug }: { slug: string }) {
           </aside>
         </div>
       </div>
+      )}
+
+      {/* TAB: RESERVAS */}
+      {activeTab === "reservas" && (
+        <div className="mx-auto max-w-6xl px-4 py-10 pb-24">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg text-white" style={{ backgroundColor: primaryColor }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-zinc-900 dark:text-white italic tracking-tight font-black">Reservas de Produtos</h2>
+              <p className="text-xs font-bold text-zinc-500">Faça reservas de produtos e acompanhe seus pedidos</p>
+            </div>
+          </div>
+
+          <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr] items-start">
+            {/* COLUNA ESQUERDA: PRODUTOS PARA RESERVAR */}
+            <div className="space-y-6">
+              <h3 className="text-lg font-black text-zinc-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                🛍️ Reservar Produtos
+              </h3>
+
+              {reserveSuccess && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-600 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-400">
+                  {reserveSuccess}
+                </div>
+              )}
+
+              {reserveError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs font-bold text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
+                  🚨 {reserveError}
+                </div>
+              )}
+
+              {loadingProducts ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin h-6 w-6 border-3 border-zinc-300 dark:border-zinc-700 border-t-zinc-900 dark:border-t-white rounded-full" />
+                </div>
+              ) : productsList.length === 0 ? (
+                <div className="rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 p-8 text-center bg-white dark:bg-zinc-900">
+                  <p className="text-sm font-bold text-zinc-500">Nenhum produto disponível para reserva no momento.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleCreateReservation} className="space-y-6">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {productsList.map((product) => {
+                      const qty = selectedProducts[product.id] || 0;
+                      return (
+                        <div key={product.id} className="rounded-2xl bg-white dark:bg-zinc-900 p-4 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-800 flex flex-col justify-between gap-3">
+                          <div className="flex gap-3">
+                            {product.imageUrl && (
+                              <img src={product.imageUrl} alt={product.name} className="h-16 w-16 object-cover rounded-xl shrink-0" />
+                            )}
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-black text-zinc-900 dark:text-white truncate">{product.name}</h4>
+                              <p className="text-xs font-black text-emerald-600 dark:text-emerald-500 mt-1">R$ {(product.price / 100).toFixed(2).replace(".", ",")}</p>
+                              <p className="text-[10px] font-bold text-zinc-400 mt-0.5">Estoque: {product.stockQuantity}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase">Quantidade</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                disabled={qty <= 0}
+                                onClick={() => setSelectedProducts({ ...selectedProducts, [product.id]: qty - 1 })}
+                                className="h-7 w-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 font-black text-zinc-600 dark:text-zinc-400 flex items-center justify-center cursor-pointer transition-all disabled:opacity-30"
+                              >
+                                -
+                              </button>
+                              <span className="text-xs font-black text-zinc-900 dark:text-white w-6 text-center">{qty}</span>
+                              <button
+                                type="button"
+                                disabled={qty >= product.stockQuantity}
+                                onClick={() => setSelectedProducts({ ...selectedProducts, [product.id]: qty + 1 })}
+                                className="h-7 w-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 font-black text-zinc-600 dark:text-zinc-400 flex items-center justify-center cursor-pointer transition-all disabled:opacity-30"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {identified ? (
+                    <button
+                      type="submit"
+                      disabled={reserving || Object.values(selectedProducts).reduce((a, b) => a + b, 0) === 0}
+                      className="w-full rounded-2xl py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                      style={{ backgroundColor: primaryColor, boxShadow: `0 8px 20px -6px ${primaryColor}60` }}
+                    >
+                      {reserving ? (
+                        <>
+                          <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                          Reservando...
+                        </>
+                      ) : (
+                        "Confirmar Reserva"
+                      )}
+                    </button>
+                  ) : (
+                    <div className="rounded-2xl bg-zinc-100 dark:bg-zinc-800 p-4 text-center">
+                      <p className="text-xs font-bold text-zinc-500">Identifique-se no topo da página para finalizar a reserva.</p>
+                    </div>
+                  )}
+                </form>
+              )}
+            </div>
+
+            {/* COLUNA DIREITA: MINHAS RESERVAS ANTERIORES */}
+            <div className="space-y-6">
+              <h3 className="text-lg font-black text-zinc-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                📋 Reservas Efetuadas
+              </h3>
+
+              {!identified ? (
+                <div className="rounded-3xl bg-white dark:bg-zinc-900 p-8 shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800 text-center">
+                  <p className="text-sm font-bold text-zinc-500">Identifique-se para ver suas reservas anteriores.</p>
+                </div>
+              ) : loadingReservations ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="animate-spin h-6 w-6 border-3 border-zinc-300 dark:border-zinc-700 border-t-zinc-900 dark:border-t-white rounded-full" />
+                </div>
+              ) : reservations.length === 0 ? (
+                <div className="rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 p-8 text-center bg-white dark:bg-zinc-900">
+                  <p className="text-sm font-bold text-zinc-500">Você ainda não realizou reservas de produtos.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reservations.map((res) => {
+                    const resDate = new Date(res.createdAt);
+                    const statusLabel: Record<string, { label: string, color: string }> = {
+                      PENDING: { label: "Pendente", color: "text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950/20" },
+                      CONFIRMED: { label: "Confirmada", color: "text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950/20" },
+                      CANCELED: { label: "Cancelada", color: "text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950/20" },
+                      PICKED_UP: { label: "Retirada", color: "text-emerald-600 bg-emerald-50 border-emerald-200 dark:text-emerald-400 dark:bg-emerald-950/20" },
+                    };
+                    const st = statusLabel[res.status] || { label: res.status, color: "text-zinc-600 bg-zinc-50" };
+                    const totalCents = res.items.reduce((acc: number, item: any) => acc + (item.priceAtReservation * item.quantity), 0);
+
+                    return (
+                      <div key={res.id} className="rounded-2xl bg-white dark:bg-zinc-900 p-4 shadow-md ring-1 ring-zinc-200 dark:ring-zinc-800">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${st.color}`}>
+                              {st.label}
+                            </span>
+                            <span className="text-[9px] font-bold text-zinc-400">
+                              {resDate.toLocaleDateString("pt-BR")}
+                            </span>
+                          </div>
+
+                          <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            {res.items.map((item: any) => (
+                              <div key={item.id} className="py-1.5 flex items-center justify-between gap-3 text-xs">
+                                <span className="font-bold text-zinc-900 dark:text-white truncate max-w-[120px]">{item.product.name}</span>
+                                <span className="text-zinc-400 font-bold shrink-0">{item.quantity}x R$ {(item.priceAtReservation / 100).toFixed(2).replace(".", ",")}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="border-t border-zinc-100 dark:border-zinc-800 pt-2 mt-1 flex items-center justify-between text-xs">
+                            <span className="text-zinc-500 font-bold">Total</span>
+                            <span className="font-black text-zinc-900 dark:text-white">R$ {(totalCents / 100).toFixed(2).replace(".", ",")}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: HISTÓRICO */}
+      {activeTab === "historico" && (
+        <div className="mx-auto max-w-6xl px-4 py-10 pb-24">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg text-white" style={{ backgroundColor: primaryColor }}>
+                <History size={22} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-zinc-900 dark:text-white italic tracking-tight">Meu Histórico</h2>
+                <p className="text-xs font-bold text-zinc-500">Seus agendamentos anteriores</p>
+              </div>
+            </div>
+
+            {!identified ? (
+              <div className="rounded-3xl bg-white dark:bg-zinc-900 p-8 shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800 text-center">
+                <History className="h-12 w-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-4" />
+                <p className="text-sm font-bold text-zinc-500 dark:text-zinc-400">Identifique-se com seu WhatsApp para ver seu histórico.</p>
+              </div>
+            ) : loadingHistory ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="animate-spin h-8 w-8 border-4 border-zinc-300 dark:border-zinc-700 border-t-zinc-900 dark:border-t-white rounded-full" />
+              </div>
+            ) : historyAppointments.length === 0 ? (
+              <div className="rounded-3xl bg-white dark:bg-zinc-900 p-8 shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800 text-center">
+                <CalendarIcon className="h-12 w-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-4" />
+                <p className="text-sm font-bold text-zinc-500 dark:text-zinc-400">Você ainda não tem agendamentos.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {historyAppointments.map((appt) => {
+                  const st = statusLabels[appt.status] || statusLabels.PENDING;
+                  const apptDate = new Date(appt.startAt);
+                  const canReview = appt.status === "COMPLETED" && !appt.review;
+                  const canCancel = appt.status === "PENDING" || appt.status === "CONFIRMED";
+                  return (
+                    <div key={appt.id} className="rounded-2xl bg-white dark:bg-zinc-900 p-5 shadow-md ring-1 ring-zinc-200 dark:ring-zinc-800 transition-all hover:shadow-lg">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest ${st.color}`}>
+                              {st.label}
+                            </span>
+                          </div>
+                          <h3 className="text-sm font-black text-zinc-900 dark:text-white truncate">{appt.service.name}</h3>
+                          <p className="text-xs font-bold text-zinc-500 mt-1">
+                            {appt.professional.name} • {apptDate.toLocaleDateString("pt-BR")} às {apptDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                          <p className="text-xs font-black text-zinc-400 mt-1">
+                            R$ {(appt.service.price / 100).toFixed(2).replace(".", ",")} • {appt.service.durationMin} min
+                          </p>
+                        </div>
+                        {canReview && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReviewAppointmentId(appt.id);
+                              setActiveTab("avaliacoes");
+                            }}
+                            className="shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+                            style={{ backgroundColor: primaryColor }}
+                          >
+                            <Star size={12} />
+                            Avaliar
+                          </button>
+                        )}
+                        {appt.review && (
+                          <span className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50">
+                            <CheckCircle size={12} className="text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase">Avaliado</span>
+                          </span>
+                        )}
+                        {canCancel && (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelAppointment(appt.id)}
+                            className="shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-600 border border-red-200 bg-red-50/50 hover:bg-red-50 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-950/40 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                          >
+                            Cancelar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: GALERIA */}
+      {activeTab === "galeria" && (
+        <div className="mx-auto max-w-6xl px-4 py-10 pb-24">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg text-white" style={{ backgroundColor: primaryColor }}>
+              <ImageIcon size={22} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-zinc-900 dark:text-white italic tracking-tight font-black">Galeria</h2>
+              <p className="text-xs font-bold text-zinc-500">Nossos cortes e trabalhos recentes</p>
+            </div>
+          </div>
+
+          {loadingGallery ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="animate-spin h-8 w-8 border-4 border-zinc-300 dark:border-zinc-700 border-t-zinc-900 dark:border-t-white rounded-full" />
+            </div>
+          ) : galleryPhotos.length === 0 ? (
+            <div className="rounded-3xl bg-white dark:bg-zinc-900 p-12 shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800 text-center">
+              <ImageIcon className="h-12 w-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-4" />
+              <p className="text-sm font-bold text-zinc-500 dark:text-zinc-400">Nenhuma foto adicionada na galeria ainda.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {galleryPhotos.map((photo) => (
+                <button
+                  key={photo.id}
+                  type="button"
+                  onClick={() => setLightboxImage(photo.imageUrl)}
+                  className="group relative aspect-square overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800 ring-1 ring-zinc-200 dark:ring-zinc-700 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg"
+                >
+                  <img
+                    src={photo.imageUrl}
+                    alt={photo.caption || "Foto da galeria"}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                  />
+                  {photo.caption && (
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-left">
+                      <p className="text-[10px] font-bold text-white truncate">{photo.caption}</p>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB: AVALIAÇÕES */}
+      {activeTab === "avaliacoes" && (
+        <div className="mx-auto max-w-6xl px-4 py-10 pb-24">
+          
+          {/* STATS CARD */}
+          <div className="mb-10 rounded-3xl bg-white dark:bg-zinc-900 p-8 shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800">
+            <div className="flex flex-col sm:flex-row items-center gap-8">
+              {/* Nota média grande */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="text-6xl font-black text-zinc-900 dark:text-white leading-none">
+                  {(catalog.stats?.averageRating ?? 0) > 0 ? catalog.stats!.averageRating.toFixed(1) : "—"}
+                </div>
+                <div className="flex gap-0.5">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star
+                      key={i}
+                      className={`h-5 w-5 ${
+                        i <= Math.round(catalog.stats?.averageRating ?? 0)
+                          ? "text-amber-400 fill-amber-400"
+                          : "text-zinc-200 dark:text-zinc-700"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                  {catalog.stats?.totalReviews ?? 0} avaliações
+                </p>
+              </div>
+
+              {/* Barras de distribuição */}
+              <div className="flex-1 w-full space-y-2">
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const count = reviews.filter((r) => r.rating === star).length;
+                  const total = reviews.length || 1;
+                  const pct = Math.round((count / total) * 100);
+                  return (
+                    <div key={star} className="flex items-center gap-3">
+                      <span className="text-xs font-black text-zinc-500 w-3">{star}</span>
+                      <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400 shrink-0" />
+                      <div className="flex-1 h-2.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%`, backgroundColor: primaryColor }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-zinc-400 w-8 text-right">{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Stats extras */}
+              <div className="flex flex-col gap-3 text-center sm:text-right">
+                <div>
+                  <p className="text-2xl font-black text-zinc-900 dark:text-white">{catalog.stats?.totalServicesRendered ?? 0}</p>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Serviços Realizados</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-10 lg:grid-cols-[1fr_1fr]">
+            
+            {/* COLUNA ESQUERDA: REVIEWS */}
+            <div>
+              <h2 className="text-lg font-black text-zinc-900 dark:text-white uppercase tracking-tight mb-6 flex items-center gap-2">
+                <MessageSquare size={18} style={{ color: primaryColor }} />
+                O que dizem nossos clientes
+              </h2>
+
+              {loadingReviews ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin h-6 w-6 border-3 border-zinc-300 dark:border-zinc-700 border-t-zinc-900 dark:border-t-white rounded-full" />
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className="rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 p-8 text-center">
+                  <MessageSquare className="h-10 w-10 text-zinc-300 dark:text-zinc-700 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-zinc-500">Nenhuma avaliação ainda. Seja o primeiro!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="rounded-2xl bg-white dark:bg-zinc-900 p-5 shadow-md ring-1 ring-zinc-200 dark:ring-zinc-800 transition-all hover:shadow-lg">
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="h-10 w-10 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0 shadow-md"
+                          style={{ backgroundColor: primaryColor }}
+                        >
+                          {review.clientName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <h4 className="text-sm font-black text-zinc-900 dark:text-white truncate">{review.clientName}</h4>
+                            <span className="text-[10px] font-bold text-zinc-400 shrink-0">{formatRelativeDate(review.createdAt)}</span>
+                          </div>
+                          <div className="flex gap-0.5 mb-2">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                              <Star
+                                key={i}
+                                className={`h-3.5 w-3.5 ${
+                                  i <= review.rating
+                                    ? "text-amber-400 fill-amber-400"
+                                    : "text-zinc-200 dark:text-zinc-700"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          {review.comment && (
+                            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">{review.comment}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* COLUNA DIREITA: FORMULÁRIO DE REVIEW */}
+            <div className="space-y-8">
+              {/* FORMULÁRIO DE AVALIAÇÃO */}
+              {identified && (
+                <div className="rounded-3xl bg-white dark:bg-zinc-900 p-6 shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800">
+                  <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-tight mb-4 flex items-center gap-2">
+                    <Send size={14} style={{ color: primaryColor }} />
+                    Deixe sua avaliação
+                  </h3>
+
+                  {reviewSuccess && (
+                    <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-600 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-400">
+                      {reviewSuccess}
+                    </div>
+                  )}
+
+                  {reviewError && (
+                    <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
+                      🚨 {reviewError}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSubmitReview} className="space-y-4">
+                    {/* Selecionar agendamento */}
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">
+                        Agendamento
+                      </label>
+                      <select
+                        value={reviewAppointmentId}
+                        onChange={(e) => setReviewAppointmentId(e.target.value)}
+                        className="w-full appearance-none rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all cursor-pointer"
+                      >
+                        <option value="">Selecione um agendamento concluído...</option>
+                        {historyAppointments
+                          .filter((a) => a.status === "COMPLETED" && !a.review)
+                          .map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.service.name} — {new Date(a.startAt).toLocaleDateString("pt-BR")} — {a.professional.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    {/* Estrelas */}
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">
+                        Nota
+                      </label>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setReviewRating(i)}
+                            onMouseEnter={() => setReviewHover(i)}
+                            onMouseLeave={() => setReviewHover(0)}
+                            className="p-1 transition-transform hover:scale-125 cursor-pointer"
+                          >
+                            <Star
+                              className={`h-8 w-8 transition-colors ${
+                                i <= (reviewHover || reviewRating)
+                                  ? "text-amber-400 fill-amber-400"
+                                  : "text-zinc-200 dark:text-zinc-700"
+                              }`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Comentário */}
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">
+                        Comentário (opcional)
+                      </label>
+                      <textarea
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        placeholder="Conte como foi sua experiência..."
+                        rows={3}
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-bold text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all resize-none"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={submittingReview || !reviewAppointmentId || reviewRating < 1}
+                      className="w-full rounded-xl py-4 text-xs font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                      style={{ backgroundColor: primaryColor, boxShadow: `0 8px 20px -6px ${primaryColor}60` }}
+                    >
+                      {submittingReview ? (
+                        <>
+                          <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                          Enviando...
+                        </>
+                      ) : (
+                        <>
+                          <Send size={14} />
+                          Enviar Avaliação
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {!identified && (
+                <div className="rounded-3xl bg-white dark:bg-zinc-900 p-6 shadow-xl ring-1 ring-zinc-200 dark:ring-zinc-800 text-center">
+                  <Star className="h-10 w-10 text-zinc-300 dark:text-zinc-700 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-zinc-500">Identifique-se para deixar uma avaliação.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LIGHTBOX */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all cursor-pointer"
+          >
+            <X size={20} />
+          </button>
+          <img
+            src={lightboxImage}
+            alt="Foto ampliada"
+            className="max-h-[85vh] max-w-[90vw] rounded-2xl shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
     </main>
   );
 }

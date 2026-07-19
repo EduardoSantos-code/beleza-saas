@@ -52,6 +52,8 @@ model Tenant {
   whatsappConfig                WhatsappConfig?
   products                      Product[]
   productReservations           ProductReservation[]
+  reviews                       Review[]
+  galleryPhotos                 GalleryPhoto[]
 }
 
 model User {
@@ -123,6 +125,7 @@ model Client {
   clubBenefitUsages ClubBenefitUsage[]
   tenant              Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   productReservations ProductReservation[]
+  reviews             Review[]
 
   @@unique([tenantId, phoneE164])
   @@index([tenantId])
@@ -158,6 +161,7 @@ model Appointment {
   reminder           Reminder?
   clubSubscription   ClubSubscription?  @relation(fields: [clubSubscriptionId], references: [id])
   clubBenefitUsages  ClubBenefitUsage[]
+  review             Review?
 
   @@index([tenantId, professionalId, startAt])
   @@index([tenantId, status])
@@ -524,5 +528,36 @@ model PasswordResetToken {
   createdAt DateTime @default(now())
 
   @@index([email])
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  tenantId      String
+  clientId      String
+  appointmentId String   @unique
+  phoneE164     String
+  clientName    String
+  rating        Int      // 1-5
+  comment       String?
+  createdAt     DateTime @default(now())
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, phoneE164])
+}
+
+model GalleryPhoto {
+  id        String   @id @default(cuid())
+  tenantId  String
+  imageUrl  String
+  publicId  String   // Cloudinary public_id for deletion
+  caption   String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, sortOrder])
 }
 
