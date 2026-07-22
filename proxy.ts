@@ -31,7 +31,7 @@ async function getSessionFromRequest(
   }
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   const isMasterRoute = pathname.startsWith("/master");
   const isAdminRoute = pathname.startsWith("/admin");

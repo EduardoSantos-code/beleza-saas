@@ -60,6 +60,7 @@ export async function GET(
         priceInCents: true,
         billingCycle: true,
         discountPercent: true,
+        includedUsesPerPeriod: true,
       },
     });
 

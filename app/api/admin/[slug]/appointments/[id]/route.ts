@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { formatInTimeZone } from "date-fns-tz";
 import { sendTenantWhatsAppMessage } from "@/lib/whatsapp";
+import { requireTenantAccess } from "@/lib/auth";
 
 export async function PATCH(
   req: Request,
@@ -9,7 +10,10 @@ export async function PATCH(
 ) {
   try {
     const resolvedParams = await params;
+    const slug = resolvedParams.slug;
     const appointmentId = resolvedParams.id;
+
+    const currentMembership = await requireTenantAccess(slug);
 
     // 1. LENDO O QUE O FRONT-END MANDOU (COMPLETED ou CANCELED)
     const body = await req.json();
@@ -29,6 +33,23 @@ export async function PATCH(
 
     if (!currentApp) {
       return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
+    }
+
+    // Se for STAFF, validar se o agendamento pertence ao profissional vinculado
+    if (currentMembership.role === "STAFF") {
+      const linkedProf = await prisma.professional.findFirst({
+        where: {
+          tenantId: currentMembership.tenantId,
+          userId: currentMembership.userId,
+        },
+      });
+
+      if (!linkedProf || currentApp.professionalId !== linkedProf.id) {
+        return NextResponse.json(
+          { error: "Acesso negado: você só pode alterar seus próprios agendamentos." },
+          { status: 403 }
+        );
+      }
     }
 
     // 3. ATUALIZAR AGENDAMENTO E CLIENTE COM TRANSAÇÃO

@@ -1,7 +1,7 @@
 // app/admin/[slug]/layout.tsx
 import { Metadata } from "next";
 import AdminLayoutClient from "./AdminLayoutClient";
-import { getSession } from "@/lib/session";
+import { requireTenantAccess } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Admin | TratoMarcado",
@@ -11,9 +11,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function Layout({ children }: { children: React.ReactNode }) {
-  const session = await getSession();
-  const user = session ? { name: session.name, role: session.role || "USER" } : null;
+export default async function Layout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const membership = await requireTenantAccess(slug);
+
+  const user = {
+    name: membership.user?.name || "Usuário",
+    role: membership.role,
+  };
 
   return <AdminLayoutClient initialUser={user}>{children}</AdminLayoutClient>;
 }

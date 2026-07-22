@@ -33,7 +33,7 @@ export async function GET(
       );
     }
 
-    const [services, professionals, activeClubPlansCount, reviewStats, totalServicesRendered] = await Promise.all([
+    const [services, professionals, activeClubPlansCount, reviewStats, totalServicesRendered, activeProductsCount] = await Promise.all([
       prisma.service.findMany({
         where: { tenantId: tenant.id, active: true },
         select: {
@@ -70,12 +70,19 @@ export async function GET(
           status: "COMPLETED",
         },
       }),
+      prisma.product.count({
+        where: {
+          tenantId: tenant.id,
+          active: true,
+        },
+      }),
     ]);
 
     return NextResponse.json({
       tenant,
       services,
       professionals,
+      productsCount: activeProductsCount,
       club: {
         enabled: tenant.clubEnabled && activeClubPlansCount > 0,
         plansCount: activeClubPlansCount,

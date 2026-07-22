@@ -1,4 +1,4 @@
-import { requireTenantAccess } from "@/lib/auth";
+import { requireManagerAccess } from "@/lib/auth";
 import BillingClient from "./BillingClient";
 
 export default async function Page({
@@ -8,7 +8,7 @@ export default async function Page({
 }) {
   const { slug } = await params;
 
-  await requireTenantAccess(slug);
+  await requireManagerAccess(slug);
 
   return <BillingClient slug={slug} />;
 }

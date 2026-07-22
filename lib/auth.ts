@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { NextResponse } from "next/server";
 
 export async function getCurrentMembershipBySlug(slug: string) {
   const session = await getSession();
@@ -84,3 +85,31 @@ export async function requireTenantAccess(slug: string) {
 
   return membership;
 }
+
+export async function requireManagerAccess(slug: string) {
+  const membership = await requireTenantAccess(slug);
+
+  if (membership.role === "STAFF") {
+    redirect(`/admin/${slug}`);
+  }
+
+  return membership;
+}
+
+export async function verifyManagerApiAccess(slug: string) {
+  const membership = await getCurrentMembershipBySlug(slug);
+
+  if (!membership || membership.role === "STAFF") {
+    return {
+      authorized: false,
+      response: NextResponse.json(
+        { error: "Acesso negado: permissão insuficiente" },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return { authorized: true, membership };
+}
+
+

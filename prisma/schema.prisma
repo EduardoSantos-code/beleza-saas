@@ -57,13 +57,14 @@ model Tenant {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  name         String
-  email        String       @unique
-  passwordHash String
-  createdAt    DateTime     @default(now())
-  role         String       @default("USER")
-  memberships  Membership[]
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  createdAt     DateTime       @default(now())
+  role          String         @default("USER")
+  memberships   Membership[]
+  professionals Professional[]
 }
 
 model Membership {
@@ -80,6 +81,7 @@ model Membership {
 model Professional {
   id             String                     @id @default(cuid())
   tenantId       String
+  userId         String?
   name           String
   active         Boolean                    @default(true)
   commissionRate Int                        @default(50)
@@ -89,6 +91,7 @@ model Professional {
   updatedAt      DateTime                   @updatedAt
   appointments   Appointment[]
   tenant         Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user           User?                      @relation(fields: [userId], references: [id], onDelete: SetNull)
   businessHours  ProfessionalBusinessHour[]
   blocks         ScheduleBlock[]
 

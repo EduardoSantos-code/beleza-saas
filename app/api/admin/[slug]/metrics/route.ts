@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { Appointment, Service, Professional, Client } from "@prisma/client";
+import { getCurrentMembershipBySlug } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,44 @@ export async function GET(
   try {
     const { slug } = await params;
     const { searchParams } = new URL(req.url);
+
+    const currentMembership = await getCurrentMembershipBySlug(slug);
+    if (!currentMembership) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
+    let staffProfessionalId: string | null = null;
+    if (currentMembership.role === "STAFF") {
+      const linkedProf = await prisma.professional.findFirst({
+        where: {
+          tenantId: currentMembership.tenantId,
+          userId: currentMembership.userId,
+        },
+      });
+
+      if (!linkedProf) {
+        return NextResponse.json({
+          summary: {
+            totalAppointments: 0,
+            completedAppointments: 0,
+            totalClients: 0,
+            totalRevenue: 0,
+            totalComissoes: 0,
+            lucroLiquido: 0,
+            totalClubDiscountInCents: 0,
+            cancellationRate: 0,
+            noShowRate: 0,
+          },
+          chartData: [],
+          topServices: [],
+          topProfessionals: [],
+          topClientsPeriod: [],
+          topClientsAllTime: [],
+          detalheProfissionais: [],
+        });
+      }
+      staffProfessionalId = linkedProf.id;
+    }
 
     // 1. Filtros por data personalizada ou range padrão
     const startDateParam = searchParams.get("startDate");
@@ -61,6 +100,7 @@ export async function GET(
     const appointments = await prisma.appointment.findMany({
       where: {
         professional: { tenant: { slug } },
+        professionalId: staffProfessionalId || undefined,
         startAt: { gte: dateLimitStart, lte: dateLimitEnd },
       },
       include: {
@@ -132,7 +172,11 @@ export async function GET(
     // 5.3 Top Clientes Desde Sempre (Buscando agendamentos reais)
     const allTimeCounts = await prisma.appointment.groupBy({
       by: ['clientId'],
-      where: { tenant: { slug }, status: "COMPLETED" },
+      where: {
+        tenant: { slug },
+        professionalId: staffProfessionalId || undefined,
+        status: "COMPLETED",
+      },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
       take: 5,

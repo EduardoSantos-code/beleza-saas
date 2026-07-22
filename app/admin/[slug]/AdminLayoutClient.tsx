@@ -43,6 +43,14 @@ export default function AdminLayout({
     { name: "Como Usar", href: `/admin/${slug}/help`, icon: "📖" },
   ];
 
+  const isStaff = user?.role === "STAFF";
+  const filteredLinks = links.filter((link) => {
+    if (isStaff) {
+      return ["Agenda", "Clientes", "Métricas"].includes(link.name);
+    }
+    return true;
+  });
+
   if (!slug) return <>{children}</>;
 
   return (
@@ -88,7 +96,7 @@ export default function AdminLayout({
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-4 pb-4 scrollbar-hide">
-          {links.map((link) => {
+          {filteredLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
               <Link
@@ -127,7 +135,13 @@ export default function AdminLayout({
                   {user?.name || "Carregando..."}
                 </span>
                 <span className="text-[12px] font-black text-emerald-500 uppercase tracking-widest">
-                  {user?.role === "MASTER" ? "👑 Master" : "💈 Responsável"}
+                  {user?.role === "MASTER"
+                    ? "👑 Master"
+                    : user?.role === "OWNER"
+                    ? "👑 Proprietário"
+                    : user?.role === "MANAGER"
+                    ? "💼 Gerente"
+                    : "💈 Colaborador"}
                 </span>
               </div>
               

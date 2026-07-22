@@ -15,6 +15,12 @@ import {
   Scissors,
   User,
   XCircle,
+  ShoppingBag,
+  Plus,
+  Minus,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
@@ -36,6 +42,27 @@ type AppointmentData = {
   clubOriginalPrice?: number | null;
   clubDiscountAmount?: number | null;
   clubFinalPrice?: number | null;
+};
+
+type ClubPlan = {
+  id: string;
+  name: string;
+  description?: string | null;
+  terms?: string | null;
+  priceInCents: number;
+  billingCycle: string;
+  discountPercent?: number | null;
+  includedUsesPerPeriod?: number | null;
+};
+
+type Product = {
+  id: string;
+  name: string;
+  price: number;
+  stockQuantity: number;
+  imageUrl?: string | null;
+  description?: string | null;
+  active: boolean;
 };
 
 function formatCurrencyFromCents(valueInCents: number | null | undefined) {
@@ -67,6 +94,17 @@ export default function ManageAppointmentClient({
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+
+  // Upsell state variables
+  const [clubPlans, setClubPlans] = useState<ClubPlan[]>([]);
+  const [loadingClubPlans, setLoadingClubPlans] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [selectedProducts, setSelectedProducts] = useState<Record<string, number>>({});
+  const [isReserving, setIsReserving] = useState(false);
+  const [reservationSuccess, setReservationSuccess] = useState<string | null>(null);
+  const [reservationError, setReservationError] = useState<string | null>(null);
+  const [showAllProducts, setShowAllProducts] = useState(false);
   const TZ = "America/Sao_Paulo";
 
   useEffect(() => {
@@ -89,6 +127,95 @@ export default function ManageAppointmentClient({
       loadAppointment();
     }
   }, [slug, id, loadAppointment]);
+
+  // Load club plans and products
+  useEffect(() => {
+    if (!data || data.status === "CANCELED") return;
+
+    const hasClub = Boolean(data.clubSubscriptionId || data.clubPlanName);
+    if (!hasClub) {
+      setLoadingClubPlans(true);
+      fetch(`/api/public/${slug}/club/plans`)
+        .then((res) => {
+          if (res.ok) return res.json();
+          throw new Error();
+        })
+        .then((json) => {
+          if (json.enabled && Array.isArray(json.plans)) {
+            setClubPlans(json.plans);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoadingClubPlans(false));
+    }
+
+    setLoadingProducts(true);
+    fetch(`/api/public/${slug}/products`)
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error();
+      })
+      .then((json) => {
+        if (Array.isArray(json.products)) {
+          setProducts(json.products.filter((p: Product) => p.active && p.stockQuantity > 0));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingProducts(false));
+  }, [data, slug]);
+
+  const handleReserveProducts = async () => {
+    setReservationError(null);
+    setReservationSuccess(null);
+
+    const items = Object.entries(selectedProducts)
+      .filter(([_, qty]) => qty > 0)
+      .map(([productId, quantity]) => ({ productId, quantity }));
+
+    if (items.length === 0) {
+      setReservationError("Selecione pelo menos um produto para reservar.");
+      return;
+    }
+
+    if (!data?.client?.phoneE164 || !data?.client?.name) {
+      setReservationError("Dados do cliente não encontrados no agendamento.");
+      return;
+    }
+
+    try {
+      setIsReserving(true);
+      const res = await fetch(`/api/public/${slug}/client-reserve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneE164: data.client.phoneE164,
+          clientName: data.client.name,
+          items,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || "Erro ao processar reserva.");
+      }
+
+      setReservationSuccess("Reserva realizada com sucesso! Retire no estabelecimento no dia do atendimento. 🛍️");
+      setSelectedProducts({});
+      
+      // Refresh products stock
+      const prodRes = await fetch(`/api/public/${slug}/products`);
+      if (prodRes.ok) {
+        const prodJson = await prodRes.json();
+        if (Array.isArray(prodJson.products)) {
+          setProducts(prodJson.products.filter((p: Product) => p.active && p.stockQuantity > 0));
+        }
+      }
+    } catch (err: any) {
+      setReservationError(err.message || "Ocorreu um erro ao realizar a reserva.");
+    } finally {
+      setIsReserving(false);
+    }
+  };
 
   const handleCancel = async () => {
     const confirmed = window.confirm(
@@ -420,6 +547,233 @@ export default function ManageAppointmentClient({
             </button>
           </div>
         </div>
+
+        {/* UPSELL SECTIONS */}
+        {!isCanceled && (
+          <div className="mt-6 space-y-6">
+            {/* CLUB UPSELL */}
+            {loadingClubPlans ? (
+              <div className="rounded-3xl border border-amber-200 bg-white p-6 shadow-md dark:border-amber-900/50 dark:bg-zinc-900 flex flex-col items-center justify-center py-8">
+                <div className="animate-spin h-6 w-6 border-2 border-amber-300 border-t-amber-500 rounded-full" />
+                <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">Carregando ofertas de Clube...</p>
+              </div>
+            ) : clubPlans.length > 0 ? (
+              <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-md dark:border-amber-900/50 dark:from-amber-950/20 dark:to-orange-950/20">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-lg animate-pulse" style={{ animationDuration: '3s' }}>
+                    <Crown size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-amber-900 dark:text-amber-100 uppercase tracking-tight">
+                      Faça parte do Clube VIP
+                    </h3>
+                    <p className="text-xs font-bold text-amber-700 dark:text-amber-400">
+                      Economize em todos os seus agendamentos!
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {clubPlans.map((plan) => (
+                    <div key={plan.id} className="rounded-2xl border border-amber-100 bg-white/80 p-4 dark:border-amber-950 dark:bg-zinc-900/80 flex flex-col justify-between gap-3">
+                      <div>
+                        <div className="flex justify-between items-start gap-2">
+                          <h4 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-tight">
+                            {plan.name}
+                          </h4>
+                          <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase bg-amber-500/10 px-2 py-0.5 rounded-full shrink-0">
+                            {(plan.priceInCents / 100).toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            })} / {plan.billingCycle === "MONTHLY" ? "mês" : plan.billingCycle === "YEARLY" ? "ano" : "ciclo"}
+                          </span>
+                        </div>
+                        {plan.discountPercent && plan.discountPercent > 0 ? (
+                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
+                            <Sparkles size={12} /> {plan.discountPercent}% OFF em todos os serviços
+                          </p>
+                        ) : null}
+                        {plan.includedUsesPerPeriod !== 0 ? (
+                          <p className="text-xs font-bold text-zinc-600 dark:text-zinc-400 mt-1">
+                            ✓ {plan.includedUsesPerPeriod === -1
+                              ? "Serviços ilimitados inclusos"
+                              : `${plan.includedUsesPerPeriod}x serviços inclusos por ciclo`}
+                          </p>
+                        ) : null}
+                        {plan.description && (
+                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed italic">
+                            {plan.description}
+                          </p>
+                        )}
+                      </div>
+                      <a
+                        href={`/s/${slug}/clube/assinar?planId=${encodeURIComponent(plan.id)}`}
+                        className="w-full rounded-xl bg-amber-500 py-3 text-center text-xs font-black uppercase tracking-widest text-white hover:bg-amber-600 transition-colors cursor-pointer block"
+                        style={{ boxShadow: "0 6px 15px rgba(245, 158, 11, 0.2)" }}
+                      >
+                        Assinar agora
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {/* PRODUCTS UPSELL */}
+            {loadingProducts ? (
+              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-md dark:border-zinc-800 dark:bg-zinc-900 flex flex-col items-center justify-center py-8">
+                <div className="animate-spin h-6 w-6 border-2 border-zinc-300 rounded-full" style={{ borderTopColor: primaryColor }} />
+                <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">Carregando produtos...</p>
+              </div>
+            ) : products.length > 0 ? (
+              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white" style={{ backgroundColor: primaryColor }}>
+                    <ShoppingBag size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-tight">
+                      Reserve seus Produtos
+                    </h3>
+                    <p className="text-xs font-bold text-zinc-500">
+                      Garanta seus favoritos e retire no local!
+                    </p>
+                  </div>
+                </div>
+
+                {reservationSuccess && (
+                  <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] font-bold text-emerald-600 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:text-emerald-400">
+                    {reservationSuccess}
+                  </div>
+                )}
+
+                {reservationError && (
+                  <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-[11px] font-bold text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
+                    🚨 {reservationError}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {(showAllProducts ? products : products.slice(0, 4)).map((product) => {
+                    const qty = selectedProducts[product.id] || 0;
+                    return (
+                      <div key={product.id} className="rounded-2xl border border-zinc-100 bg-zinc-50/50 p-3 dark:border-zinc-800 dark:bg-zinc-950/30 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {product.imageUrl ? (
+                            <img src={product.imageUrl} alt={product.name} className="h-12 w-12 object-cover rounded-xl shrink-0" />
+                          ) : (
+                            <div className="h-12 w-12 rounded-xl bg-zinc-150 dark:bg-zinc-850 flex items-center justify-center text-zinc-400 shrink-0">
+                              <ShoppingBag size={18} />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <h4 className="text-xs font-black text-zinc-900 dark:text-white truncate">{product.name}</h4>
+                            <p className="text-xs font-black text-emerald-600 dark:text-emerald-500 mt-0.5">
+                              {(product.price / 100).toLocaleString("pt-BR", {
+                                style: "currency",
+                                currency: "BRL",
+                              })}
+                            </p>
+                            {product.stockQuantity <= 2 && (
+                              <p className="text-[9px] font-black text-red-500 dark:text-red-400 uppercase mt-0.5 animate-pulse">
+                                Apenas {product.stockQuantity} un!
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            disabled={qty <= 0}
+                            onClick={() => setSelectedProducts({ ...selectedProducts, [product.id]: qty - 1 })}
+                            className="h-7 w-7 rounded-lg bg-white border border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900 font-black text-zinc-600 dark:text-zinc-400 flex items-center justify-center cursor-pointer transition-all disabled:opacity-30 active:scale-95"
+                          >
+                            <Minus size={12} />
+                          </button>
+                          <span className="text-xs font-black text-zinc-900 dark:text-white w-5 text-center">{qty}</span>
+                          <button
+                            type="button"
+                            disabled={qty >= product.stockQuantity}
+                            onClick={() => setSelectedProducts({ ...selectedProducts, [product.id]: qty + 1 })}
+                            className="h-7 w-7 rounded-lg bg-white border border-zinc-200 dark:border-zinc-800 dark:bg-zinc-900 font-black text-zinc-600 dark:text-zinc-400 flex items-center justify-center cursor-pointer transition-all disabled:opacity-30 active:scale-95"
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {products.length > 4 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllProducts(!showAllProducts)}
+                    className="w-full text-center text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 py-3 transition-colors cursor-pointer flex items-center justify-center gap-1 mt-2"
+                  >
+                    {showAllProducts ? (
+                      <>
+                        <ChevronUp size={12} /> Mostrar menos
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown size={12} /> Ver mais produtos ({products.length})
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {Object.values(selectedProducts).some((q) => q > 0) && (
+                  <div className="mt-4 pt-4 border-t border-dashed border-zinc-200 dark:border-zinc-800">
+                    <div className="flex justify-between items-center mb-3">
+                      <div>
+                        <p className="text-[9px] font-black uppercase text-zinc-400">Total selecionado</p>
+                        <p className="text-xs font-bold text-zinc-600 dark:text-zinc-400">
+                          {Object.values(selectedProducts).reduce((a, b) => a + b, 0)} item(s)
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] font-black uppercase text-zinc-400">Subtotal</p>
+                        <p className="text-sm font-black text-zinc-900 dark:text-white">
+                          {(
+                            Object.entries(selectedProducts).reduce((total, [prodId, qty]) => {
+                              const prod = products.find((p) => p.id === prodId);
+                              return total + (prod ? prod.price * qty : 0);
+                            }, 0) / 100
+                          ).toLocaleString("pt-BR", {
+                            style: "currency",
+                            currency: "BRL",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isReserving}
+                      onClick={handleReserveProducts}
+                      className="w-full rounded-xl py-3.5 text-xs font-black uppercase tracking-widest text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5 shadow-lg"
+                      style={{
+                        backgroundColor: primaryColor,
+                        boxShadow: `0 8px 20px ${primaryColor}20`,
+                      }}
+                    >
+                      {isReserving ? (
+                        <>
+                          <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                          Reservando...
+                        </>
+                      ) : (
+                        "Confirmar Reserva"
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
+        )}
 
         {!isCanceled && (
           <p className="mt-4 text-center text-[10px] font-black uppercase tracking-widest text-zinc-500">

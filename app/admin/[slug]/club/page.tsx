@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireTenantAccess } from "@/lib/auth";
+import { requireManagerAccess } from "@/lib/auth";
 import ClubPlansClient from "./ClubPlansClient";
 
 type PageProps = {
@@ -11,7 +11,7 @@ export default async function ClubAdminPage({ params }: PageProps) {
   const { slug } = await params;
 
   // 1. Validar acesso do usuário ao tenant pelo slug
-  await requireTenantAccess(slug);
+  await requireManagerAccess(slug);
 
   // 2. Buscar Tenant por slug com campos específicos
   const tenant = await prisma.tenant.findUnique({

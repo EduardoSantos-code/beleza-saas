@@ -1,4 +1,4 @@
-import { requireTenantAccess } from "@/lib/auth";
+import { requireManagerAccess } from "@/lib/auth";
 import ServicesClient from "./ServicesClient";
 
 export default async function Page({
@@ -8,7 +8,7 @@ export default async function Page({
 }) {
   const { slug } = await params;
 
-  await requireTenantAccess(slug);
+  await requireManagerAccess(slug);
 
   return <ServicesClient slug={slug} />;
 }

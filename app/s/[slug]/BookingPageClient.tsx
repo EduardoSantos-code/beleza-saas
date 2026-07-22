@@ -54,6 +54,7 @@ type CatalogResponse = {
   };
   services: Service[];
   professionals: Professional[];
+  productsCount?: number;
   club?: {
     enabled: boolean;
     plansCount: number;
@@ -90,7 +91,7 @@ type HistoryAppointment = {
   professional: { name: string };
 };
 
-type PageTab = "agendamento" | "reservas" | "historico" | "galeria" | "avaliacoes";
+type PageTab = "agendamento" | "clube" | "reservas" | "historico" | "galeria" | "avaliacoes";
 
 type Slot = {
   iso: string;
@@ -233,6 +234,8 @@ export default function BookingPageClient({ slug }: { slug: string }) {
   const [reserving, setReserving] = useState(false);
   const [reserveSuccess, setReserveSuccess] = useState("");
   const [reserveError, setReserveError] = useState("");
+  const [clubPlans, setClubPlans] = useState<any[]>([]);
+  const [loadingClubPlans, setLoadingClubPlans] = useState(false);
 
   // Estados do formulário de review
   const [reviewRating, setReviewRating] = useState(0);
@@ -319,6 +322,20 @@ export default function BookingPageClient({ slug }: { slug: string }) {
     }
   }, [slug]);
 
+  const loadClubPlans = useCallback(async () => {
+    try {
+      setLoadingClubPlans(true);
+      const res = await fetch(`/api/public/${slug}/club/plans`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setClubPlans(data.plans || []);
+    } catch {
+      // silent
+    } finally {
+      setLoadingClubPlans(false);
+    }
+  }, [slug]);
+
   const handleCreateReservation = async (e: React.FormEvent) => {
     e.preventDefault();
     setReserveError("");
@@ -391,8 +408,20 @@ export default function BookingPageClient({ slug }: { slug: string }) {
     } else if (activeTab === "reservas") {
       loadProducts();
       if (identified) loadReservations();
+    } else if (activeTab === "clube") {
+      loadClubPlans();
     }
-  }, [activeTab, loadReviews, loadGallery, loadHistory, loadReservations, loadProducts, identified]);
+  }, [activeTab, loadReviews, loadGallery, loadHistory, loadReservations, loadProducts, loadClubPlans, identified]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam === "clube") {
+        setActiveTab("clube");
+      }
+    }
+  }, []);
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1063,28 +1092,63 @@ export default function BookingPageClient({ slug }: { slug: string }) {
       <div className="sticky top-0 z-30 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 shadow-sm">
         <div className="mx-auto max-w-6xl px-4">
           <nav className="flex gap-1 -mb-px overflow-x-auto scrollbar-hide">
-            {([
-              { id: "agendamento" as PageTab, label: "Agendamento", icon: <CalendarIcon size={16} /> },
-              { id: "reservas" as PageTab, label: "Reservas", icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> },
-              { id: "historico" as PageTab, label: "Histórico", icon: <History size={16} /> },
-              { id: "galeria" as PageTab, label: "Galeria", icon: <ImageIcon size={16} /> },
-              { id: "avaliacoes" as PageTab, label: "Avaliações", icon: <Star size={16} /> },
-            ]).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-5 py-4 text-xs font-black uppercase tracking-widest transition-all border-b-2 shrink-0 cursor-pointer ${
-                  activeTab === tab.id
-                    ? "border-current"
-                    : "border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-                }`}
-                style={activeTab === tab.id ? { color: primaryColor, borderColor: primaryColor } : undefined}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
+            {(() => {
+              const list = [
+                { id: "agendamento" as PageTab, label: "Agendamento", icon: <CalendarIcon size={16} /> }
+              ];
+              if (catalog?.club?.enabled) {
+                list.push({
+                  id: "clube" as PageTab,
+                  label: "Clube VIP",
+                  icon: <Crown size={16} className="text-amber-500 animate-bounce" style={{ animationDuration: "3s" }} />
+                });
+              }
+              if (catalog?.productsCount && catalog.productsCount > 0) {
+                list.push({
+                  id: "reservas" as PageTab,
+                  label: "Reservas",
+                  icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                });
+              }
+              list.push(
+                { id: "historico" as PageTab, label: "Histórico", icon: <History size={16} /> },
+                { id: "galeria" as PageTab, label: "Galeria", icon: <ImageIcon size={16} /> },
+                { id: "avaliacoes" as PageTab, label: "Avaliações", icon: <Star size={16} /> }
+              );
+              return list;
+            })().map((tab) => {
+              const isClube = tab.id === "clube";
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-5 py-4 text-xs font-black uppercase tracking-widest transition-all border-b-2 shrink-0 cursor-pointer ${
+                    isActive
+                      ? "border-current"
+                      : isClube
+                        ? "border-transparent text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300 font-extrabold"
+                        : "border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                  }`}
+                  style={
+                    isActive
+                      ? isClube
+                        ? { color: "#f59e0b", borderColor: "#f59e0b" }
+                        : { color: primaryColor, borderColor: primaryColor }
+                      : undefined
+                  }
+                >
+                  {tab.icon}
+                  {tab.label}
+                  {isClube && (
+                    <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[8px] text-white font-extrabold uppercase animate-pulse">
+                      VIP
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
         </div>
       </div>
@@ -1110,12 +1174,13 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                   </p>
                 </div>
               </div>
-              <a
-                href={`/s/${slug}/clube`}
-                className="shrink-0 rounded-xl bg-amber-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-amber-600 transition-colors"
+              <button
+                type="button"
+                onClick={() => setActiveTab("clube")}
+                className="shrink-0 rounded-xl bg-amber-500 px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-amber-600 transition-colors cursor-pointer"
               >
                 Ver
-              </a>
+              </button>
             </div>
           )}
 
@@ -1267,12 +1332,13 @@ export default function BookingPageClient({ slug }: { slug: string }) {
                     Assine e garanta benefícios exclusivos.
                   </p>
                 </div>
-                <a
-                  href={`/s/${slug}/clube`}
-                  className="rounded-lg bg-amber-500 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-amber-600 transition-colors"
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("clube")}
+                  className="rounded-lg bg-amber-500 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-amber-600 transition-colors cursor-pointer"
                 >
                   Ver
-                </a>
+                </button>
               </div>
             )}
 
@@ -1525,6 +1591,140 @@ export default function BookingPageClient({ slug }: { slug: string }) {
           </aside>
         </div>
       </div>
+      )}
+
+      {/* TAB: CLUBE */}
+      {activeTab === "clube" && catalog?.club?.enabled && (
+        <div className="mx-auto max-w-4xl px-4 py-10 pb-24 animate-fadeIn">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 border-b border-zinc-150 dark:border-zinc-800 pb-6">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg text-white bg-amber-500 shadow-amber-500/20">
+                <Crown size={24} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-zinc-900 dark:text-white italic tracking-tight uppercase">Clube de Assinaturas</h2>
+                <p className="text-xs font-bold text-zinc-500">Planos de benefícios exclusivos e descontos especiais</p>
+              </div>
+            </div>
+            <a
+              href={`/s/${slug}/clube/minha-assinatura`}
+              className="flex items-center justify-center gap-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-amber-500 dark:hover:bg-amber-500 hover:text-white dark:hover:text-white px-5 py-3 text-xs font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 transition-all active:scale-95 shrink-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Portal do Assinante
+            </a>
+          </div>
+
+          {loadingClubPlans ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="animate-spin h-8 w-8 border-3 border-zinc-300 dark:border-zinc-700 border-t-amber-500 rounded-full" />
+            </div>
+          ) : clubPlans.length === 0 ? (
+            <div className="rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800 p-12 text-center bg-white dark:bg-zinc-900">
+              <p className="text-sm font-bold text-zinc-500">Esta barbearia ainda não possui planos ativos no momento.</p>
+            </div>
+          ) : (
+            <div className="grid gap-8">
+              {clubPlans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="rounded-[2.5rem] border border-zinc-200 bg-white shadow-xl shadow-zinc-200/50 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-none p-8 md:p-10 relative overflow-hidden group hover:ring-1 hover:ring-amber-500/30 transition-all duration-300 animate-slideUp"
+                >
+                  {plan.discountPercent && (
+                    <div className="absolute top-6 right-6 flex items-center gap-1.5 rounded-full bg-emerald-500 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-emerald-500/20">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                      {plan.discountPercent}% OFF
+                    </div>
+                  )}
+
+                  <div className="mb-8">
+                    <h3 className="text-3xl font-black italic leading-none tracking-tighter text-zinc-900 transition-colors group-hover:text-amber-500 dark:text-white">
+                      {plan.name}
+                    </h3>
+                    <div className="mt-4 flex items-baseline gap-2">
+                      <span className="text-5xl font-black tracking-tighter text-zinc-900 dark:text-white">
+                        {(plan.priceInCents / 100).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </span>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                        /{plan.billingCycle === "MONTHLY" ? "mensal" : plan.billingCycle === "YEARLY" ? "anual" : plan.billingCycle === "QUARTERLY" ? "trimestral" : plan.billingCycle === "SEMIANNUAL" ? "semestral" : plan.billingCycle.toLowerCase()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mb-10 grid gap-4 md:grid-cols-2">
+                    {plan.discountPercent && (
+                      <div className="rounded-3xl border border-zinc-200 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
+                        <div className="flex items-start gap-3">
+                          <div className="rounded-2xl bg-emerald-500/10 p-2 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                            <Star size={18} />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Desconto Fixo</p>
+                            <p className="mt-1 text-sm font-black text-zinc-900 dark:text-white">
+                              {plan.discountPercent}% em todos os serviços
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {plan.includedUsesPerPeriod !== 0 && (
+                      <div className="rounded-3xl border border-zinc-200 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
+                        <div className="flex items-start gap-3">
+                          <div className="rounded-2xl bg-emerald-500/10 p-2 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                            <Scissors size={18} />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Benefício Incluso</p>
+                            <p className="mt-1 text-sm font-black text-zinc-900 dark:text-white">
+                              {plan.includedUsesPerPeriod === -1
+                                ? "Serviços ilimitados por ciclo"
+                                : `${plan.includedUsesPerPeriod}x serviços por ciclo`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {plan.description && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">O que está incluso</p>
+                        <p className="whitespace-pre-line text-sm font-bold leading-relaxed text-zinc-500">
+                          {plan.description}
+                        </p>
+                      </div>
+                    )}
+
+                    {plan.terms && (
+                      <div className="space-y-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Regras e Termos</p>
+                        <div className="flex items-start gap-3 text-sm font-bold text-zinc-600 dark:text-zinc-400">
+                          <CheckCircle size={20} className="h-5 w-5 shrink-0 text-emerald-500" />
+                          <span className="leading-tight">{plan.terms}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <a
+                    href={`/s/${slug}/clube/assinar?planId=${encodeURIComponent(plan.id)}`}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl py-5 px-8 text-xs font-black uppercase tracking-widest text-white transition-all hover:opacity-90 active:scale-95"
+                    style={{
+                      backgroundColor: "#f59e0b",
+                      boxShadow: "0 14px 30px rgba(245, 158, 11, 0.25)",
+                    }}
+                  >
+                    Quero assinar
+                    <ChevronRight size={16} />
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* TAB: RESERVAS */}

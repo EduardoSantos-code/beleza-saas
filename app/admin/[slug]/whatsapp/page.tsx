@@ -1,4 +1,4 @@
-import { requireTenantAccess } from "@/lib/auth";
+import { requireManagerAccess } from "@/lib/auth";
 import WhatsappSettingsClient from "./WhatsappSettingsClient";
 
 export default async function Page({
@@ -7,7 +7,7 @@ export default async function Page({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  await requireTenantAccess(slug);
+  await requireManagerAccess(slug);
 
   return <WhatsappSettingsClient slug={slug} />;
 }

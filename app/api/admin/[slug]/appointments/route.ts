@@ -203,7 +203,10 @@ export async function PATCH(
   const { slug } = await params;
 
   try {
-    await requireTenantAccess(slug);
+    const currentMembership = await requireTenantAccess(slug);
+    if (currentMembership.role === "STAFF") {
+      return NextResponse.json({ error: "Acesso negado: permissão insuficiente" }, { status: 403 });
+    }
 
     const body = await request.json();
     const { date } = body;

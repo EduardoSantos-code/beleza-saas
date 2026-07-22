@@ -18,6 +18,7 @@ import {
   CreditCard,
   Crown,
   History,
+  LayoutDashboard,
   Loader2,
   MessageCircle,
   Pencil,
@@ -26,6 +27,7 @@ import {
   Scissors,
   Search,
   ShieldCheck,
+  Sliders,
   Trash2,
   Users,
   Wallet,
@@ -239,6 +241,28 @@ export default function ClubPlansClient({
   initialServices,
 }: Props) {
   const [plans, setPlans] = useState<ClubPlan[]>(initialPlans);
+  
+  type ClubTab = "overview" | "plans" | "subscribers" | "history" | "settings";
+  const [activeTab, setActiveTab] = useState<ClubTab>("overview");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam && ["overview", "plans", "subscribers", "history", "settings"].includes(tabParam)) {
+        setActiveTab(tabParam as ClubTab);
+      }
+    }
+  }, []);
+
+  const handleTabChange = (tab: ClubTab) => {
+    setActiveTab(tab);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", tab);
+      window.history.pushState(null, "", url.pathname + url.search);
+    }
+  };
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [editingPlan, setEditingPlan] = useState<ClubPlan | null>(null);
@@ -713,7 +737,7 @@ export default function ClubPlansClient({
 
       <div className="relative mx-auto max-w-7xl space-y-8 px-4 py-6 sm:px-6 lg:px-8">
         <section className={shellCardClass}>
-          <div className="border-b border-zinc-200 bg-gradient-to-br from-emerald-500/[0.08] via-transparent to-transparent px-5 py-6 dark:border-zinc-800 sm:px-8 sm:py-8">
+          <div className="bg-gradient-to-br from-emerald-500/[0.08] via-transparent to-transparent px-5 py-6 dark:border-zinc-800 sm:px-8 sm:py-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-2xl">
                 <p className={labelClass}>Clube de assinaturas</p>
@@ -740,357 +764,384 @@ export default function ClubPlansClient({
                     </span>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
+        {/* NAVEGAÇÃO DE ABAS */}
+        <div className="flex border-b border-zinc-200 dark:border-zinc-800 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="flex gap-2 min-w-max pb-1">
+            {[
+              { id: "overview", label: "Visão Geral", icon: <LayoutDashboard size={18} /> },
+              { id: "plans", label: "Planos", icon: <Scissors size={18} /> },
+              { id: "subscribers", label: "Assinantes", icon: <Users size={18} /> },
+              { id: "history", label: "Histórico de Uso", icon: <History size={18} /> },
+              { id: "settings", label: "Configurações", icon: <Sliders size={18} /> },
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
                 <button
-                  onClick={() => handleOpenForm()}
-                  className={primaryButtonClass}
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id as any)}
+                  className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-black transition-all duration-200 active:scale-95 ${
+                    isActive
+                      ? "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
+                      : "text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900/50"
+                  }`}
                 >
-                  <Plus size={18} />
-                  Novo plano
+                  {tab.icon}
+                  {tab.label}
                 </button>
-              </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {activeTab === "overview" && (
+          <section className="space-y-4">
+            <div>
+              <p className={labelClass}>Visão geral</p>
+              <h2 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                Resumo do clube
+              </h2>
             </div>
-          </div>
 
-          <div className="grid gap-3 px-5 py-5 sm:px-8 sm:py-6 md:grid-cols-2">
-            <div className={`${mutedPanelClass} p-5`}>
-              <p className={labelClass}>Gateway do clube</p>
-              <p className="mt-2 text-lg font-black italic tracking-tighter text-zinc-900 dark:text-white">
-                {clubPaymentProvider || "Não configurado"}
-              </p>
-            </div>
-
-            <div className={`${mutedPanelClass} p-5`}>
-              <p className={labelClass}>Tenant</p>
-              <p className="mt-2 text-lg font-black italic tracking-tighter text-zinc-900 dark:text-white">
-                {initialTenant.name}
-              </p>
-              <p className="mt-1 text-xs font-bold text-zinc-500">
-                /{initialTenant.slug}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="space-y-4">
-          <div>
-            <p className={labelClass}>Visão geral</p>
-            <h2 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
-              Resumo do clube
-            </h2>
-          </div>
-
-          {summaryError && (
-            <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={16} />
-                {summaryError}
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
-            {summaryLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`${innerCardClass} h-32 animate-pulse bg-zinc-100 dark:bg-zinc-900`}
-                />
-              ))
-            ) : summary ? (
-              <>
-                <SummaryCard
-                  icon={<Users size={20} />}
-                  label="Assinantes ativos"
-                  value={summary.activeSubscribers}
-                  toneClass="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
-                />
-                <SummaryCard
-                  icon={<Wallet size={20} />}
-                  label="Receita mensal prevista"
-                  value={formatCurrency(summary.monthlyRecurringRevenueInCents)}
-                  toneClass="bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400"
-                />
-                <SummaryCard
-                  icon={<Clock size={20} />}
-                  label="Pendentes"
-                  value={summary.pendingSubscribers}
-                  toneClass="bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400"
-                />
-                <SummaryCard
-                  icon={<AlertTriangle size={20} />}
-                  label="Inadimplentes"
-                  value={summary.overdueSubscribers}
-                  toneClass="bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400"
-                />
-                <SummaryCard
-                  icon={<BadgePercent size={20} />}
-                  label="Descontos no mês"
-                  value={formatCurrency(
-                    summary.totalClubDiscountThisMonthInCents
-                  )}
-                  toneClass="bg-purple-500/10 text-purple-600 dark:bg-purple-500/15 dark:text-purple-400"
-                />
-                <SummaryCard
-                  icon={<CalendarCheck size={20} />}
-                  label="Agendamentos com clube"
-                  value={summary.clubAppointmentsThisMonth}
-                  toneClass="bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400"
-                />
-              </>
-            ) : null}
-          </div>
-        </section>
-
-        <section className={shellCardClass}>
-          <div className="border-b border-zinc-200 px-6 py-6 dark:border-zinc-800 sm:px-8">
-            <p className={labelClass}>Configuração de cobrança</p>
-            <h2 className="mt-2 flex items-center gap-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
-              <CreditCard size={22} className="text-emerald-500" />
-              Pagamento do clube
-            </h2>
-            <p className="mt-2 text-sm font-bold text-zinc-500">
-              Configure como os clientes pagarão as assinaturas da barbearia.
-            </p>
-          </div>
-
-          <div className="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-[1.15fr_0.85fr]">
-            {paymentLoading ? (
-              <div className="col-span-full flex justify-center py-10">
-                <Loader2 className="animate-spin text-emerald-500" />
-              </div>
-            ) : (
-              <>
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    <label className={labelClass}>Gateway do clube</label>
-                    <div className="relative">
-                      <CreditCard
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
-                        size={18}
-                      />
-                      <select
-                        className={inputWithIconClass}
-                        value={clubPaymentProvider}
-                        onChange={(e) =>
-                          setClubPaymentProvider(
-                            e.target.value as "" | "ASAAS" | "MERCADO_PAGO"
-                          )
-                        }
-                      >
-                        <option value="">Selecione um gateway</option>
-                        <option value="ASAAS">ASAAS</option>
-                        <option value="MERCADO_PAGO">Mercado Pago</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {clubPaymentProvider === "ASAAS" && (
-                    <div className={`${mutedPanelClass} space-y-5 p-5`}>
-                      <div className="space-y-2">
-                        <label className={labelClass}>Ambiente</label>
-                        <select
-                          className={inputClass}
-                          value={asaasEnvironment}
-                          onChange={(e) =>
-                            setAsaasEnvironment(
-                              e.target.value as "SANDBOX" | "PRODUCTION"
-                            )
-                          }
-                        >
-                          <option value="SANDBOX">Sandbox (testes)</option>
-                          <option value="PRODUCTION">Produção</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className={labelClass}>
-                          Chave API Asaas da barbearia
-                        </label>
-                        <input
-                          type="password"
-                          className={inputClass}
-                          value={asaasApiKeyInput}
-                          onChange={(e) => setAsaasApiKeyInput(e.target.value)}
-                          placeholder="$aact_..."
-                        />
-                        {asaasConfigured && (
-                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                            Chave cadastrada. Preencha novamente apenas se quiser
-                            substituir.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {clubPaymentProvider === "MERCADO_PAGO" && (
-                    <div className={`${mutedPanelClass} space-y-5 p-5`}>
-                      <div className="space-y-2">
-                        <label className={labelClass}>Ambiente</label>
-                        <select
-                          className={inputClass}
-                          value={mercadoPagoEnvironment}
-                          onChange={(e) =>
-                            setMercadoPagoEnvironment(
-                              e.target.value as "SANDBOX" | "PRODUCTION"
-                            )
-                          }
-                        >
-                          <option value="SANDBOX">Sandbox (testes)</option>
-                          <option value="PRODUCTION">Produção</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className={labelClass}>
-                          Access Token do Mercado Pago
-                        </label>
-                        <input
-                          type="password"
-                          className={inputClass}
-                          value={mercadoPagoAccessTokenInput}
-                          onChange={(e) =>
-                            setMercadoPagoAccessTokenInput(e.target.value)
-                          }
-                          placeholder="APP_USR-..."
-                        />
-                        {mercadoPagoConfigured && (
-                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                            Access token cadastrado. Preencha novamente apenas
-                            se quiser substituir.
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className={labelClass}>
-                          Public Key do Mercado Pago
-                        </label>
-                        <input
-                          type="text"
-                          className={inputClass}
-                          value={mercadoPagoPublicKeyInput}
-                          onChange={(e) =>
-                            setMercadoPagoPublicKeyInput(e.target.value)
-                          }
-                          placeholder="APP_USR-..."
-                        />
-                        {mercadoPagoPublicKeyConfigured && (
-                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                            Public key cadastrada. Preencha novamente apenas se
-                            quiser substituir.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
+            {summaryError && (
+              <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={16} />
+                  {summaryError}
                 </div>
-
-                <div
-                  className={`${mutedPanelClass} flex flex-col justify-between p-5`}
-                >
-                  <div className="space-y-4">
-                    <div>
-                      <p className={labelClass}>Resumo da configuração</p>
-                      <p className="mt-2 text-lg font-black italic tracking-tighter text-zinc-900 dark:text-white">
-                        {clubPaymentProvider || "Sem gateway selecionado"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-3xl border border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900">
-                      <p className={labelClass}>Status da chave</p>
-                      <div className="mt-2 flex items-center gap-2">
-                        {clubPaymentProvider === "ASAAS" ? (
-                          asaasConfigured ? (
-                            <>
-                              <ShieldCheck
-                                size={18}
-                                className="text-emerald-500"
-                              />
-                              <span className="text-sm font-black text-zinc-900 dark:text-white">
-                                Chave Asaas configurada
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <AlertTriangle
-                                size={18}
-                                className="text-amber-500"
-                              />
-                              <span className="text-sm font-black text-zinc-900 dark:text-white">
-                                Aguardando chave Asaas
-                              </span>
-                            </>
-                          )
-                        ) : clubPaymentProvider === "MERCADO_PAGO" ? (
-                          mercadoPagoConfigured ? (
-                            <>
-                              <ShieldCheck
-                                size={18}
-                                className="text-emerald-500"
-                              />
-                              <span className="text-sm font-black text-zinc-900 dark:text-white">
-                                Mercado Pago configurado
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <AlertTriangle
-                                size={18}
-                                className="text-amber-500"
-                              />
-                              <span className="text-sm font-black text-zinc-900 dark:text-white">
-                                Aguardando credenciais do Mercado Pago
-                              </span>
-                            </>
-                          )
-                        ) : (
-                          <>
-                            <AlertTriangle
-                              size={18}
-                              className="text-amber-500"
-                            />
-                            <span className="text-sm font-black text-zinc-900 dark:text-white">
-                              Selecione um gateway
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {paymentMessage && (
-                      <div className="rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
-                        {paymentMessage}
-                      </div>
-                    )}
-
-                    {paymentError && (
-                      <div className="rounded-3xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-                        {paymentError}
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    disabled={paymentSaving}
-                    onClick={handleSavePaymentSettings}
-                    className={`${primaryButtonClass} mt-6 w-full`}
-                  >
-                    {paymentSaving ? (
-                      <>
-                        <Loader2 size={18} className="animate-spin" />
-                        Salvando...
-                      </>
-                    ) : (
-                      "Salvar configuração"
-                    )}
-                  </button>
-                </div>
-              </>
+              </div>
             )}
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-3">
+              {summaryLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`${innerCardClass} h-32 animate-pulse bg-zinc-100 dark:bg-zinc-900`}
+                  />
+                ))
+              ) : summary ? (
+                <>
+                  <SummaryCard
+                    icon={<Users size={20} />}
+                    label="Assinantes ativos"
+                    value={summary.activeSubscribers}
+                    toneClass="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+                  />
+                  <SummaryCard
+                    icon={<Wallet size={20} />}
+                    label="Receita mensal prevista"
+                    value={formatCurrency(summary.monthlyRecurringRevenueInCents)}
+                    toneClass="bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400"
+                  />
+                  <SummaryCard
+                    icon={<Clock size={20} />}
+                    label="Pendentes"
+                    value={summary.pendingSubscribers}
+                    toneClass="bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400"
+                  />
+                  <SummaryCard
+                    icon={<AlertTriangle size={20} />}
+                    label="Inadimplentes"
+                    value={summary.overdueSubscribers}
+                    toneClass="bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400"
+                  />
+                  <SummaryCard
+                    icon={<BadgePercent size={20} />}
+                    label="Descontos no mês"
+                    value={formatCurrency(
+                      summary.totalClubDiscountThisMonthInCents
+                    )}
+                    toneClass="bg-purple-500/10 text-purple-600 dark:bg-purple-500/15 dark:text-purple-400"
+                  />
+                  <SummaryCard
+                    icon={<CalendarCheck size={20} />}
+                    label="Agendamentos com clube"
+                    value={summary.clubAppointmentsThisMonth}
+                    toneClass="bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400"
+                  />
+                </>
+              ) : null}
+            </div>
+          </section>
+        )}
+
+        {activeTab === "settings" && (
+          <div className="space-y-6">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className={`${mutedPanelClass} p-5`}>
+                <p className={labelClass}>Gateway do clube</p>
+                <p className="mt-2 text-lg font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                  {clubPaymentProvider || "Não configurado"}
+                </p>
+              </div>
+
+              <div className={`${mutedPanelClass} p-5`}>
+                <p className={labelClass}>Tenant</p>
+                <p className="mt-2 text-lg font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                  {initialTenant.name}
+                </p>
+                <p className="mt-1 text-xs font-bold text-zinc-500">
+                  /{initialTenant.slug}
+                </p>
+              </div>
+            </div>
+
+            <section className={shellCardClass}>
+              <div className="border-b border-zinc-200 px-6 py-6 dark:border-zinc-800 sm:px-8">
+                <p className={labelClass}>Configuração de cobrança</p>
+                <h2 className="mt-2 flex items-center gap-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                  <CreditCard size={22} className="text-emerald-500" />
+                  Pagamento do clube
+                </h2>
+                <p className="mt-2 text-sm font-bold text-zinc-500">
+                  Configure como os clientes pagarão as assinaturas da barbearia.
+                </p>
+              </div>
+
+              <div className="grid gap-6 px-6 py-6 sm:px-8 lg:grid-cols-[1.15fr_0.85fr]">
+                {paymentLoading ? (
+                  <div className="col-span-full flex justify-center py-10">
+                    <Loader2 className="animate-spin text-emerald-500" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-5">
+                      <div className="space-y-2">
+                        <label className={labelClass}>Gateway do clube</label>
+                        <div className="relative">
+                          <CreditCard
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
+                            size={18}
+                          />
+                          <select
+                            className={inputWithIconClass}
+                            value={clubPaymentProvider}
+                            onChange={(e) =>
+                              setClubPaymentProvider(
+                                e.target.value as "" | "ASAAS" | "MERCADO_PAGO"
+                              )
+                            }
+                          >
+                            <option value="">Selecione um gateway</option>
+                            <option value="ASAAS">ASAAS</option>
+                            <option value="MERCADO_PAGO">Mercado Pago</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {clubPaymentProvider === "ASAAS" && (
+                        <div className={`${mutedPanelClass} space-y-5 p-5`}>
+                          <div className="space-y-2">
+                            <label className={labelClass}>Ambiente</label>
+                            <select
+                              className={inputClass}
+                              value={asaasEnvironment}
+                              onChange={(e) =>
+                                setAsaasEnvironment(
+                                  e.target.value as "SANDBOX" | "PRODUCTION"
+                                )
+                              }
+                            >
+                              <option value="SANDBOX">Sandbox (testes)</option>
+                              <option value="PRODUCTION">Produção</option>
+                            </select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className={labelClass}>
+                              Chave API Asaas da barbearia
+                            </label>
+                            <input
+                              type="password"
+                              className={inputClass}
+                              value={asaasApiKeyInput}
+                              onChange={(e) => setAsaasApiKeyInput(e.target.value)}
+                              placeholder="$aact_..."
+                            />
+                            {asaasConfigured && (
+                              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                Chave cadastrada. Preencha novamente apenas se quiser
+                                substituir.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {clubPaymentProvider === "MERCADO_PAGO" && (
+                        <div className={`${mutedPanelClass} space-y-5 p-5`}>
+                          <div className="space-y-2">
+                            <label className={labelClass}>Ambiente</label>
+                            <select
+                              className={inputClass}
+                              value={mercadoPagoEnvironment}
+                              onChange={(e) =>
+                                setMercadoPagoEnvironment(
+                                  e.target.value as "SANDBOX" | "PRODUCTION"
+                                )
+                              }
+                            >
+                              <option value="SANDBOX">Sandbox (testes)</option>
+                              <option value="PRODUCTION">Produção</option>
+                            </select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className={labelClass}>
+                              Access Token do Mercado Pago
+                            </label>
+                            <input
+                              type="password"
+                              className={inputClass}
+                              value={mercadoPagoAccessTokenInput}
+                              onChange={(e) =>
+                                setMercadoPagoAccessTokenInput(e.target.value)
+                              }
+                              placeholder="APP_USR-..."
+                            />
+                            {mercadoPagoConfigured && (
+                              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                Access token cadastrado. Preencha novamente apenas
+                                se quiser substituir.
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className={labelClass}>
+                              Public Key do Mercado Pago
+                            </label>
+                            <input
+                              type="text"
+                              className={inputClass}
+                              value={mercadoPagoPublicKeyInput}
+                              onChange={(e) =>
+                                setMercadoPagoPublicKeyInput(e.target.value)
+                              }
+                              placeholder="APP_USR-..."
+                            />
+                            {mercadoPagoPublicKeyConfigured && (
+                              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                Public key cadastrada. Preencha novamente apenas se
+                                quiser substituir.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      className={`${mutedPanelClass} flex flex-col justify-between p-5`}
+                    >
+                      <div className="space-y-4">
+                        <div>
+                          <p className={labelClass}>Resumo da configuração</p>
+                          <p className="mt-2 text-lg font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                            {clubPaymentProvider || "Sem gateway selecionado"}
+                          </p>
+                        </div>
+
+                        <div className="rounded-3xl border border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900">
+                          <p className={labelClass}>Status da chave</p>
+                          <div className="mt-2 flex items-center gap-2">
+                            {clubPaymentProvider === "ASAAS" ? (
+                              asaasConfigured ? (
+                                <>
+                                  <ShieldCheck
+                                    size={18}
+                                    className="text-emerald-500"
+                                  />
+                                  <span className="text-sm font-black text-zinc-900 dark:text-white">
+                                    Chave Asaas configurada
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <AlertTriangle
+                                    size={18}
+                                    className="text-amber-500"
+                                  />
+                                  <span className="text-sm font-black text-zinc-900 dark:text-white">
+                                    Aguardando chave Asaas
+                                  </span>
+                                </>
+                              )
+                            ) : clubPaymentProvider === "MERCADO_PAGO" ? (
+                              mercadoPagoConfigured ? (
+                                <>
+                                  <ShieldCheck
+                                    size={18}
+                                    className="text-emerald-500"
+                                  />
+                                  <span className="text-sm font-black text-zinc-900 dark:text-white">
+                                    Mercado Pago configurado
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <AlertTriangle
+                                    size={18}
+                                    className="text-amber-500"
+                                  />
+                                  <span className="text-sm font-black text-zinc-900 dark:text-white">
+                                    Aguardando credenciais do Mercado Pago
+                                  </span>
+                                </>
+                              )
+                            ) : (
+                              <>
+                                <AlertTriangle
+                                  size={18}
+                                  className="text-amber-500"
+                                />
+                                <span className="text-sm font-black text-zinc-900 dark:text-white">
+                                  Selecione um gateway
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {paymentMessage && (
+                          <div className="rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+                            {paymentMessage}
+                          </div>
+                        )}
+
+                        {paymentError && (
+                          <div className="rounded-3xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+                            {paymentError}
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        disabled={paymentSaving}
+                        onClick={handleSavePaymentSettings}
+                        className={`${primaryButtonClass} mt-6 w-full`}
+                      >
+                        {paymentSaving ? (
+                          <>
+                            <Loader2 size={18} className="animate-spin" />
+                            Salvando...
+                          </>
+                        ) : (
+                          "Salvar configuração"
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </section>
           </div>
-        </section>
+        )}
 
         {(message || error) && (
           <section className="space-y-3">
@@ -1107,701 +1158,718 @@ export default function ClubPlansClient({
           </section>
         )}
 
-        {isFormOpen && (
-          <section className={`${shellCardClass} p-6 sm:p-8`}>
-            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className={labelClass}>Plano do clube</p>
-                <h2 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
-                  {editingPlan ? "Editar plano" : "Novo plano"}
-                </h2>
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className={labelClass}>Nome do plano</label>
-                  <input
-                    required
-                    className={inputClass}
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    placeholder="Ex: Clube Premium"
-                  />
+        {activeTab === "plans" && (
+          <div className="space-y-8">
+            {isFormOpen && (
+              <section className={`${shellCardClass} p-6 sm:p-8`}>
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className={labelClass}>Plano do clube</p>
+                    <h2 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                      {editingPlan ? "Editar plano" : "Novo plano"}
+                    </h2>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className={labelClass}>Preço (R$)</label>
-                  <input
-                    required
-                    type="number"
-                    step="0.01"
-                    className={inputClass}
-                    value={formData.price}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, price: e.target.value }))
-                    }
-                    placeholder="39,90"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className={labelClass}>Ciclo de cobrança</label>
-                  <select
-                    className={inputClass}
-                    value={formData.billingCycle}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        billingCycle: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="MONTHLY">Mensal</option>
-                    <option value="QUARTERLY">Trimestral</option>
-                    <option value="SEMIANNUAL">Semestral</option>
-                    <option value="YEARLY">Anual</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className={labelClass}>Desconto em serviços (%)</label>
-                  <input
-                    type="number"
-                    className={inputClass}
-                    value={formData.discountPercent}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        discountPercent: e.target.value,
-                      }))
-                    }
-                    placeholder="10"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className={labelClass}>Descrição / benefícios</label>
-                  <textarea
-                    className={`${textareaClass} h-32`}
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        description: e.target.value,
-                      }))
-                    }
-                    placeholder="Descreva os benefícios do plano."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className={labelClass}>Regras e Termos</label>
-                  <textarea
-                    className={`${textareaClass} h-32`}
-                    value={formData.terms}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        terms: e.target.value,
-                      }))
-                    }
-                    placeholder="Regras de uso, política de cancelamento, etc."
-                  />
-                </div>
-              </div>
-
-              <div className={`${mutedPanelClass} p-5`}>
-                <div className="mb-4 flex items-center gap-2">
-                  <ShieldCheck size={18} className="text-emerald-500" />
-                  <h3 className="text-lg font-black italic tracking-tighter text-zinc-900 dark:text-white">
-                    Benefício incluso no ciclo
-                  </h3>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="space-y-2">
-                    <label className={labelClass}>Quantidade por ciclo</label>
-                    <div className="flex gap-3">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className={labelClass}>Nome do plano</label>
                       <input
+                        required
+                        className={inputClass}
+                        value={formData.name}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, name: e.target.value }))
+                        }
+                        placeholder="Ex: Clube Premium"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className={labelClass}>Preço (R$)</label>
+                      <input
+                        required
                         type="number"
-                        min="-1"
-                        className={`${inputClass} flex-1`}
-                        disabled={formData.includedUsesPerPeriod === "-1"}
-                        value={formData.includedUsesPerPeriod === "-1" ? "" : formData.includedUsesPerPeriod}
+                        step="0.01"
+                        className={inputClass}
+                        value={formData.price}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, price: e.target.value }))
+                        }
+                        placeholder="39,90"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className={labelClass}>Ciclo de cobrança</label>
+                      <select
+                        className={inputClass}
+                        value={formData.billingCycle}
                         onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            includedUsesPerPeriod: e.target.value,
+                            billingCycle: e.target.value,
                           }))
                         }
-                        placeholder={formData.includedUsesPerPeriod === "-1" ? "Ilimitado" : "0"}
+                      >
+                        <option value="MONTHLY">Mensal</option>
+                        <option value="QUARTERLY">Trimestral</option>
+                        <option value="SEMIANNUAL">Semestral</option>
+                        <option value="YEARLY">Anual</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className={labelClass}>Desconto em serviços (%)</label>
+                      <input
+                        type="number"
+                        className={inputClass}
+                        value={formData.discountPercent}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            discountPercent: e.target.value,
+                          }))
+                        }
+                        placeholder="10"
                       />
-                      <label className="flex items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 cursor-pointer transition-colors hover:bg-emerald-50 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-emerald-900/20">
-                        <input
-                          type="checkbox"
-                          checked={formData.includedUsesPerPeriod === "-1"}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              includedUsesPerPeriod: e.target.checked ? "-1" : "1",
-                            }))
-                          }
-                          className="h-4 w-4 rounded border-zinc-300 text-emerald-500 focus:ring-emerald-500"
-                        />
-                        <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
-                          Ilimitado
-                        </span>
-                      </label>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className={labelClass}>Serviço incluído</label>
-                    <select
-                      className={inputClass}
-                      value={formData.includedServiceId}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className={labelClass}>Descrição / benefícios</label>
+                      <textarea
+                        className={`${textareaClass} h-32`}
+                        value={formData.description}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            description: e.target.value,
+                          }))
+                        }
+                        placeholder="Descreva os benefícios do plano."
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className={labelClass}>Regras e Termos</label>
+                      <textarea
+                        className={`${textareaClass} h-32`}
+                        value={formData.terms}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            terms: e.target.value,
+                          }))
+                        }
+                        placeholder="Regras de uso, política de cancelamento, etc."
+                      />
+                    </div>
+                  </div>
+
+                  <div className={`${mutedPanelClass} p-5`}>
+                    <div className="mb-4 flex items-center gap-2">
+                      <ShieldCheck size={18} className="text-emerald-500" />
+                      <h3 className="text-lg font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                        Benefício incluso no ciclo
+                      </h3>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <label className={labelClass}>Quantidade por ciclo</label>
+                        <div className="flex gap-3">
+                          <input
+                            type="number"
+                            min="-1"
+                            className={`${inputClass} flex-1`}
+                            disabled={formData.includedUsesPerPeriod === "-1"}
+                            value={formData.includedUsesPerPeriod === "-1" ? "" : formData.includedUsesPerPeriod}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                includedUsesPerPeriod: e.target.value,
+                              }))
+                            }
+                            placeholder={formData.includedUsesPerPeriod === "-1" ? "Ilimitado" : "0"}
+                          />
+                          <label className="flex items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 cursor-pointer transition-colors hover:bg-emerald-50 dark:border-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-emerald-900/20">
+                            <input
+                              type="checkbox"
+                              checked={formData.includedUsesPerPeriod === "-1"}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  includedUsesPerPeriod: e.target.checked ? "-1" : "1",
+                                }))
+                              }
+                              className="h-4 w-4 rounded border-zinc-300 text-emerald-500 focus:ring-emerald-500"
+                            />
+                            <span className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                              Ilimitado
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className={labelClass}>Serviço incluído</label>
+                        <select
+                          className={inputClass}
+                          value={formData.includedServiceId}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              includedServiceId: e.target.value,
+                            }))
+                          }
+                          required={includedUsesValue !== 0}
+                        >
+                          <option value="">Nenhum serviço incluso</option>
+                          {initialServices.map((service) => (
+                            <option key={service.id} value={service.id}>
+                              {service.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className={labelClass}>Tipo do benefício</label>
+                        <select
+                          className={inputClass}
+                          value={formData.includedBenefitType}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              includedBenefitType: e.target.value,
+                            }))
+                          }
+                          required={includedUsesValue !== 0}
+                        >
+                          <option value="">Nenhum</option>
+                          <option value="FREE_SERVICE">Serviço grátis</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <p className="mt-4 text-xs font-bold text-zinc-500">
+                      Exemplo: 1 corte grátis por mês.
+                    </p>
+                  </div>
+
+                  <label className="flex items-center gap-3 rounded-3xl border border-zinc-200 bg-zinc-100/70 px-4 py-4 dark:border-zinc-800 dark:bg-zinc-950">
+                    <input
+                      type="checkbox"
+                      checked={formData.isActive}
                       onChange={(e) =>
                         setFormData((prev) => ({
                           ...prev,
-                          includedServiceId: e.target.value,
+                          isActive: e.target.checked,
                         }))
                       }
-                      required={includedUsesValue !== 0}
+                      className="h-4 w-4 rounded border-zinc-300 text-emerald-500 focus:ring-emerald-500"
+                    />
+                    <span className="text-sm font-black text-zinc-900 dark:text-white">
+                      Plano ativo
+                    </span>
+                  </label>
+
+                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={handleCloseForm}
+                      className={secondaryButtonClass}
                     >
-                      <option value="">Nenhum serviço incluso</option>
-                      {initialServices.map((service) => (
-                        <option key={service.id} value={service.id}>
-                          {service.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className={labelClass}>Tipo do benefício</label>
-                    <select
-                      className={inputClass}
-                      value={formData.includedBenefitType}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          includedBenefitType: e.target.value,
-                        }))
-                      }
-                      required={includedUsesValue !== 0}
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className={primaryButtonClass}
                     >
-                      <option value="">Nenhum</option>
-                      <option value="FREE_SERVICE">Serviço grátis</option>
-                    </select>
+                      {isLoading ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        "Salvar plano"
+                      )}
+                    </button>
                   </div>
+                </form>
+              </section>
+            )}
+
+            <section className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className={labelClass}>Produtos do clube</p>
+                  <h2 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                    Planos disponíveis
+                  </h2>
                 </div>
-
-                <p className="mt-4 text-xs font-bold text-zinc-500">
-                  Exemplo: 1 corte grátis por mês.
-                </p>
+                {!isFormOpen && (
+                  <button
+                    onClick={() => handleOpenForm()}
+                    className={primaryButtonClass}
+                  >
+                    <Plus size={18} />
+                    Novo plano
+                  </button>
+                )}
               </div>
 
-              <label className="flex items-center gap-3 rounded-3xl border border-zinc-200 bg-zinc-100/70 px-4 py-4 dark:border-zinc-800 dark:bg-zinc-950">
-                <input
-                  type="checkbox"
-                  checked={formData.isActive}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      isActive: e.target.checked,
-                    }))
-                  }
-                  className="h-4 w-4 rounded border-zinc-300 text-emerald-500 focus:ring-emerald-500"
-                />
-                <span className="text-sm font-black text-zinc-900 dark:text-white">
-                  Plano ativo
-                </span>
-              </label>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={handleCloseForm}
-                  className={secondaryButtonClass}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className={primaryButtonClass}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    "Salvar plano"
-                  )}
-                </button>
-              </div>
-            </form>
-          </section>
-        )}
-
-        <section className="space-y-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className={labelClass}>Produtos do clube</p>
-              <h2 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
-                Planos disponíveis
-              </h2>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {plans.length === 0 ? (
-              <div
-                className={`${shellCardClass} col-span-full flex flex-col items-center justify-center px-6 py-14 text-center`}
-              >
-                <div className="rounded-full bg-zinc-100 p-4 dark:bg-zinc-950">
-                  <Crown size={30} className="text-zinc-500" />
-                </div>
-                <h3 className="mt-4 text-xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
-                  Nenhum plano criado ainda
-                </h3>
-                <p className="mt-2 max-w-sm text-sm font-bold text-zinc-500">
-                  Crie seu primeiro plano para exibir o clube na página pública.
-                </p>
-              </div>
-            ) : (
-              plans.map((plan) => (
-                <article
-                  key={plan.id}
-                  className={`${shellCardClass} relative overflow-hidden p-5 ${
-                    !plan.isActive ? "opacity-80" : ""
-                  }`}
-                >
-                  <div className="absolute right-5 top-5">
-                    <span
-                      className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
-                        plan.isActive
-                          ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                          : "bg-red-500/10 text-red-700 dark:bg-red-500/15 dark:text-red-400"
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                {plans.length === 0 ? (
+                  <div
+                    className={`${shellCardClass} col-span-full flex flex-col items-center justify-center px-6 py-14 text-center`}
+                  >
+                    <div className="rounded-full bg-zinc-100 p-4 dark:bg-zinc-950">
+                      <Crown size={30} className="text-zinc-500" />
+                    </div>
+                    <h3 className="mt-4 text-xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                      Nenhum plano criado ainda
+                    </h3>
+                    <p className="mt-2 max-w-sm text-sm font-bold text-zinc-500">
+                      Crie seu primeiro plano para exibir o clube na página pública.
+                    </p>
+                  </div>
+                ) : (
+                  plans.map((plan) => (
+                    <article
+                      key={plan.id}
+                      className={`${shellCardClass} relative overflow-hidden p-5 ${
+                        !plan.isActive ? "opacity-80" : ""
                       }`}
                     >
-                      {plan.isActive ? "Ativo" : "Inativo"}
-                    </span>
-                  </div>
-
-                  <div className="pr-20">
-                    <p className={labelClass}>Plano</p>
-                    <h3 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
-                      {plan.name}
-                    </h3>
-                    <p className="mt-3 text-3xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
-                      {formatCurrency(plan.priceInCents)}
-                      <span className="ml-2 text-sm font-bold not-italic text-zinc-500">
-                        /{formatCycle(plan.billingCycle).toLowerCase()}
-                      </span>
-                    </p>
-                  </div>
-
-                  {plan.description && (
-                    <p className="mt-4 text-sm font-bold text-zinc-500">
-                      {plan.description}
-                    </p>
-                  )}
-
-                  <div className="mt-5 space-y-3">
-                    {plan.discountPercent ? (
-                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
-                        {plan.discountPercent}% de desconto em serviços
-                      </div>
-                    ) : null}
-
-                    {plan.includedUsesPerPeriod !== 0 && plan.includedService && (
-                      <div className="rounded-3xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
-                        <p className={labelClass}>Benefício incluso</p>
-                        <div className="mt-2 flex items-start gap-3">
-                          <div className="rounded-2xl bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400">
-                            <Scissors size={16} />
-                          </div>
-                          <div>
-                            <p className="text-sm font-black text-zinc-900 dark:text-white">
-                              {plan.includedUsesPerPeriod === -1 ? 'Uso ilimitado' : `${plan.includedUsesPerPeriod}x`}{" "}
-                              {plan.includedService.name}
-                            </p>
-                            <p className="mt-1 text-xs font-bold text-zinc-500">
-                              {plan.includedBenefitType === "FREE_SERVICE"
-                                ? "Serviço grátis"
-                                : plan.includedBenefitType}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                    <button
-                      onClick={() => handleOpenForm(plan)}
-                      className={`${secondaryButtonClass} flex-1`}
-                    >
-                      <Pencil size={16} />
-                      Editar
-                    </button>
-
-                    {plan.isActive && (
-                      <button
-                        onClick={() => handleDelete(plan.id)}
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition-all hover:bg-red-100 active:scale-95 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300 dark:hover:bg-red-950/30"
-                      >
-                        <Trash2 size={16} />
-                        Desativar
-                      </button>
-                    )}
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className={shellCardClass}>
-          <div className="border-b border-zinc-200 px-6 py-6 dark:border-zinc-800 sm:px-8">
-            <p className={labelClass}>Clientes recorrentes</p>
-            <h2 className="mt-2 flex items-center gap-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
-              <Users size={22} className="text-emerald-500" />
-              Assinantes do clube
-            </h2>
-          </div>
-
-          <div className="space-y-5 px-6 py-6 sm:px-8">
-            <div className="flex flex-col gap-3 xl:flex-row">
-              <div className="relative flex-1">
-                <Search
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
-                  size={18}
-                />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome ou WhatsApp..."
-                  className={inputWithIconClass}
-                  value={subscriberSearch}
-                  onChange={(e) => setSubscriberSearch(e.target.value)}
-                />
-              </div>
-
-              <select
-                className={`${inputClass} xl:w-[220px]`}
-                value={subscriberStatusFilter}
-                onChange={(e) => setSubscriberStatusFilter(e.target.value)}
-              >
-                <option value="ALL">Todos os status</option>
-                <option value="ACTIVE">Ativos</option>
-                <option value="PENDING">Pendentes</option>
-                <option value="OVERDUE">Inadimplentes</option>
-                <option value="CANCELED">Cancelados</option>
-                <option value="EXPIRED">Expirados</option>
-              </select>
-
-              <button
-                onClick={() => {
-                  loadSubscribers();
-                  loadSummary();
-                }}
-                disabled={subscribersLoading}
-                className={secondaryButtonClass}
-              >
-                {subscribersLoading ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <RefreshCw size={18} />
-                )}
-                Atualizar
-              </button>
-            </div>
-
-            {subscribersError && (
-              <div className="rounded-3xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-                {subscribersError}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              {subscribersLoading && subscribers.length === 0 ? (
-                <div className="col-span-full flex justify-center py-10">
-                  <Loader2 className="animate-spin text-emerald-500" size={32} />
-                </div>
-              ) : subscribers.length === 0 ? (
-                <div
-                  className={`${mutedPanelClass} col-span-full px-6 py-12 text-center text-sm font-black text-zinc-500`}
-                >
-                  Nenhum assinante encontrado.
-                </div>
-              ) : (
-                subscribers.map((sub) => {
-                  const clientDisplayName =
-                    sub.client?.name?.trim() ||
-                    sub.client?.phoneE164 ||
-                    "Cliente";
-
-                  return (
-                    <article key={sub.id} className={`${innerCardClass} p-5`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className={labelClass}>Assinante</p>
-                          <h3 className="mt-2 text-xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
-                            {clientDisplayName}
-                          </h3>
-                          <p className="mt-1 text-sm font-bold text-zinc-500">
-                            {sub.client?.phoneE164 || ""}
-                          </p>
-                        </div>
-
+                      <div className="absolute right-5 top-5">
                         <span
-                          className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusBadgeClass(
-                            sub.status
-                          )}`}
+                          className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
+                            plan.isActive
+                              ? "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+                              : "bg-red-500/10 text-red-700 dark:bg-red-500/15 dark:text-red-400"
+                          }`}
                         >
-                          {formatStatus(sub.status)}
+                          {plan.isActive ? "Ativo" : "Inativo"}
                         </span>
                       </div>
 
-                      <div className="mt-5 space-y-3 rounded-3xl border border-zinc-200 bg-zinc-100/80 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                            Plano
+                      <div className="pr-20">
+                        <p className={labelClass}>Plano</p>
+                        <h3 className="mt-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                          {plan.name}
+                        </h3>
+                        <p className="mt-3 text-3xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                          {formatCurrency(plan.priceInCents)}
+                          <span className="ml-2 text-sm font-bold not-italic text-zinc-500">
+                            /{formatCycle(plan.billingCycle).toLowerCase()}
                           </span>
-                          <span className="text-sm font-black text-zinc-900 dark:text-white">
-                            {sub.plan.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                            Valor
-                          </span>
-                          <span className="text-sm font-black text-zinc-900 dark:text-white">
-                            {formatCurrency(sub.plan.priceInCents)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                            Ciclo
-                          </span>
-                          <span className="text-sm font-black text-zinc-900 dark:text-white">
-                            {formatCycle(sub.plan.billingCycle)}
-                          </span>
-                        </div>
-                        {sub.currentPeriodEnd && (
-                          <div className="flex items-center justify-between gap-3">
-                            <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                              Validade
-                            </span>
-                            <span className="text-sm font-black text-zinc-900 dark:text-white">
-                              {formatDateBR(sub.currentPeriodEnd)}
-                            </span>
+                        </p>
+                      </div>
+
+                      {plan.description && (
+                        <p className="mt-4 text-sm font-bold text-zinc-500">
+                          {plan.description}
+                        </p>
+                      )}
+
+                      <div className="mt-5 space-y-3">
+                        {plan.discountPercent ? (
+                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+                            {plan.discountPercent}% de desconto em serviços
+                          </div>
+                        ) : null}
+
+                        {plan.includedUsesPerPeriod !== 0 && plan.includedService && (
+                          <div className="rounded-3xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+                            <p className={labelClass}>Benefício incluso</p>
+                            <div className="mt-2 flex items-start gap-3">
+                              <div className="rounded-2xl bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400">
+                                <Scissors size={16} />
+                              </div>
+                              <div>
+                                <p className="text-sm font-black text-zinc-900 dark:text-white">
+                                  {plan.includedUsesPerPeriod === -1 ? 'Uso ilimitado' : `${plan.includedUsesPerPeriod}x`}{" "}
+                                  {plan.includedService.name}
+                                </p>
+                                <p className="mt-1 text-xs font-bold text-zinc-500">
+                                  {plan.includedBenefitType === "FREE_SERVICE"
+                                    ? "Serviço grátis"
+                                    : plan.includedBenefitType}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
 
-                      <div className="mt-5 flex flex-col gap-3">
-                        <a
-                          href={whatsappLink(sub.client.phoneE164)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={primaryButtonClass}
+                      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                        <button
+                          onClick={() => handleOpenForm(plan)}
+                          className={`${secondaryButtonClass} flex-1`}
                         >
-                          <MessageCircle size={16} />
-                          WhatsApp
-                        </a>
+                          <Pencil size={16} />
+                          Editar
+                        </button>
 
-                        {sub.status !== "CANCELED" &&
-                          sub.status !== "EXPIRED" && (
-                            <div className="flex flex-col gap-2">
-                              {confirmingCancelId === sub.id ? (
-                                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
-                                  <p className="mb-3 text-sm font-bold text-red-800 dark:text-red-300">
-                                    Tem certeza que deseja cancelar esta assinatura?
-                                  </p>
-                                  <div className="flex items-center gap-3">
-                                    <button
-                                      onClick={() => cancelSubscription(sub.id)}
-                                      disabled={cancelingSubscriptionId === sub.id}
-                                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white hover:bg-red-700 disabled:opacity-50"
-                                    >
-                                      {cancelingSubscriptionId === sub.id ? (
-                                        <>
-                                          <Loader2 size={14} className="animate-spin" />
-                                          Cancelando...
-                                        </>
-                                      ) : (
-                                        "Sim, cancelar"
-                                      )}
-                                    </button>
-                                    <button
-                                      onClick={() => setConfirmingCancelId(null)}
-                                      disabled={cancelingSubscriptionId === sub.id}
-                                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-black text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
-                                    >
-                                      Não
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => setConfirmingCancelId(sub.id)}
-                                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition-all hover:bg-red-100 active:scale-95 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300 dark:hover:bg-red-950/30"
-                                >
-                                  <Ban size={16} />
-                                  Cancelar assinatura
-                                </button>
-                              )}
-                            </div>
-                          )}
+                        {plan.isActive && (
+                          <button
+                            onClick={() => handleDelete(plan.id)}
+                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition-all hover:bg-red-100 active:scale-95 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300 dark:hover:bg-red-950/30"
+                          >
+                            <Trash2 size={16} />
+                            Desativar
+                          </button>
+                        )}
                       </div>
                     </article>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className={shellCardClass}>
-          <div className="border-b border-zinc-200 px-6 py-6 dark:border-zinc-800 sm:px-8">
-            <p className={labelClass}>Histórico do clube</p>
-            <h2 className="mt-2 flex items-center gap-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
-              <History size={22} className="text-emerald-500" />
-              Usos recentes de benefícios
-            </h2>
-          </div>
-
-          <div className="px-6 py-6 sm:px-8">
-            {benefitUsagesError && (
-              <div className="mb-5 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle size={16} />
-                  {benefitUsagesError}
-                </div>
+                  ))
+                )}
               </div>
-            )}
+            </section>
+          </div>
+        )}
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              {benefitUsagesLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`${innerCardClass} h-60 animate-pulse bg-zinc-100 dark:bg-zinc-900`}
+        {activeTab === "subscribers" && (
+          <section className={shellCardClass}>
+            <div className="border-b border-zinc-200 px-6 py-6 dark:border-zinc-800 sm:px-8">
+              <p className={labelClass}>Clientes recorrentes</p>
+              <h2 className="mt-2 flex items-center gap-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                <Users size={22} className="text-emerald-500" />
+                Assinantes do clube
+              </h2>
+            </div>
+
+            <div className="space-y-5 px-6 py-6 sm:px-8">
+              <div className="flex flex-col gap-3 xl:flex-row">
+                <div className="relative flex-1">
+                  <Search
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"
+                    size={18}
                   />
-                ))
-              ) : benefitUsages.length === 0 ? (
-                <div
-                  className={`${mutedPanelClass} col-span-full px-6 py-12 text-center text-sm font-black text-zinc-500`}
-                >
-                  Nenhum uso de benefício registrado até o momento.
+                  <input
+                    type="text"
+                    placeholder="Buscar por nome ou WhatsApp..."
+                    className={inputWithIconClass}
+                    value={subscriberSearch}
+                    onChange={(e) => setSubscriberSearch(e.target.value)}
+                  />
                 </div>
-              ) : (
-                benefitUsages.map((usage) => {
-                  const clientDisplayName =
-                    usage.client?.name?.trim() ||
-                    usage.client?.phoneE164 ||
-                    "Cliente";
 
-                  return (
-                    <article key={usage.id} className={`${innerCardClass} p-5`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className={labelClass}>Cliente</p>
-                          <h3 className="mt-2 text-xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
-                            {clientDisplayName}
-                          </h3>
-                          <p className="mt-1 text-xs font-black uppercase tracking-widest text-zinc-500">
-                            {usage.plan.name}
-                          </p>
-                        </div>
+                <select
+                  className={`${inputClass} xl:w-[220px]`}
+                  value={subscriberStatusFilter}
+                  onChange={(e) => setSubscriberStatusFilter(e.target.value)}
+                >
+                  <option value="ALL">Todos os status</option>
+                  <option value="ACTIVE">Ativos</option>
+                  <option value="PENDING">Pendentes</option>
+                  <option value="OVERDUE">Inadimplentes</option>
+                  <option value="CANCELED">Cancelados</option>
+                  <option value="EXPIRED">Expirados</option>
+                </select>
 
-                        <div className="rounded-2xl bg-emerald-500/10 p-3 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-                          <Scissors size={18} />
-                        </div>
-                      </div>
+                <button
+                  onClick={() => {
+                    loadSubscribers();
+                    loadSummary();
+                  }}
+                  disabled={subscribersLoading}
+                  className={secondaryButtonClass}
+                >
+                  {subscribersLoading ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <RefreshCw size={18} />
+                  )}
+                  Atualizar
+                </button>
+              </div>
 
-                      <div className="mt-5 space-y-3 rounded-3xl border border-zinc-200 bg-zinc-100/80 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                            Serviço
-                          </span>
-                          <span className="text-sm font-black text-zinc-900 dark:text-white">
-                            {usage.service.name}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                            Tipo
-                          </span>
-                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
-                            Serviço grátis
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                            Valor
-                          </span>
-                          <span className="text-sm font-black text-zinc-900 dark:text-white">
-                            {formatCurrency(usage.service.price)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                            Período
-                          </span>
-                          <span className="text-sm font-black text-zinc-900 dark:text-white">
-                            {usage.periodKey}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                            Data do uso
-                          </span>
-                          <span className="text-sm font-black text-zinc-900 dark:text-white">
-                            {formatDateBR(usage.createdAt)}
-                          </span>
-                        </div>
-                      </div>
+              {subscribersError && (
+                <div className="rounded-3xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-black text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+                  {subscribersError}
+                </div>
+              )}
 
-                      {usage.appointment?.startsAt && (
-                        <div className="mt-4 flex items-center gap-3 rounded-3xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
-                          <div className="rounded-2xl bg-emerald-500/10 p-2 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-                            <CalendarClock size={16} />
-                          </div>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                {subscribersLoading && subscribers.length === 0 ? (
+                  <div className="col-span-full flex justify-center py-10">
+                    <Loader2 className="animate-spin text-emerald-500" size={32} />
+                  </div>
+                ) : subscribers.length === 0 ? (
+                  <div
+                    className={`${mutedPanelClass} col-span-full px-6 py-12 text-center text-sm font-black text-zinc-500`}
+                  >
+                    Nenhum assinante encontrado.
+                  </div>
+                ) : (
+                  subscribers.map((sub) => {
+                    const clientDisplayName =
+                      sub.client?.name?.trim() ||
+                      sub.client?.phoneE164 ||
+                      "Cliente";
+
+                    return (
+                      <article key={sub.id} className={`${innerCardClass} p-5`}>
+                        <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className={labelClass}>Agendamento</p>
-                            <p className="mt-1 text-sm font-black text-zinc-900 dark:text-white">
-                              {formatDateTimeBR(usage.appointment.startsAt)}
+                            <p className={labelClass}>Assinante</p>
+                            <h3 className="mt-2 text-xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                              {clientDisplayName}
+                            </h3>
+                            <p className="mt-1 text-sm font-bold text-zinc-500">
+                              {sub.client?.phoneE164 || ""}
                             </p>
                           </div>
-                        </div>
-                      )}
 
-                      <a
-                        href={whatsappLink(usage.client.phoneE164)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`${subtleButtonClass} mt-4 w-full`}
-                      >
-                        <MessageCircle size={16} />
-                        Contatar cliente
-                      </a>
-                    </article>
-                  );
-                })
-              )}
+                          <span
+                            className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusBadgeClass(
+                              sub.status
+                            )}`}
+                          >
+                            {formatStatus(sub.status)}
+                          </span>
+                        </div>
+
+                        <div className="mt-5 space-y-3 rounded-3xl border border-zinc-200 bg-zinc-100/80 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                              Plano
+                            </span>
+                            <span className="text-sm font-black text-zinc-900 dark:text-white">
+                              {sub.plan.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                              Valor
+                            </span>
+                            <span className="text-sm font-black text-zinc-900 dark:text-white">
+                              {formatCurrency(sub.plan.priceInCents)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                              Ciclo
+                            </span>
+                            <span className="text-sm font-black text-zinc-900 dark:text-white">
+                              {formatCycle(sub.plan.billingCycle)}
+                            </span>
+                          </div>
+                          {sub.currentPeriodEnd && (
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                                Validade
+                              </span>
+                              <span className="text-sm font-black text-zinc-900 dark:text-white">
+                                {formatDateBR(sub.currentPeriodEnd)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-5 flex flex-col gap-3">
+                          <a
+                            href={whatsappLink(sub.client.phoneE164)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={primaryButtonClass}
+                          >
+                            <MessageCircle size={16} />
+                            WhatsApp
+                          </a>
+
+                          {sub.status !== "CANCELED" &&
+                            sub.status !== "EXPIRED" && (
+                              <div className="flex flex-col gap-2">
+                                {confirmingCancelId === sub.id ? (
+                                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
+                                    <p className="mb-3 text-sm font-bold text-red-800 dark:text-red-300">
+                                      Tem certeza que deseja cancelar esta assinatura?
+                                    </p>
+                                    <div className="flex items-center gap-3">
+                                      <button
+                                        onClick={() => cancelSubscription(sub.id)}
+                                        disabled={cancelingSubscriptionId === sub.id}
+                                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white hover:bg-red-700 disabled:opacity-50"
+                                      >
+                                        {cancelingSubscriptionId === sub.id ? (
+                                          <>
+                                            <Loader2 size={14} className="animate-spin" />
+                                            Cancelando...
+                                          </>
+                                        ) : (
+                                          "Sim, cancelar"
+                                        )}
+                                      </button>
+                                      <button
+                                        onClick={() => setConfirmingCancelId(null)}
+                                        disabled={cancelingSubscriptionId === sub.id}
+                                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-xs font-black text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                                      >
+                                        Não
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setConfirmingCancelId(sub.id)}
+                                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-700 transition-all hover:bg-red-100 active:scale-95 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300 dark:hover:bg-red-950/30"
+                                  >
+                                    <Ban size={16} />
+                                    Cancelar assinatura
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                        </div>
+                      </article>
+                    );
+                  })
+                )}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
+
+        {activeTab === "history" && (
+          <section className={shellCardClass}>
+            <div className="border-b border-zinc-200 px-6 py-6 dark:border-zinc-800 sm:px-8">
+              <p className={labelClass}>Histórico do clube</p>
+              <h2 className="mt-2 flex items-center gap-2 text-2xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                <History size={22} className="text-emerald-500" />
+                Usos recentes de benefícios
+              </h2>
+            </div>
+
+            <div className="px-6 py-6 sm:px-8">
+              {benefitUsagesError && (
+                <div className="mb-5 rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-black text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={16} />
+                    {benefitUsagesError}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                {benefitUsagesLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`${innerCardClass} h-60 animate-pulse bg-zinc-100 dark:bg-zinc-900`}
+                    />
+                  ))
+                ) : benefitUsages.length === 0 ? (
+                  <div
+                    className={`${mutedPanelClass} col-span-full px-6 py-12 text-center text-sm font-black text-zinc-500`}
+                  >
+                    Nenhum uso de benefício registrado até o momento.
+                  </div>
+                ) : (
+                  benefitUsages.map((usage) => {
+                    const clientDisplayName =
+                      usage.client?.name?.trim() ||
+                      usage.client?.phoneE164 ||
+                      "Cliente";
+
+                    return (
+                      <article key={usage.id} className={`${innerCardClass} p-5`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className={labelClass}>Cliente</p>
+                            <h3 className="mt-2 text-xl font-black italic tracking-tighter text-zinc-900 dark:text-white">
+                              {clientDisplayName}
+                            </h3>
+                            <p className="mt-1 text-xs font-black uppercase tracking-widest text-zinc-500">
+                              {usage.plan.name}
+                            </p>
+                          </div>
+
+                          <div className="rounded-2xl bg-emerald-500/10 p-3 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                            <Scissors size={18} />
+                          </div>
+                        </div>
+
+                        <div className="mt-5 space-y-3 rounded-3xl border border-zinc-200 bg-zinc-100/80 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                              Serviço
+                            </span>
+                            <span className="text-sm font-black text-zinc-900 dark:text-white">
+                              {usage.service.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                              Tipo
+                            </span>
+                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                              Serviço grátis
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                              Valor
+                            </span>
+                            <span className="text-sm font-black text-zinc-900 dark:text-white">
+                              {formatCurrency(usage.service.price)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                              Período
+                            </span>
+                            <span className="text-sm font-black text-zinc-900 dark:text-white">
+                              {usage.periodKey}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                              Data do uso
+                            </span>
+                            <span className="text-sm font-black text-zinc-900 dark:text-white">
+                              {formatDateBR(usage.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {usage.appointment?.startsAt && (
+                          <div className="mt-4 flex items-center gap-3 rounded-3xl border border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+                            <div className="rounded-2xl bg-emerald-500/10 p-2 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                              <CalendarClock size={16} />
+                            </div>
+                            <div>
+                              <p className={labelClass}>Agendamento</p>
+                              <p className="mt-1 text-sm font-black text-zinc-900 dark:text-white">
+                                {formatDateTimeBR(usage.appointment.startsAt)}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        <a
+                          href={whatsappLink(usage.client.phoneE164)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`${subtleButtonClass} mt-4 w-full`}
+                        >
+                          <MessageCircle size={16} />
+                          Contatar cliente
+                        </a>
+                      </article>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );
